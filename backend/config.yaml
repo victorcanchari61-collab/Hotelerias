@@ -1,0 +1,23 @@
+Logging:
+  LogLevel:
+    Default: "Information"
+    Microsoft.AspNetCore: "Warning"
+AllowedHosts: "*"
+AllowedOrigins:
+  - "http://localhost:5173"
+  - "http://localhost:4173"
+  - "http://localhost:4200"
+ConnectionStrings:
+  PostgreSQL: "Host=localhost;Port=5432;Database=Company_Multi;Username=postgres;Password="
+  Redis: "localhost:6379"
+  MongoDB: "mongodb://localhost:27017"
+MongoDBSettings:
+  DatabaseName: "company_multi_logs"
+JwtSettings:
+  SecretKey: "SuperSecretKeyForJwtToken_ChangeInProduction_Min32Chars!"
+  Issuer: "CompanyMulti"
+  Audience: "CompanyMultiClient"
+  ExpirationHours: 8
+ApisPeru:
+  Url: "https://dniruc.apisperu.com/api/v1"
+  Token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6InN5c3RlbWNyYWZ0LnBlQGdtYWlsLmNvbSJ9.yuNS5hRaC0hCwymX_PjXRoSZJWLNNBeOdlLRSUGlHGA"
