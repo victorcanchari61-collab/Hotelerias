@@ -1,43 +1,109 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/gin-gonic/gin"
 	"hotelerias/backend/config"
+	"hotelerias/backend/internal/auth"
 	"hotelerias/backend/internal/db"
+	"hotelerias/backend/internal/permiso"
+	permisopg "hotelerias/backend/internal/permiso/postgres"
+	"hotelerias/backend/internal/platform/cache"
+	"hotelerias/backend/internal/platform/httpx"
+	"hotelerias/backend/internal/platform/migrate"
 	"hotelerias/backend/internal/routes"
+	"hotelerias/backend/migrations"
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatalf("error fatal: %v", err)
+	}
+}
+
+// run es el composition root: el ÚNICO sitio donde se eligen las
+// implementaciones concretas y se cablean. Todo lo demás depende de
+// interfaces. Devuelve error en vez de log.Fatal para que los defer
+// (cierre de conexiones) sí corran.
+func run() error {
 	cfg, err := config.LoadConfig("config.yaml")
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		return fmt.Errorf("config: %w", err)
 	}
 
-	databases, err := db.NewDatabases(cfg)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	dbs, err := db.Connect(ctx, cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to databases: %v", err)
+		return fmt.Errorf("bases de datos: %w", err)
 	}
-	defer databases.Close()
+	defer dbs.Close()
 
-	r := gin.Default()
+	applied, err := migrate.Up(ctx, dbs.Postgres, migrations.FS)
+	if err != nil {
+		return err
+	}
+	for _, v := range applied {
+		log.Printf("migración aplicada: %s", v)
+	}
 
-	r.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
+	// --- Infraestructura elegida ---
+	var permisosCache permiso.Cache = cache.Nop{}
+	if dbs.Redis != nil {
+		permisosCache = cache.NewRedis(dbs.Redis)
+	}
+
+	tokens, err := auth.NewTokens(cfg.JwtSettings)
+	if err != nil {
+		return err
+	}
+
+	// --- Módulo permiso ---
+	store := permisopg.NewStore(dbs.Postgres)
+	rolesConCache := permiso.NewCachedRoles(store, permisosCache)
+	permisos := permiso.NewService(permiso.Permisos, store, rolesConCache, store)
+	guard := permiso.NewGuard(permiso.Permisos, permisos, permisos)
+	_ = guard // lo usarán los módulos de negocio: guard.Require("fact.notaventa", permiso.Anular)
+
+	// --- HTTP ---
+	router := httpx.NewRouter(cfg.AllowedOrigins)
+	routes.Register(router, routes.Deps{
+		Authenticate: auth.Authenticate(tokens),
+		Modules: []routes.Module{
+			permiso.NewHandler(permiso.Permisos, permisos),
+		},
 	})
 
-	routes.SetupRoutes(r, databases, cfg)
+	srv := &http.Server{
+		Addr:              fmt.Sprintf(":%d", cfg.Server.Port),
+		Handler:           router,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 
-	log.Println("Server starting on :8080")
-	if err := r.Run(":8080"); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	errCh := make(chan error, 1)
+	go func() {
+		log.Printf("Server starting on %s", srv.Addr)
+		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		log.Println("apagando...")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return srv.Shutdown(shutdownCtx)
 	}
 }

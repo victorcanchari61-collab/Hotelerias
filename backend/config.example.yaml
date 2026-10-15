@@ -1,0 +1,27 @@
+# Copia este archivo a config.yaml y ajusta. config.yaml NO se versiona.
+#
+# Cualquier valor se puede pisar con una variable de entorno (útil para los
+# secretos): "." se vuelve "_" y va en mayúsculas.
+#   JWTSETTINGS_SECRETKEY, CONNECTIONSTRINGS_POSTGRESQL, SERVER_PORT ...
+Server:
+  Port: 8080
+AllowedOrigins:
+  - "http://localhost:5173"
+  - "http://localhost:4173"
+  - "http://localhost:4200"
+ConnectionStrings:
+  # URL o pares clave=valor. El formato "Host=...;Port=..." (Npgsql) no sirve.
+  PostgreSQL: "host=localhost port=5432 dbname=hoteleria user=postgres password=CAMBIAR"
+  Redis: "localhost:6379"
+  MongoDB: "mongodb://localhost:27017"
+MongoDBSettings:
+  DatabaseName: "hoteleria_logs"
+JwtSettings:
+  # Mínimo 32 bytes. Genera una con: openssl rand -base64 48
+  SecretKey: "CAMBIAR_POR_UNA_CLAVE_LARGA_Y_ALEATORIA_DE_AL_MENOS_32_BYTES"
+  Issuer: "Hoteleria"
+  Audience: "HoteleriaClient"
+  ExpirationHours: 8
+ApisPeru:
+  Url: "https://dniruc.apisperu.com/api/v1"
+  Token: "CAMBIAR"

@@ -8,7 +8,7 @@ AllowedOrigins:
   - "http://localhost:4173"
   - "http://localhost:4200"
 ConnectionStrings:
-  PostgreSQL: "Host=localhost;Port=5432;Database=Company_Multi;Username=postgres;Password="
+  PostgreSQL: "host=localhost port=5432 dbname=Company_Multi user=postgres password="
   Redis: "localhost:6379"
   MongoDB: "mongodb://localhost:27017"
 MongoDBSettings:

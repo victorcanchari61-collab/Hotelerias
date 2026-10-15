@@ -9,8 +9,8 @@ import (
 	"hotelerias/backend/config"
 )
 
-func NewPostgresPool(cfg *config.Config) (*pgxpool.Pool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func NewPostgresPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	poolConfig, err := pgxpool.ParseConfig(cfg.ConnectionStrings.PostgreSQL)
@@ -29,6 +29,7 @@ func NewPostgresPool(cfg *config.Config) (*pgxpool.Pool, error) {
 	}
 
 	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
 		return nil, fmt.Errorf("failed to ping postgres: %w", err)
 	}
 

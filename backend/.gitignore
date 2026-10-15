@@ -1,0 +1,7 @@
+# Binarios
+*.exe
+/backend
+/bin/
+
+# Config local con secretos: se versiona solo config.example.yaml
+config.yaml

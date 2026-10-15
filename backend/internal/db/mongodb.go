@@ -10,8 +10,8 @@ import (
 	"hotelerias/backend/config"
 )
 
-func NewMongoClient(cfg *config.Config) (*mongo.Client, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func NewMongoClient(ctx context.Context, cfg *config.Config) (*mongo.Client, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	clientOpts := options.Client().
@@ -26,12 +26,9 @@ func NewMongoClient(cfg *config.Config) (*mongo.Client, error) {
 	}
 
 	if err := client.Ping(ctx, nil); err != nil {
+		_ = client.Disconnect(ctx)
 		return nil, fmt.Errorf("failed to ping mongodb: %w", err)
 	}
 
 	return client, nil
-}
-
-func GetMongoDatabase(client *mongo.Client, cfg *config.Config) *mongo.Database {
-	return client.Database(cfg.MongoDBSettings.DatabaseName)
 }
