@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,15 @@ func main() {
 	}
 	defer databases.Close()
 
+	// Crea las tablas y siembra el administrador inicial si no existen.
+	if databases.Postgres != nil {
+		if err := db.Migrar(context.Background(), databases.Postgres); err != nil {
+			log.Fatalf("Failed to migrate database: %v", err)
+		}
+	} else {
+		log.Fatal("PostgreSQL no está disponible: la API no puede arrancar")
+	}
+
 	r := gin.Default()
 
 	r.Use(func(c *gin.Context) {
@@ -36,8 +46,8 @@ func main() {
 
 	routes.SetupRoutes(r, databases, cfg)
 
-	log.Println("Server starting on :8080")
-	if err := r.Run(":8080"); err != nil {
+	log.Printf("Server starting on %s", cfg.Server.Port)
+	if err := r.Run(cfg.Server.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }

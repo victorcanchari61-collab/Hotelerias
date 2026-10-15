@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -10,6 +12,10 @@ import (
 )
 
 func NewRedisClient(cfg *config.Config) (*redis.Client, error) {
+	// Redis es opcional: si no hay servidor, el backend sigue arrancando. Se
+	// silencia el logger para que los reintentos del pool no llenen la consola.
+	redis.SetLogger(log.New(io.Discard, "", 0))
+
 	opts, err := redis.ParseURL("redis://" + cfg.ConnectionStrings.Redis)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse redis url: %w", err)

@@ -5,13 +5,19 @@ import (
 )
 
 type Config struct {
-	Logging        LoggingConfig        `mapstructure:"Logging"`
-	AllowedHosts   string               `mapstructure:"AllowedHosts"`
-	AllowedOrigins []string             `mapstructure:"AllowedOrigins"`
+	Server           ServerConfig       `mapstructure:"Server"`
+	Logging          LoggingConfig      `mapstructure:"Logging"`
+	AllowedHosts     string             `mapstructure:"AllowedHosts"`
+	AllowedOrigins   []string           `mapstructure:"AllowedOrigins"`
 	ConnectionStrings ConnectionStrings `mapstructure:"ConnectionStrings"`
-	MongoDBSettings MongoDBSettings     `mapstructure:"MongoDBSettings"`
-	JwtSettings    JwtSettings          `mapstructure:"JwtSettings"`
-	ApisPeru       ApisPeru             `mapstructure:"ApisPeru"`
+	MongoDBSettings  MongoDBSettings    `mapstructure:"MongoDBSettings"`
+	JwtSettings      JwtSettings        `mapstructure:"JwtSettings"`
+	ApisPeru         ApisPeru           `mapstructure:"ApisPeru"`
+}
+
+type ServerConfig struct {
+	Port       string `mapstructure:"Port"`
+	UploadsDir string `mapstructure:"UploadsDir"`
 }
 
 type LoggingConfig struct {

@@ -1,22 +1,21 @@
-Logging:
-  LogLevel:
-    Default: "Information"
-    Microsoft.AspNetCore: "Warning"
+Server:
+  Port: ":5220"
+  UploadsDir: "uploads"
 AllowedHosts: "*"
 AllowedOrigins:
   - "http://localhost:5173"
   - "http://localhost:4173"
   - "http://localhost:4200"
 ConnectionStrings:
-  PostgreSQL: "Host=localhost;Port=5432;Database=Company_Multi;Username=postgres;Password="
+  PostgreSQL: "postgres://postgres:postgres@localhost:5432/hotelerias?sslmode=disable"
   Redis: "localhost:6379"
   MongoDB: "mongodb://localhost:27017"
 MongoDBSettings:
-  DatabaseName: "company_multi_logs"
+  DatabaseName: "hotelerias_logs"
 JwtSettings:
   SecretKey: "SuperSecretKeyForJwtToken_ChangeInProduction_Min32Chars!"
-  Issuer: "CompanyMulti"
-  Audience: "CompanyMultiClient"
+  Issuer: "HotelVelothr"
+  Audience: "HotelVelothrClient"
   ExpirationHours: 8
 ApisPeru:
   Url: "https://dniruc.apisperu.com/api/v1"
