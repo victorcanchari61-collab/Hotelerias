@@ -57,21 +57,26 @@ Construir una plataforma única que permita a **Hotel Velothr**:
 
 ```
 Hotelerias/
-├── backend/     # API en Go (Gin)
-│   ├── config/          # Carga de config.yaml (viper)
+├── backend/     # API en Go (Gin) — ver backend/README.md
+│   ├── config/          # Carga y validación: config.yaml + .env + entorno
+│   ├── migrations/      # SQL numerado, embebido en el binario
 │   ├── internal/
+│   │   ├── platform/    # httpx (errores, CORS), cache, migrate
 │   │   ├── db/          # Conexiones PostgreSQL, MongoDB, Redis
-│   │   ├── routes/      # Rutas (actualmente /api/health)
-│   │   ├── handlers/    # (pendiente)
-│   │   ├── models/      # (pendiente)
-│   │   ├── services/    # (pendiente)
-│   │   └── middleware/  # (pendiente: auth JWT, permisos)
-│   └── main.go
+│   │   ├── auth/        # JWT + middleware de sesión
+│   │   ├── permiso/     # Catálogo, reglas, guard y endpoints de permisos
+│   │   └── routes/      # Arma /api y cuelga los módulos
+│   └── main.go          # Composition root
+├── docs/        # Registro de cambios y decisiones
 └── frontend/    # SPA en React + Vite + TypeScript + Tailwind
     └── src/
         ├── components/  # UI, layout (sidebar/navegación), charts
         └── lib/         # Cliente API, auth, permisos, realtime, excel, etc.
 ```
+
+> `backend/internal/{handlers,services,middleware,models}` y `backend/pkg` son una
+> implementación paralela traída por la rama `b68c3e6`: compila pero **no está cableada**
+> y debe portarse sobre `permiso`. Detalle en [`backend/README.md`](backend/README.md#código-heredado-sin-integrar).
 
 ### Stack tecnológico
 
@@ -85,19 +90,31 @@ Hotelerias/
 
 El repositorio es un **esqueleto funcional**:
 
-- ✅ Backend con conexiones a las tres bases de datos y endpoint de salud.
+- ✅ Backend con conexiones a las tres bases de datos (solo PostgreSQL es obligatoria), migraciones y endpoint de salud.
+- ✅ **Sistema de permisos**: roles con herencia por unión, excepciones individuales (`una_vez`, `temporal`, `permanente`) y guard por ruta. Ver [`backend/README.md`](backend/README.md#sistema-de-permisos).
+- ✅ Validación de JWT y configuración por `config.yaml` / `.env` / entorno, sin secretos versionados.
 - ✅ Frontend con sistema de diseño, navegación ERP y cliente API con manejo de sesión/permisos.
+- ⬜ **Login y usuarios** en el backend (hoy `/api/auth/login` no existe: bloquea el frontend).
+- ⬜ CRUD de roles, concesión de excepciones, solicitudes de permiso y alcance de datos.
 - ⬜ Endpoints de negocio (reservas, PMS, facturación, inventario, etc.).
 - ⬜ Portal público de reservas.
-- ⬜ Autenticación y autorización por roles en backend.
 - ⬜ Adaptación del menú ERP a los módulos hoteleros.
 
 ---
 
 ## Próximos pasos sugeridos
 
-1. Definir el **modelo de datos** de hotelería (sedes, habitaciones, tipos, tarifas, reservas, huéspedes, consumos).
-2. Implementar **autenticación (JWT) y permisos** en el backend.
+1. Implementar **login y usuarios** sobre el módulo `permiso` (desbloquea el frontend).
+2. Definir el **modelo de datos** de hotelería (sedes, habitaciones, tipos, tarifas, reservas, huéspedes, consumos).
 3. Desarrollar el **portal de reservas** (búsqueda de disponibilidad + reserva).
 4. Desarrollar el **PMS / Front Desk** (recepción, housekeeping, check-in/out).
 5. Adaptar e implementar el resto de módulos del ERP (facturación, inventario, finanzas, RR. HH.).
+
+---
+
+## Documentación
+
+| Documento | Contenido |
+| --- | --- |
+| [`backend/README.md`](backend/README.md) | Cómo arrancar, configuración y secretos, arquitectura, sistema de permisos, endpoints, migraciones y pruebas |
+| [`docs/CAMBIOS.md`](docs/CAMBIOS.md) | Registro de cambios con sus decisiones y los pendientes |
