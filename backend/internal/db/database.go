@@ -51,6 +51,13 @@ func Connect(ctx context.Context, cfg *config.Config) (*Databases, error) {
 	return dbs, nil
 }
 
+// PostgresDB envuelve el pool para el código de la rama b68c3e6 (handlers y
+// services), que todavía espera este tipo. Código nuevo: usar Databases.Postgres.
+type PostgresDB struct{ Pool *pgxpool.Pool }
+
+// PostgresDB devuelve el pool envuelto para ese código heredado.
+func (d *Databases) PostgresDB() *PostgresDB { return &PostgresDB{Pool: d.Postgres} }
+
 func (d *Databases) Close() {
 	if d.Postgres != nil {
 		d.Postgres.Close()

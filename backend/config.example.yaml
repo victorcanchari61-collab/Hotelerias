@@ -1,10 +1,14 @@
 # Copia este archivo a config.yaml y ajusta. config.yaml NO se versiona.
 #
-# Cualquier valor se puede pisar con una variable de entorno (útil para los
-# secretos): "." se vuelve "_" y va en mayúsculas.
-#   JWTSETTINGS_SECRETKEY, CONNECTIONSTRINGS_POSTGRESQL, SERVER_PORT ...
+#   cp config.example.yaml config.yaml
+#
+# Los secretos (clave JWT, contraseña de la base, token de ApisPeru) conviene
+# dejarlos en un archivo .env y no aquí: ver .env.example. Cualquier valor de
+# este archivo se puede pisar con una variable de entorno ("." se vuelve "_",
+# en mayúsculas); el entorno real gana sobre el .env, y el .env sobre este YAML.
 Server:
-  Port: 8080
+  Port: 5220            # sin los dos puntos; el proxy de Vite apunta a 5220
+  UploadsDir: "uploads" # carpeta de logo y fotos, servida en /uploads
 AllowedOrigins:
   - "http://localhost:5173"
   - "http://localhost:4173"

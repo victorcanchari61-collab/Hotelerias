@@ -2,11 +2,8 @@ package main
 
 import (
 	"context"
-<<<<<<< HEAD
 	"errors"
 	"fmt"
-=======
->>>>>>> b68c3e61192092d61a613dd53006379ece524134
 	"log"
 	"net/http"
 	"os"
@@ -51,7 +48,6 @@ func run() error {
 	}
 	defer dbs.Close()
 
-<<<<<<< HEAD
 	applied, err := migrate.Up(ctx, dbs.Postgres, migrations.FS)
 	if err != nil {
 		return err
@@ -59,18 +55,6 @@ func run() error {
 	for _, v := range applied {
 		log.Printf("migración aplicada: %s", v)
 	}
-=======
-	// Crea las tablas y siembra el administrador inicial si no existen.
-	if databases.Postgres != nil {
-		if err := db.Migrar(context.Background(), databases.Postgres); err != nil {
-			log.Fatalf("Failed to migrate database: %v", err)
-		}
-	} else {
-		log.Fatal("PostgreSQL no está disponible: la API no puede arrancar")
-	}
-
-	r := gin.Default()
->>>>>>> b68c3e61192092d61a613dd53006379ece524134
 
 	// --- Infraestructura elegida ---
 	var permisosCache permiso.Cache = cache.Nop{}
@@ -99,7 +83,6 @@ func run() error {
 		},
 	})
 
-<<<<<<< HEAD
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler:           router,
@@ -123,12 +106,4 @@ func run() error {
 		defer cancel()
 		return srv.Shutdown(shutdownCtx)
 	}
-=======
-	routes.SetupRoutes(r, databases, cfg)
-
-	log.Printf("Server starting on %s", cfg.Server.Port)
-	if err := r.Run(cfg.Server.Port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
->>>>>>> b68c3e61192092d61a613dd53006379ece524134
 }

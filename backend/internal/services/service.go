@@ -18,5 +18,5 @@ func New(databases *db.Databases, cfg *config.Config) *Service {
 // Postgres devuelve el pool de PostgreSQL. El resto de la app asume que la
 // migración ya se ejecutó y que el pool existe.
 func (s *Service) Postgres() *db.PostgresDB {
-	return s.DB.Postgres
+	return s.DB.PostgresDB()
 }

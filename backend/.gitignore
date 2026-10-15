@@ -1,7 +1,19 @@
-# Binarios
+# Binarios compilados
 *.exe
 /backend
 /bin/
 
-# Config local con secretos: se versiona solo config.example.yaml
+# Configuración local y secretos: NO se suben. Lo que se versiona son los
+# ejemplos (config.example.yaml, .env.example).
 config.yaml
+.env
+.env.*
+!.env.example
+
+# Archivos subidos por los usuarios (logo, fotos)
+/uploads/
+
+# Salidas de pruebas
+*.test
+*.out
+coverage.*

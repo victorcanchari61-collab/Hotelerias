@@ -1,0 +1,9 @@
+# Secretos y configuración local en cualquier carpeta
+.env
+.env.*
+!.env.example
+
+# Basura del sistema / editores
+.DS_Store
+Thumbs.db
+*.swp
