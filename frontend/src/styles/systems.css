@@ -1,0 +1,145 @@
+/* =========================================================
+   systems.css — color de sistema heredable.
+
+   Define las variables que TODO componente reutilizable usa
+   para pintarse. El valor por defecto es el color del boton
+   de login (blue-600 = 37 99 235), asi que cualquier
+   componente suelto sale con el color de la marca.
+
+   Se declaran como canales RGB para poder modular la
+   opacidad al vuelo:  rgb(var(--sys-rgb) / 0.12)
+
+   --sys-rgb       color base del sistema
+   --sys-dark-rgb  variante oscura (degradados y hover)
+   --sys-ink-rgb   version legible sobre fondo claro (texto/iconos)
+   --sys-on        color del texto encima del color base
+
+   Para cambiar de sistema basta con envolver una rama del
+   arbol:  <div data-sys="tms"> ... </div>
+   ========================================================= */
+
+:root,
+[data-sys='brand'] {
+  --sys-rgb: 37 99 235;
+  --sys-dark-rgb: 30 64 175;
+  --sys-ink-rgb: 29 78 216;
+  --sys-on: #ffffff;
+}
+
+/* Maestros — navy de la marca Titanic D */
+[data-sys='maestros'] {
+  --sys-rgb: 20 73 127;
+  --sys-dark-rgb: 14 53 96;
+  --sys-ink-rgb: 17 62 108;
+  --sys-on: #ffffff;
+}
+
+/* Compras — violeta */
+[data-sys='compras'] {
+  --sys-rgb: 124 58 237;
+  --sys-dark-rgb: 91 33 182;
+  --sys-ink-rgb: 109 40 217;
+  --sys-on: #ffffff;
+}
+
+/* Facturación — azul (mismo acento del carrusel del login) */
+[data-sys='fact'] {
+  --sys-rgb: 37 99 235;
+  --sys-dark-rgb: 30 64 175;
+  --sys-ink-rgb: 29 78 216;
+  --sys-on: #ffffff;
+}
+
+/* Inventario — verde */
+[data-sys='inv'] {
+  --sys-rgb: 14 159 110;
+  --sys-dark-rgb: 4 108 78;
+  --sys-ink-rgb: 4 120 87;
+  --sys-on: #ffffff;
+}
+
+/* Finanzas — teal */
+[data-sys='finanzas'] {
+  --sys-rgb: 13 148 136;
+  --sys-dark-rgb: 15 76 76;
+  --sys-ink-rgb: 15 118 110;
+  --sys-on: #ffffff;
+}
+
+/* Dashboard — índigo */
+[data-sys='dashboard'] {
+  --sys-rgb: 79 70 229;
+  --sys-dark-rgb: 55 48 163;
+  --sys-ink-rgb: 67 56 202;
+  --sys-on: #ffffff;
+}
+
+/* TMS — cian */
+[data-sys='tms'] {
+  --sys-rgb: 8 145 178;
+  --sys-dark-rgb: 21 94 117;
+  --sys-ink-rgb: 14 116 144;
+  --sys-on: #ffffff;
+}
+
+/* DMS — rosa */
+[data-sys='dms'] {
+  --sys-rgb: 219 39 119;
+  --sys-dark-rgb: 157 23 77;
+  --sys-ink-rgb: 190 24 93;
+  --sys-on: #ffffff;
+}
+
+/* RRHH — ambar */
+[data-sys='rrhh'] {
+  --sys-rgb: 217 119 6;
+  --sys-dark-rgb: 146 64 14;
+  --sys-ink-rgb: 180 83 9;
+  --sys-on: #ffffff;
+}
+
+/* Configuración — pizarra */
+[data-sys='config'] {
+  --sys-rgb: 71 85 105;
+  --sys-dark-rgb: 30 41 59;
+  --sys-ink-rgb: 51 65 85;
+  --sys-on: #ffffff;
+}
+
+/* Utilidades listas para usar sobre el color de sistema activo */
+@utility sys-bg {
+  background-color: rgb(var(--sys-rgb));
+  color: var(--sys-on);
+}
+
+@utility sys-gradient {
+  background-image: linear-gradient(
+    to bottom right,
+    rgb(var(--sys-rgb)),
+    rgb(var(--sys-dark-rgb))
+  );
+  color: var(--sys-on);
+}
+
+@utility sys-text {
+  color: rgb(var(--sys-ink-rgb));
+}
+
+@utility sys-ring {
+  &:focus-visible {
+    outline: none;
+    border-color: rgb(var(--sys-rgb));
+    box-shadow: 0 0 0 4px rgb(var(--sys-rgb) / 0.2);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

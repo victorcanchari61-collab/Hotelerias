@@ -1,0 +1,118 @@
+/* =========================================================
+   theme.css — archivo base del que HEREDAN todos los
+   componentes reutilizables. Aquí viven el color de marca,
+   la tipografía, radios, sombras y las clases compartidas.
+   Importado una sola vez en main.tsx.
+   ========================================================= */
+@import 'tailwindcss';
+@import './systems.css';
+
+@theme {
+  /* --- Color de marca (blue-600) --- */
+  --color-brand: rgb(37 99 235 / var(--tw-bg-opacity, 1));
+  --color-brand-hover: #1d4ed8;
+  --color-brand-active: #1e40af;
+  --color-brand-soft: rgb(37 99 235 / 0.08);
+  --color-brand-ring: rgb(37 99 235 / 0.25);
+  --color-on-brand: #ffffff;
+
+  /* --- Identidad Titanic D --- */
+  --color-navy: #14497f;
+  --color-navy-deep: #0e3560;
+  --color-gold: #f7cb84;
+  --color-bronze: #b5700b;
+
+  /* --- Acentos por módulo del carrusel --- */
+  --color-fact: #2563eb;
+  --color-inv: #0e9f6e;
+  --color-tms: #0891b2;
+  --color-dms: #db2777;
+  --color-rrhh: #d97706;
+
+  /* --- Superficies y texto --- */
+  --color-surface: #ffffff;
+  --color-surface-alt: #f8fafc;
+  --color-ink: #0f172a;
+  --color-ink-muted: #64748b;
+  --color-ink-soft: #94a3b8;
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
+
+  /* --- Tipografía --- */
+  --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  /* --- Radios y sombras --- */
+  --radius-field: 6px;
+  --radius-panel: 20px;
+  --shadow-panel: 0 18px 45px -18px rgb(15 23 42 / 0.25);
+
+  /* --- Alturas de los campos y botones ---
+     Aqui se decide que tan altos son TODOS los controles del sistema.
+     sm  36px  tablas, barras de herramientas
+     md  40px  formularios (por defecto)
+     lg  48px  login y pantallas de una sola accion            */
+  --spacing-control: 2.5rem;
+  --height-field-sm: 2.25rem;
+  --height-field-md: 2.5rem;
+  --height-field-lg: 3rem;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background-color: var(--color-surface);
+    -webkit-font-smoothing: antialiased;
+    /*
+      Red de seguridad: sin esto, un elemento que se pasa de ancho en movil
+      (una fila de botones que no envuelve, una tabla angosta) no se recorta
+      solo — empuja TODA la pagina a un lado y la deja con scroll horizontal.
+      En iOS Safari ese desborde tambien arrastra lo que esta en position:
+      fixed —como los modales—, que es por lo que se veian cortados.
+    */
+    overflow-x: hidden;
+  }
+}
+
+/* ---------------------------------------------------------
+   Clases heredables: cualquier componente nuevo puede
+   componerlas para respetar el sistema de diseño.
+   --------------------------------------------------------- */
+@utility ui-brand {
+  background-color: rgb(37 99 235 / var(--tw-bg-opacity, 1));
+  color: var(--color-on-brand);
+}
+
+@utility ui-focusable {
+  &:focus-visible {
+    outline: none;
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 4px var(--color-brand-ring);
+  }
+}
+
+@utility ui-surface {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-panel);
+}
+
+@utility ui-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+/* Animación reutilizable del carrusel */
+@keyframes ui-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@utility ui-fade-up {
+  animation: ui-fade-up 420ms ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-fade-up { animation: none; }
+}
