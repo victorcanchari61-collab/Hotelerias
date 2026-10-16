@@ -38,7 +38,7 @@ export const ApiPaths = {
     porId: (id: number) => `/sede/${id}`,
   },
   auditoria: {
-    base: '/auditoria',
+    listar: '/auditoria/listar',
     porId: (id: number) => `/auditoria/${id}`,
     resumen: '/auditoria/resumen',
     entidades: '/auditoria/entidades',

@@ -12,7 +12,7 @@ import type {
   Empresa,
   EmpresaInput,
   Excepcion,
-  FiltroAuditoria,
+  ConsultaListado,
   PaginaAuditoria,
   ResumenAuditoria,
   Rol,
@@ -231,11 +231,11 @@ export class FakeAccesosRepository implements AccesosRepository {
 }
 
 export class FakeAuditoriaRepository implements AuditoriaRepository {
-  filtros: FiltroAuditoria[] = []
-  depuradas: string[] = []
+  filtros: ConsultaListado[] = []
+  depuradas: ConsultaListado[] = []
 
-  async listar(filtro: FiltroAuditoria) {
-    this.filtros.push(filtro)
+  async listar(consulta: ConsultaListado) {
+    this.filtros.push(consulta)
     return right<PaginaAuditoria, Failure>({
       items: [
         {
@@ -246,11 +246,12 @@ export class FakeAuditoriaRepository implements AuditoriaRepository {
           entidad: 'Rol',
           entidadId: '3',
           accion: 'ACTUALIZADO',
+          campos: 1,
         },
       ],
       total: 1,
-      pagina: filtro.pagina,
-      porPagina: filtro.porPagina,
+      pagina: consulta.pagina,
+      porPagina: consulta.porPagina,
     })
   }
   async detalle(id: number): Promise<Either<Failure, DetalleAuditoria>> {
@@ -263,6 +264,7 @@ export class FakeAuditoriaRepository implements AuditoriaRepository {
       entidad: 'Rol',
       entidadId: '3',
       accion: 'ACTUALIZADO',
+      campos: 1,
       valoresAnteriores: { nombre: 'Housekeeping' },
       valoresNuevos: { nombre: 'Limpieza' },
     })
@@ -273,8 +275,8 @@ export class FakeAuditoriaRepository implements AuditoriaRepository {
   async entidades() {
     return right<string[], Failure>(['Rol', 'Usuario'])
   }
-  async depurar(hasta: string) {
-    this.depuradas.push(hasta)
+  async depurar(consulta: ConsultaListado) {
+    this.depuradas.push(consulta)
     return right<number, Failure>(4)
   }
 }

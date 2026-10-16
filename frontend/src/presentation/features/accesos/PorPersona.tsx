@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { ShieldCheck } from 'lucide-react'
 import { describeFailure } from '@/core/errors/failures'
 import { right } from '@/core/utils/either'
 import type {
@@ -12,7 +13,10 @@ import type {
 import type { SubmoduloCatalogo } from '@/domain/entities/Permiso'
 import type { Usuario } from '@/domain/entities/Usuario'
 import { nombreCompleto } from '@/domain/entities/Usuario'
-import { Alert, Badge, Button, Card, Input, Select, useConfirmacion, useToast } from '@/shared/ui'
+import { FaBan } from 'react-icons/fa6'
+import { Alert, Badge, Button, Card, Input, Select, SysDataTable, useConfirmacion, useToast } from '@/shared/ui'
+import type { DataTableColumn } from '@/shared/ui'
+import { BotonFila, FilaAcciones } from '../../components/BotonesFila'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { ETIQUETA_ACCION, agruparCatalogo, etiquetaSubmodulo } from './matriz'
@@ -23,9 +27,9 @@ const VIGENCIA: Record<Vigencia, string> = {
   permanente: 'Permanente',
 }
 
-function estadoExcepcion(e: Excepcion): { texto: string; tono: 'success' | 'neutral' | 'warning' } {
+function estadoExcepcion(e: Excepcion): { texto: string; tono: 'sys' | 'neutral' | 'warning' } {
   if (e.revocado) return { texto: 'Revocada', tono: 'neutral' }
-  if (e.vigente) return { texto: 'Vigente', tono: 'success' }
+  if (e.vigente) return { texto: 'Vigente', tono: 'sys' }
   if (e.vigencia === 'una_vez' && e.usos > 0) return { texto: 'Gastada', tono: 'neutral' }
   return { texto: 'Vencida', tono: 'warning' }
 }
@@ -154,6 +158,39 @@ export function PorPersona({ roles }: { roles: Rol[] }) {
     toast.exito('Alcance guardado.')
   }
 
+  const columnasExcepciones: DataTableColumn<Excepcion>[] = [
+    {
+      key: 'permiso',
+      label: 'Permiso',
+      render: (e) => (
+        <div className="min-w-0">
+          <div className="font-medium text-ink">{etiquetaSubmodulo(e.submodulo)}</div>
+          <div className="text-xs text-ink-soft">
+            {ETIQUETA_ACCION[e.accion as keyof typeof ETIQUETA_ACCION] ?? e.accion}
+            {e.motivo && ` · ${e.motivo}`}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'vigencia',
+      label: 'Vigencia',
+      render: (e) => (
+        <div>
+          {VIGENCIA[e.vigencia]}
+          {e.expiraEn && <div className="text-xs text-ink-soft">{e.expiraEn.toLocaleString('es-PE')}</div>}
+        </div>
+      ),
+    },
+    { key: 'otorgadoPor', label: 'Otorgado por', render: (e) => e.otorgadoPor || '—' },
+    {
+      key: 'estado',
+      label: 'Estado',
+      value: (e) => estadoExcepcion(e).texto,
+      render: (e) => <Badge tone={estadoExcepcion(e).tono}>{estadoExcepcion(e).texto}</Badge>,
+    },
+  ]
+
   const rolesDe = (u: Usuario) => roles.filter((r) => u.rolIds.includes(r.id)).map((r) => r.nombre)
 
   return (
@@ -228,54 +265,31 @@ export function PorPersona({ roles }: { roles: Rol[] }) {
             </div>
           </Card>
 
-          <Card className="overflow-hidden p-0 sm:p-0">
-            <div className="border-b border-line px-4 py-3 font-bold text-ink">Permisos concedidos a esta persona</div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-line bg-surface-alt text-xs uppercase text-ink-muted">
-                  <tr>
-                    <th className="px-4 py-2 font-semibold">Permiso</th>
-                    <th className="px-4 py-2 font-semibold">Vigencia</th>
-                    <th className="px-4 py-2 font-semibold">Otorgado por</th>
-                    <th className="px-4 py-2 font-semibold">Estado</th>
-                    <th className="px-4 py-2 text-right font-semibold">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {!excepciones.cargando && excepciones.datos.length === 0 && (
-                    <tr><td colSpan={5} className="px-4 py-6 text-center text-ink-muted">No tiene permisos extra.</td></tr>
-                  )}
-                  {excepciones.datos.map((e) => {
-                    const est = estadoExcepcion(e)
-                    return (
-                      <tr key={e.id}>
-                        <td className="px-4 py-2">
-                          <p className="font-medium text-ink">{etiquetaSubmodulo(e.submodulo)}</p>
-                          <p className="text-xs text-ink-muted">
-                            {ETIQUETA_ACCION[e.accion as keyof typeof ETIQUETA_ACCION] ?? e.accion}
-                            {e.motivo && ` · ${e.motivo}`}
-                          </p>
-                        </td>
-                        <td className="px-4 py-2 text-ink-muted">
-                          {VIGENCIA[e.vigencia]}
-                          {e.expiraEn && <p className="text-xs">{e.expiraEn.toLocaleString('es-PE')}</p>}
-                        </td>
-                        <td className="px-4 py-2 text-ink-muted">{e.otorgadoPor || '—'}</td>
-                        <td className="px-4 py-2"><Badge tone={est.tono}>{est.texto}</Badge></td>
-                        <td className="px-4 py-2">
-                          <div className="flex justify-end">
-                            {e.vigente && (
-                              <Button variant="ghost" onClick={() => pedirRevocar(e)}>Revocar</Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+          <div className="space-y-2">
+            <h3 className="font-bold text-ink">Permisos concedidos a esta persona</h3>
+            <SysDataTable
+              columns={columnasExcepciones}
+              rows={excepciones.datos}
+              rowKey="id"
+              cardIcon={ShieldCheck}
+              toolbar={false}
+              paginacion={false}
+              actionsWidth={80}
+              empty={excepciones.cargando ? 'Cargando...' : 'No tiene permisos extra.'}
+              actions={(e) => (
+                <FilaAcciones>
+                  <BotonFila
+                    color="danger"
+                    titulo={`Revocar ${etiquetaSubmodulo(e.submodulo)}`}
+                    disabled={!e.vigente}
+                    onClick={() => pedirRevocar(e)}
+                  >
+                    <FaBan />
+                  </BotonFila>
+                </FilaAcciones>
+              )}
+            />
+          </div>
 
           {catAlcances.datos.submodulos.length > 0 && (
             <Card className="space-y-3">

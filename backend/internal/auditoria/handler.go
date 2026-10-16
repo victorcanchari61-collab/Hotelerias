@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"hotelerias/backend/internal/platform/fecha"
 	"hotelerias/backend/internal/platform/httpx"
 )
 
@@ -26,44 +25,25 @@ func NewHandler(svc *Servicio, g httpx.Guardas, actor func(*gin.Context) int64) 
 }
 
 func (h *Handler) Register(r gin.IRouter) {
-	r.GET("/auditoria", httpx.Cadena(h.guardas.Ver, h.listar)...)
+	r.POST("/auditoria/listar", httpx.Cadena(h.guardas.Ver, h.listar)...)
 	r.GET("/auditoria/resumen", httpx.Cadena(h.guardas.Ver, h.resumen)...)
 	r.GET("/auditoria/entidades", httpx.Cadena(h.guardas.Ver, h.entidades)...)
 	r.GET("/auditoria/:id", httpx.Cadena(h.guardas.Ver, h.detalle)...)
 	r.POST("/auditoria/depurar", httpx.Cadena(h.guardas.Eliminar, h.depurar)...)
 }
 
+// listar recibe la consulta de la tabla (POST: los filtros son una lista de
+// objetos y armarlos en la query string obligaría a inventar una codificación
+// propia y a mantenerla en los dos lados).
 func (h *Handler) listar(c *gin.Context) {
-	var f Filtro
-	f.Entidad = c.Query("entidad")
-	f.Accion = Accion(c.Query("accion"))
-	f.Buscar = c.Query("buscar")
-
-	if v := c.Query("usuarioId"); v != "" {
-		id, err := strconv.ParseInt(v, 10, 64)
-		if err != nil || id < 0 {
-			_ = c.Error(httpx.BadRequest("usuarioId inválido"))
-			return
-		}
-		f.UsuarioID = id
+	var consulta Consulta
+	if err := c.ShouldBindJSON(&consulta); err != nil {
+		_ = c.Error(httpx.BadRequest("Datos inválidos"))
+		return
 	}
-	for clave, destino := range map[string]*fecha.Fecha{"desde": &f.Desde, "hasta": &f.Hasta} {
-		if v := c.Query(clave); v != "" {
-			d, err := fecha.Parse(v)
-			if err != nil {
-				_ = c.Error(httpx.BadRequest(err.Error()))
-				return
-			}
-			*destino = d
-		}
-	}
-
-	pagina, _ := strconv.Atoi(c.Query("pagina"))
-	porPagina, _ := strconv.Atoi(c.Query("porPagina"))
-
-	out, err := h.svc.Listar(c.Request.Context(), f, pagina, porPagina)
+	out, err := h.svc.Listar(c.Request.Context(), consulta)
 	if err != nil {
-		_ = c.Error(err)
+		_ = c.Error(httpx.Traducir(err))
 		return
 	}
 	c.JSON(http.StatusOK, out)
@@ -105,25 +85,16 @@ func (h *Handler) entidades(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
-type depurarRequest struct {
-	// Se borra lo ANTERIOR a esta fecha.
-	Hasta fecha.Fecha `json:"hasta"`
-}
-
+// depurar borra lo que la consulta deja a la vista (nunca lo de los últimos 30 días).
 func (h *Handler) depurar(c *gin.Context) {
-	var req depurarRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	var consulta Consulta
+	if err := c.ShouldBindJSON(&consulta); err != nil {
 		_ = c.Error(httpx.BadRequest("Datos inválidos"))
 		return
 	}
-	n, err := h.svc.Depurar(c.Request.Context(), req.Hasta, h.actor(c))
+	n, err := h.svc.Depurar(c.Request.Context(), consulta, h.actor(c))
 	if err != nil {
-		var v httpx.Validacion
-		if errors.As(err, &v) {
-			_ = c.Error(httpx.BadRequest(v.Error()))
-			return
-		}
-		_ = c.Error(err)
+		_ = c.Error(httpx.Traducir(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"eliminados": n})

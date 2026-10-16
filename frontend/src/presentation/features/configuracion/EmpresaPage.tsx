@@ -3,7 +3,7 @@ import { Building2 } from 'lucide-react'
 import { describeFailure } from '@/core/errors/failures'
 import type { EmpresaInput } from '@/domain/entities/Configuracion'
 import { ACCION } from '@/domain/entities/Permiso'
-import { Alert, Button, Card, Input, PageHeader, useToast } from '@/shared/ui'
+import { Alert, Button, Input, PageHeader, PageSection, useToast } from '@/shared/ui'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { usePermisos } from '../../providers/PermisosProvider'
@@ -75,40 +75,44 @@ export function EmpresaPage() {
       {carga.error && <Alert>{carga.error}</Alert>}
       {error && <Alert>{error}</Alert>}
 
-      <Card className="space-y-5">
+      <PageSection title="Identidad" description="Cómo se llama la empresa y cómo se la identifica legalmente.">
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label="Razón social" {...campo('razonSocial')} />
           <Input label="Nombre comercial" {...campo('nombreComercial')} />
           <Input label="RUC" inputMode="numeric" maxLength={11} {...campo('ruc')} />
           <Input label="Representante legal" optional {...campo('representanteLegal')} />
         </div>
+      </PageSection>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="Dirección fiscal" optional className="sm:col-span-2" {...campo('direccion')} />
+      <PageSection title="Domicilio fiscal">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Input label="Dirección" optional className="sm:col-span-3" {...campo('direccion')} />
           <Input label="Departamento" optional {...campo('departamento')} />
           <Input label="Provincia" optional {...campo('provincia')} />
           <Input label="Distrito" optional {...campo('distrito')} />
         </div>
+      </PageSection>
 
+      <PageSection title="Contacto">
         <div className="grid gap-4 sm:grid-cols-3">
           <Input label="Teléfono" optional type="tel" {...campo('telefono')} />
           <Input label="Correo" optional type="email" {...campo('email')} />
           <Input label="Sitio web" optional {...campo('sitioWeb')} />
         </div>
+      </PageSection>
 
-        {puedeEditar && (
-          <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
-            <p className="text-xs text-ink-muted">
-              {carga.datos?.actualizadoEn
-                ? `Última actualización: ${carga.datos.actualizadoEn.toLocaleString('es-PE')}`
-                : ''}
-            </p>
-            <Button loading={guardando} onClick={() => void guardar()}>
-              Guardar cambios
-            </Button>
-          </div>
-        )}
-      </Card>
+      {puedeEditar && (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-ink-soft">
+            {carga.datos?.actualizadoEn
+              ? `Última actualización: ${carga.datos.actualizadoEn.toLocaleString('es-PE')}`
+              : ''}
+          </p>
+          <Button size="sm" loading={guardando} onClick={() => void guardar()}>
+            Guardar cambios
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

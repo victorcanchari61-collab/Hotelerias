@@ -82,7 +82,7 @@ describe('la app, de punta a punta (DI con repositorios falsos)', () => {
 
       await iniciarSesion()
 
-      expect(await screen.findByText('Luis Rojas')).toBeTruthy()
+      expect((await screen.findAllByText('Luis Rojas')).length).toBeGreaterThan(0)
       expect(app.ubicacion()).toBe('/admin/config/usuarios')
       expect(app.auth.loginCalls).toEqual([{ email: 'ana@hotel.pe', password: 'secreta' }])
     })
@@ -126,7 +126,7 @@ describe('la app, de punta a punta (DI con repositorios falsos)', () => {
 
       expect(await screen.findByText('No tienes acceso a esta pantalla')).toBeTruthy()
       expect(screen.getByText('Usuarios')).toBeTruthy() // el nombre, no "config.usuarios"
-      expect(screen.queryByText('Luis Rojas')).toBeNull()
+      expect(screen.queryAllByText('Luis Rojas')).toHaveLength(0)
     })
 
     it('una entrada del menú sin pantalla construida muestra "en construcción", no un 404', async () => {
@@ -179,7 +179,7 @@ describe('la app, de punta a punta (DI con repositorios falsos)', () => {
 
     it('si el servidor dice que el token venció, vuelve al login con un aviso', async () => {
       const app = montar({ ruta: '/admin/config/usuarios', conSesion: true, permisos: ['config.usuarios:ver'] })
-      await screen.findByText('Luis Rojas')
+      await screen.findAllByText('Luis Rojas')
 
       act(() => app.container.events.sessionExpired.emit())
 
@@ -193,10 +193,11 @@ describe('la app, de punta a punta (DI con repositorios falsos)', () => {
     it('solo con "ver": lista sin acciones', async () => {
       montar({ ruta: '/admin/config/usuarios', conSesion: true, permisos: ['config.usuarios:ver'] })
 
-      expect(await screen.findByText('Luis Rojas')).toBeTruthy()
-      expect(screen.getByText('María Quispe')).toBeTruthy()
-      expect(screen.queryByRole('button', { name: 'Desactivar' })).toBeNull()
-      expect(screen.queryByRole('button', { name: 'Eliminar' })).toBeNull()
+      expect((await screen.findAllByText('Luis Rojas')).length).toBeGreaterThan(0)
+      expect(screen.getAllByText('María Quispe').length).toBeGreaterThan(0)
+      expect(screen.queryByRole('button', { name: /Desactivar/ })).toBeNull()
+      expect(screen.queryByRole('button', { name: /Eliminar/ })).toBeNull()
+      expect(screen.queryByRole('button', { name: /Editar/ })).toBeNull()
     })
 
     it('con "editar": puede activar y desactivar, y la lista se actualiza', async () => {
@@ -205,13 +206,14 @@ describe('la app, de punta a punta (DI con repositorios falsos)', () => {
         conSesion: true,
         permisos: ['config.usuarios:ver', 'config.usuarios:editar'],
       })
-      await screen.findByText('Luis Rojas')
+      await screen.findAllByText('Luis Rojas')
 
-      fireEvent.click(screen.getByRole('button', { name: 'Desactivar' }))
+      fireEvent.click(screen.getAllByRole('button', { name: 'Desactivar Luis Rojas' })[0])
 
       await waitFor(() => expect(app.usuarios.lista.find((u) => u.id === 2)?.activo).toBe(false))
-      await waitFor(() => expect(screen.getAllByText('Inactivo')).toHaveLength(2))
-      expect(screen.queryByRole('button', { name: 'Eliminar' })).toBeNull() // no tiene "eliminar"
+      // Los dos quedan inactivos (cada uno aparece en la tabla y en su tarjeta).
+      await waitFor(() => expect(screen.getAllByText('Inactivo').length).toBeGreaterThanOrEqual(2))
+      expect(screen.queryByRole('button', { name: /Eliminar/ })).toBeNull() // no tiene "eliminar"
     })
 
     it('con "eliminar": pide confirmación y recién entonces borra', async () => {
@@ -220,19 +222,19 @@ describe('la app, de punta a punta (DI con repositorios falsos)', () => {
         conSesion: true,
         permisos: ['config.usuarios:ver', 'config.usuarios:eliminar'],
       })
-      await screen.findByText('Luis Rojas')
+      await screen.findAllByText('Luis Rojas')
 
-      fireEvent.click(screen.getAllByRole('button', { name: 'Eliminar' })[0])
+      fireEvent.click(screen.getAllByRole('button', { name: 'Eliminar Luis Rojas' })[0])
       expect(app.usuarios.eliminados).toHaveLength(0) // todavía no: falta confirmar
 
       const dialogo = await screen.findByText(/Esta acción no se puede deshacer/)
       expect(dialogo.textContent).toContain('Luis Rojas')
 
-      const botones = screen.getAllByRole('button', { name: 'Eliminar' })
-      fireEvent.click(botones[botones.length - 1]) // el del diálogo
+      // El botón de confirmar del diálogo se llama exactamente "Eliminar" (los de fila llevan el nombre).
+      fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }))
 
       await waitFor(() => expect(app.usuarios.eliminados).toEqual([2]))
-      await waitFor(() => expect(screen.queryByText('Luis Rojas')).toBeNull())
+      await waitFor(() => expect(screen.queryAllByText('Luis Rojas')).toHaveLength(0))
     })
 
     it('si el servidor falla, lo dice con un mensaje y no deja la pantalla rota', async () => {

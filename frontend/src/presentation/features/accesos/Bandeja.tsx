@@ -1,7 +1,11 @@
 import { useState } from 'react'
+import { Inbox } from 'lucide-react'
+import { FaBan, FaCircleCheck } from 'react-icons/fa6'
 import { describeFailure } from '@/core/errors/failures'
 import type { SolicitudPermiso, Vigencia } from '@/domain/entities/Configuracion'
-import { Alert, Badge, Button, Card, Checkbox, Input, Modal, Select, useToast } from '@/shared/ui'
+import { Alert, Badge, Button, Checkbox, Input, Modal, Select, SysDataTable, useToast } from '@/shared/ui'
+import type { DataTableColumn } from '@/shared/ui'
+import { BotonFila, FilaAcciones } from '../../components/BotonesFila'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { usePermisos } from '../../providers/PermisosProvider'
@@ -15,7 +19,7 @@ function aIso(local: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
-const TONO = { pendiente: 'warning', aprobada: 'success', rechazada: 'neutral' } as const
+const TONO = { pendiente: 'warning', aprobada: 'sys', rechazada: 'neutral' } as const
 
 /**
  * La bandeja del administrador: lo que la gente pidió al toparse con una acción
@@ -77,6 +81,64 @@ export function Bandeja({ puedeResolver }: { puedeResolver: boolean }) {
     void refrescar()
   }
 
+  const columnas: DataTableColumn<SolicitudPermiso>[] = [
+    {
+      key: 'usuario',
+      label: 'Persona',
+      filterable: false,
+      render: (s) => <span className="font-medium text-ink">{s.usuario}</span>,
+    },
+    {
+      key: 'pide',
+      label: 'Pide',
+      filterable: false,
+      value: (s) => `${etiquetaSubmodulo(s.submodulo)} ${s.accion}`,
+      render: (s) => (
+        <div className="min-w-0">
+          <div>
+            {ETIQUETA_ACCION[s.accion as keyof typeof ETIQUETA_ACCION] ?? s.accion} en{' '}
+            <strong>{etiquetaSubmodulo(s.submodulo)}</strong>
+          </div>
+          {s.referencia && <div className="text-xs text-ink-soft">{s.referencia}</div>}
+        </div>
+      ),
+    },
+    {
+      key: 'motivo',
+      label: 'Motivo',
+      filterable: false,
+      render: (s) => (
+        <div className="min-w-0">
+          <div>{s.motivo || '—'}</div>
+          {s.respuesta && <div className="text-xs text-ink-soft">Respuesta: {s.respuesta}</div>}
+        </div>
+      ),
+    },
+    {
+      key: 'fecha',
+      label: 'Fecha',
+      filterType: 'date',
+      value: (s) => s.fechaSolicitud?.getTime() ?? 0,
+      render: (s) => <span className="whitespace-nowrap">{s.fechaSolicitud?.toLocaleString('es-PE') ?? '—'}</span>,
+    },
+    {
+      key: 'estado',
+      label: 'Estado',
+      filterType: 'select',
+      filterOptions: [
+        { value: 'Pendiente', label: 'Pendiente' },
+        { value: 'Aprobada', label: 'Aprobada' },
+        { value: 'Rechazada', label: 'Rechazada' },
+      ],
+      value: (s) => (s.estado === 'pendiente' ? 'Pendiente' : s.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'),
+      render: (s) => (
+        <Badge tone={TONO[s.estado]}>
+          {s.estado === 'pendiente' ? 'Pendiente' : s.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'}
+        </Badge>
+      ),
+    },
+  ]
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -92,65 +154,45 @@ export function Bandeja({ puedeResolver }: { puedeResolver: boolean }) {
 
       {solicitudes.error && <Alert>{solicitudes.error}</Alert>}
 
-      <Card className="overflow-hidden p-0 sm:p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line bg-surface-alt text-xs uppercase text-ink-muted">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Persona</th>
-                <th className="px-4 py-3 font-semibold">Pide</th>
-                <th className="px-4 py-3 font-semibold">Motivo</th>
-                <th className="px-4 py-3 font-semibold">Fecha</th>
-                <th className="px-4 py-3 font-semibold">Estado</th>
-                {puedeResolver && <th className="px-4 py-3 text-right font-semibold">Acciones</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {!solicitudes.cargando && solicitudes.datos.length === 0 && !solicitudes.error && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-ink-muted">
-                    {soloPendientes ? 'No hay solicitudes pendientes.' : 'No hay solicitudes.'}
-                  </td>
-                </tr>
-              )}
-              {solicitudes.datos.map((s) => (
-                <tr key={s.id}>
-                  <td className="px-4 py-3 font-medium text-ink">{s.usuario}</td>
-                  <td className="px-4 py-3">
-                    {ETIQUETA_ACCION[s.accion as keyof typeof ETIQUETA_ACCION] ?? s.accion} en{' '}
-                    <strong>{etiquetaSubmodulo(s.submodulo)}</strong>
-                    {s.referencia && <p className="text-xs text-ink-muted">{s.referencia}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-ink-muted">
-                    {s.motivo || '—'}
-                    {s.respuesta && <p className="text-xs">Respuesta: {s.respuesta}</p>}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-ink-muted">
-                    {s.fechaSolicitud?.toLocaleString('es-PE') ?? '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge tone={TONO[s.estado]}>
-                      {s.estado === 'pendiente' ? 'Pendiente' : s.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'}
-                    </Badge>
-                  </td>
-                  {puedeResolver && (
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1">
-                        {s.estado === 'pendiente' && (
-                          <>
-                            <Button variant="ghost" onClick={() => abrir(s, 'aprobar')}>Aprobar</Button>
-                            <Button variant="ghost" onClick={() => abrir(s, 'rechazar')}>Rechazar</Button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <SysDataTable
+        columns={columnas}
+        rows={solicitudes.datos}
+        rowKey="id"
+        cardIcon={Inbox}
+        actionsWidth={puedeResolver ? 120 : 0}
+        searchPlaceholder="Buscar por persona o permiso..."
+        empty={
+          solicitudes.cargando
+            ? 'Cargando solicitudes...'
+            : soloPendientes
+              ? 'No hay solicitudes pendientes.'
+              : 'No hay solicitudes.'
+        }
+        actions={
+          puedeResolver
+            ? (s) => (
+                <FilaAcciones>
+                  <BotonFila
+                    color="success"
+                    titulo={`Aprobar la solicitud de ${s.usuario}`}
+                    disabled={s.estado !== 'pendiente'}
+                    onClick={() => abrir(s, 'aprobar')}
+                  >
+                    <FaCircleCheck />
+                  </BotonFila>
+                  <BotonFila
+                    color="danger"
+                    titulo={`Rechazar la solicitud de ${s.usuario}`}
+                    disabled={s.estado !== 'pendiente'}
+                    onClick={() => abrir(s, 'rechazar')}
+                  >
+                    <FaBan />
+                  </BotonFila>
+                </FilaAcciones>
+              )
+            : undefined
+        }
+      />
 
       <Modal
         open={decision !== null}

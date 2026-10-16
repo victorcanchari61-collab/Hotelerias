@@ -1,21 +1,13 @@
 import { useState } from 'react'
-import { MapPin, Plus, Star } from 'lucide-react'
+import { FaBan, FaCircleCheck, FaPencil } from 'react-icons/fa6'
+import { BedDouble, MapPin, Plus, Star } from 'lucide-react'
 import { describeFailure } from '@/core/errors/failures'
 import { IMAGENES_SEDE } from '@/domain/entities/Configuracion'
 import type { SedeAdmin, SedeInput } from '@/domain/entities/Configuracion'
 import { ACCION } from '@/domain/entities/Permiso'
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  Checkbox,
-  Input,
-  Modal,
-  PageHeader,
-  Select,
-  useToast,
-} from '@/shared/ui'
+import { Alert, Badge, Button, Checkbox, Input, ListPage, Modal, Select, StatCard, useToast } from '@/shared/ui'
+import type { DataTableColumn } from '@/shared/ui'
+import { BotonFila, FilaAcciones } from '../../components/BotonesFila'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { usePermisos } from '../../providers/PermisosProvider'
@@ -67,24 +59,29 @@ export function SedesPage() {
   const sedes = useCarga<SedeAdmin[]>(() => useCases.listarSedesAdmin.execute(), [useCases], [])
   const [editando, setEditando] = useState<{ id: number | null; form: Formulario } | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const [ocupada, setOcupada] = useState<number | null>(null)
   const [errorForm, setErrorForm] = useState<string | null>(null)
+
+  const activas = sedes.datos.filter((s) => s.activo).length
+  const habitaciones = sedes.datos.reduce((n, s) => n + s.habitaciones, 0)
 
   const set = <K extends keyof Formulario>(k: K, v: Formulario[K]) =>
     setEditando((e) => (e ? { ...e, form: { ...e.form, [k]: v } } : e))
 
+  const aDatos = (f: Formulario): SedeInput => ({
+    nombre: f.nombre,
+    ciudad: f.ciudad,
+    direccion: f.direccion,
+    descripcion: f.descripcion,
+    estrellas: Number(f.estrellas),
+    imagen: f.imagen,
+    servicios: f.servicios.split('\n'),
+    activo: f.activo,
+  })
+
   async function guardar() {
     if (!editando) return
-    const f = editando.form
-    const datos: SedeInput = {
-      nombre: f.nombre,
-      ciudad: f.ciudad,
-      direccion: f.direccion,
-      descripcion: f.descripcion,
-      estrellas: Number(f.estrellas),
-      imagen: f.imagen,
-      servicios: f.servicios.split('\n'),
-      activo: f.activo,
-    }
+    const datos = aDatos(editando.form)
 
     setGuardando(true)
     setErrorForm(null)
@@ -103,100 +100,156 @@ export function SedesPage() {
     await sedes.recargar()
   }
 
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Sedes"
-        description="Los hoteles de la cadena. Una sede desactivada deja de verse en la web."
-        icon={<MapPin size={20} />}
-        actions={
-          puedeCrear ? (
-            <Button
-              iconRight={<Plus size={16} />}
-              onClick={() => {
-                setErrorForm(null)
-                setEditando({ id: null, form: vacio() })
-              }}
-            >
-              Nueva sede
-            </Button>
-          ) : undefined
-        }
-      />
+  async function alternar(s: SedeAdmin) {
+    setOcupada(s.id)
+    const resultado = await useCases.actualizarSede.execute({
+      id: s.id,
+      datos: { ...aDatos(deSede(s)), activo: !s.activo },
+    })
+    setOcupada(null)
+    if (resultado.isLeft()) {
+      toast.error(describeFailure(resultado.value))
+      return
+    }
+    toast.exito(s.activo ? 'Sede desactivada.' : 'Sede activada.')
+    await sedes.recargar()
+  }
 
-      {sedes.error && <Alert>{sedes.error}</Alert>}
-
-      <Card className="overflow-hidden p-0 sm:p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line bg-surface-alt text-xs uppercase text-ink-muted">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Sede</th>
-                <th className="px-4 py-3 font-semibold">Ciudad</th>
-                <th className="px-4 py-3 font-semibold">Categoría</th>
-                <th className="px-4 py-3 text-right font-semibold">Habitaciones</th>
-                <th className="px-4 py-3 text-right font-semibold">Reservas vigentes</th>
-                <th className="px-4 py-3 font-semibold">Estado</th>
-                {puedeEditar && <th className="px-4 py-3 text-right font-semibold">Acciones</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {sedes.cargando && (
-                <tr><td colSpan={7} className="px-4 py-6 text-center text-ink-muted">Cargando…</td></tr>
-              )}
-              {!sedes.cargando && sedes.datos.length === 0 && !sedes.error && (
-                <tr><td colSpan={7} className="px-4 py-6 text-center text-ink-muted">Aún no hay sedes.</td></tr>
-              )}
-              {sedes.datos.map((s) => (
-                <tr key={s.id}>
-                  <td className="px-4 py-3 font-medium text-ink">{s.nombre}</td>
-                  <td className="px-4 py-3 text-ink-muted">{s.ciudad}</td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center gap-0.5 text-ink-muted">
-                      {s.estrellas} <Star size={13} className="fill-current" />
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">{s.habitaciones}</td>
-                  <td className="px-4 py-3 text-right">{s.reservasVigentes}</td>
-                  <td className="px-4 py-3">
-                    <Badge tone={s.activo ? 'success' : 'neutral'}>{s.activo ? 'Activa' : 'Inactiva'}</Badge>
-                  </td>
-                  {puedeEditar && (
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end">
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            setErrorForm(null)
-                            setEditando({ id: s.id, form: deSede(s) })
-                          }}
-                        >
-                          Editar
-                        </Button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+  const columnas: DataTableColumn<SedeAdmin>[] = [
+    {
+      key: 'nombre',
+      label: 'Sede',
+      filterable: false,
+      render: (s) => (
+        <div className="min-w-0">
+          <div className="font-medium text-ink">{s.nombre}</div>
+          {s.direccion && <div className="truncate text-xs text-ink-soft">{s.direccion}</div>}
         </div>
-      </Card>
+      ),
+    },
+    {
+      key: 'ciudad',
+      label: 'Ciudad',
+      filterType: 'select',
+      filterOptions: [...new Set(sedes.datos.map((s) => s.ciudad))].map((c) => ({ value: c, label: c })),
+    },
+    {
+      key: 'estrellas',
+      label: 'Categoría',
+      filterable: false,
+      value: (s) => s.estrellas,
+      render: (s) => (
+        <span className="inline-flex items-center gap-0.5 text-ink-muted">
+          {s.estrellas} <Star size={13} className="fill-current" />
+        </span>
+      ),
+    },
+    { key: 'habitaciones', label: 'Habitaciones', filterable: false, value: (s) => s.habitaciones, render: (s) => s.habitaciones },
+    {
+      key: 'reservasVigentes',
+      label: 'Reservas vigentes',
+      filterable: false,
+      value: (s) => s.reservasVigentes,
+      render: (s) => s.reservasVigentes,
+    },
+    {
+      key: 'activo',
+      label: 'Estado',
+      filterType: 'select',
+      filterOptions: [
+        { value: 'Activa', label: 'Activa' },
+        { value: 'Inactiva', label: 'Inactiva' },
+      ],
+      value: (s) => (s.activo ? 'Activa' : 'Inactiva'),
+      render: (s) => <Badge tone={s.activo ? 'sys' : 'neutral'}>{s.activo ? 'Activa' : 'Inactiva'}</Badge>,
+    },
+  ]
 
+  return (
+    <ListPage
+      icon={<MapPin size={20} />}
+      title="Sedes"
+      description="Los hoteles de la cadena. Una sede desactivada deja de verse en la web."
+      actions={
+        puedeCrear ? (
+          <Button
+            size="sm"
+            iconRight={<Plus size={15} />}
+            onClick={() => {
+              setErrorForm(null)
+              setEditando({ id: null, form: vacio() })
+            }}
+          >
+            Nueva sede
+          </Button>
+        ) : undefined
+      }
+      alert={sedes.error ? <Alert>{sedes.error}</Alert> : undefined}
+      stats={
+        <>
+          <StatCard label="Sedes" value={String(sedes.datos.length)} icon={<MapPin size={18} />} />
+          <StatCard
+            label="Activas"
+            value={String(activas)}
+            icon={<Star size={18} />}
+            hint={`${sedes.datos.length - activas} desactivadas`}
+          />
+          <StatCard label="Habitaciones" value={String(habitaciones)} icon={<BedDouble size={18} />} hint="de todas las sedes" />
+        </>
+      }
+      columns={columnas}
+      rows={sedes.datos}
+      rowKey="id"
+      cardIcon={MapPin}
+      actionsWidth={puedeEditar ? 130 : 0}
+      searchPlaceholder="Buscar por nombre o ciudad..."
+      empty={sedes.cargando ? 'Cargando sedes...' : 'Todavía no hay sedes.'}
+      rowActions={
+        puedeEditar
+          ? (s) => (
+              <FilaAcciones>
+                <BotonFila
+                  color="info"
+                  titulo={`Editar ${s.nombre}`}
+                  onClick={() => {
+                    setErrorForm(null)
+                    setEditando({ id: s.id, form: deSede(s) })
+                  }}
+                >
+                  <FaPencil />
+                </BotonFila>
+                <BotonFila
+                  color={s.activo ? 'warning' : 'success'}
+                  titulo={`${s.activo ? 'Desactivar' : 'Activar'} ${s.nombre}`}
+                  loading={ocupada === s.id}
+                  onClick={() => void alternar(s)}
+                >
+                  {s.activo ? <FaBan /> : <FaCircleCheck />}
+                </BotonFila>
+              </FilaAcciones>
+            )
+          : undefined
+      }
+    >
       <Modal
         open={editando !== null}
         title={editando?.id === null ? 'Nueva sede' : 'Editar sede'}
+        description="Lo que el huésped ve del hotel en la web."
         size="lg"
         onClose={() => setEditando(null)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setEditando(null)}>Cancelar</Button>
-            <Button loading={guardando} onClick={() => void guardar()}>Guardar</Button>
+            <Button variant="secondary" size="sm" onClick={() => setEditando(null)}>
+              Cancelar
+            </Button>
+            <Button size="sm" loading={guardando} onClick={() => void guardar()}>
+              {editando?.id === null ? 'Crear sede' : 'Guardar cambios'}
+            </Button>
           </>
         }
       >
         {editando && (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             {errorForm && <Alert>{errorForm}</Alert>}
             <div className="grid gap-4 sm:grid-cols-2">
               <Input label="Nombre" value={editando.form.nombre} onChange={(e) => set('nombre', e.target.value)} />
@@ -238,6 +291,6 @@ export function SedesPage() {
           </div>
         )}
       </Modal>
-    </div>
+    </ListPage>
   )
 }

@@ -11,7 +11,7 @@ import type {
   Empresa,
   EmpresaInput,
   Excepcion,
-  FiltroAuditoria,
+  ConsultaListado,
   PaginaAuditoria,
   ResumenAuditoria,
   Rol,
@@ -309,13 +309,18 @@ export class GuardarAlcancesUsuarioUseCase
 
 // --- Auditoría ---
 
-export class ListarAuditoriaUseCase implements UseCase<FiltroAuditoria, PaginaAuditoria> {
+/** El rango de fechas del filtro, si lo hay, debe ir de menor a mayor. */
+function rangoInvertido(c: ConsultaListado): boolean {
+  return c.filtros.some((f) => f.columna === 'fecha' && f.valorHasta && f.valor && f.valorHasta < f.valor)
+}
+
+export class ListarAuditoriaUseCase implements UseCase<ConsultaListado, PaginaAuditoria> {
   constructor(private readonly auditoria: AuditoriaRepository) {}
-  async execute(filtro: FiltroAuditoria): Res<PaginaAuditoria> {
-    if (filtro.desde && filtro.hasta && filtro.hasta < filtro.desde) {
+  async execute(consulta: ConsultaListado): Res<PaginaAuditoria> {
+    if (rangoInvertido(consulta)) {
       return left(new ValidationFailure('La fecha final no puede ser anterior a la inicial.'))
     }
-    return this.auditoria.listar(filtro)
+    return this.auditoria.listar(consulta)
   }
 }
 
@@ -340,12 +345,12 @@ export class EntidadesAuditoriaUseCase implements UseCase<void, string[]> {
   }
 }
 
-export class DepurarAuditoriaUseCase implements UseCase<string, number> {
+export class DepurarAuditoriaUseCase implements UseCase<ConsultaListado, number> {
   constructor(private readonly auditoria: AuditoriaRepository) {}
-  async execute(hasta: string): Res<number> {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(hasta)) {
-      return left(new ValidationFailure('Indica hasta qué fecha se depura.'))
+  async execute(consulta: ConsultaListado): Res<number> {
+    if (rangoInvertido(consulta)) {
+      return left(new ValidationFailure('La fecha final no puede ser anterior a la inicial.'))
     }
-    return this.auditoria.depurar(hasta)
+    return this.auditoria.depurar(consulta)
   }
 }

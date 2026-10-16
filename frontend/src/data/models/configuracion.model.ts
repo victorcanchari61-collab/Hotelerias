@@ -103,6 +103,7 @@ export interface RegistroAuditoriaDto {
   entidad: string
   entidadId: string
   accion: AccionAuditoria
+  campos?: number
 }
 
 export interface DetalleAuditoriaDto extends RegistroAuditoriaDto {
@@ -235,6 +236,7 @@ export function registroFromDto(d: RegistroAuditoriaDto): RegistroAuditoria {
     entidad: d.entidad,
     entidadId: d.entidadId,
     accion: d.accion,
+    campos: d.campos ?? 0,
   }
 }
 

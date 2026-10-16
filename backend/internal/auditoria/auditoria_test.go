@@ -6,9 +6,6 @@ import (
 	"reflect"
 	"testing"
 	"time"
-
-	"hotelerias/backend/internal/platform/fecha"
-	"hotelerias/backend/internal/platform/httpx"
 )
 
 func TestDiferenciaDejaSoloLoQueCambio(t *testing.T) {
@@ -40,6 +37,8 @@ type repoFalso struct {
 	borrado    time.Time
 	n          int64
 	falla      error
+	filtro     Filtro
+	orden      Orden
 }
 
 func (r *repoFalso) Insertar(_ context.Context, e Evento) error {
@@ -49,23 +48,16 @@ func (r *repoFalso) Insertar(_ context.Context, e Evento) error {
 	r.insertados = append(r.insertados, e)
 	return nil
 }
-func (r *repoFalso) Listar(_ context.Context, _ Filtro, pagina, porPagina int) ([]Fila, int, error) {
+func (r *repoFalso) Listar(_ context.Context, f Filtro, o Orden, _, _ int) ([]Fila, int, error) {
+	r.filtro, r.orden = f, o
 	return nil, 0, nil
 }
 func (r *repoFalso) PorID(context.Context, int64) (Detalle, error) { return Detalle{}, ErrNoEncontrado }
 func (r *repoFalso) Resumen(context.Context) (Resumen, error)      { return Resumen{}, nil }
 func (r *repoFalso) Entidades(context.Context) ([]string, error)   { return nil, nil }
-func (r *repoFalso) EliminarAnteriores(_ context.Context, antes time.Time) (int64, error) {
-	r.borrado = antes
+func (r *repoFalso) Eliminar(_ context.Context, f Filtro, antes time.Time) (int64, error) {
+	r.filtro, r.borrado = f, antes
 	return r.n, nil
-}
-
-func f(s string) fecha.Fecha {
-	v, err := fecha.Parse(s)
-	if err != nil {
-		panic(err)
-	}
-	return v
 }
 
 func servicio(r *repoFalso) *Servicio {
@@ -80,36 +72,36 @@ func TestRegistrarNoTumbaLaOperacionSiFalla(t *testing.T) {
 	servicio(r).Registrar(context.Background(), Evento{Entidad: "Rol", EntidadID: "1", Accion: Creado})
 }
 
-func TestDepurarExigeFechaYRespetaLaRetencion(t *testing.T) {
+func TestDepurarBorraLoQueSeVeYNuncaLoReciente(t *testing.T) {
 	r := &repoFalso{n: 10}
-	s := servicio(r)
-	ctx := context.Background()
+	s := servicio(r) // hoy: 2026-11-01
 
-	var v httpx.Validacion
-	if _, err := s.Depurar(ctx, fecha.Fecha{}, 1); !errors.As(err, &v) {
-		t.Fatalf("sin fecha: %v", err)
-	}
-	// Hoy es 2026-11-01: lo de los últimos 30 días no se toca.
-	if _, err := s.Depurar(ctx, f("2026-10-15"), 1); !errors.As(err, &v) {
-		t.Fatalf("dentro de la retención: %v", err)
-	}
-	if len(r.insertados) != 0 || !r.borrado.IsZero() {
-		t.Fatal("no debe haber borrado ni registrado nada")
-	}
-
-	n, err := s.Depurar(ctx, f("2026-09-30"), 7)
+	n, err := s.Depurar(context.Background(), Consulta{
+		Buscar:  " rol ",
+		Filtros: []FiltroTabla{{Columna: "entidad", Operador: "equals", Valor: "Rol"}},
+	}, 7)
 	if err != nil || n != 10 {
 		t.Fatalf("n=%d err=%v", n, err)
+	}
+	// Lo que se borra es lo filtrado, y NUNCA lo de los últimos 30 días.
+	if r.filtro.Entidad != "Rol" || r.filtro.Buscar != " rol " {
+		t.Fatalf("filtro: %+v", r.filtro)
+	}
+	if limite := time.Date(2026, 11, 1, 12, 0, 0, 0, time.UTC).Add(-RetencionMinima); !r.borrado.Equal(limite) {
+		t.Fatalf("retención: %v, esperaba %v", r.borrado, limite)
 	}
 	// Queda UN registro que dice qué se depuró, a nombre de quien lo hizo.
 	if len(r.insertados) != 1 || r.insertados[0].UsuarioID != 7 || r.insertados[0].Accion != Eliminado {
 		t.Fatalf("%+v", r.insertados)
 	}
+	if got := r.insertados[0].Antes["Filtros"]; got != "entidad: Rol" {
+		t.Fatalf("filtros descritos: %v", got)
+	}
 }
 
 func TestDepurarSinNadaQueBorrarNoDejaRegistro(t *testing.T) {
 	r := &repoFalso{n: 0}
-	if _, err := servicio(r).Depurar(context.Background(), f("2026-09-01"), 1); err != nil {
+	if _, err := servicio(r).Depurar(context.Background(), Consulta{}, 1); err != nil {
 		t.Fatal(err)
 	}
 	if len(r.insertados) != 0 {
@@ -117,15 +109,60 @@ func TestDepurarSinNadaQueBorrarNoDejaRegistro(t *testing.T) {
 	}
 }
 
-func TestListarAcotaLaPagina(t *testing.T) {
-	var pedido [2]int
-	r := &repoFalso{}
-	s := servicio(r)
-	p, err := s.Listar(context.Background(), Filtro{}, 0, 100000)
+func TestConsultaAFiltro(t *testing.T) {
+	c := Consulta{Filtros: []FiltroTabla{
+		{Columna: "entidad", Operador: "equals", Valor: "Usuario"},
+		{Columna: "accion", Operador: "equals", Valor: "creado"},
+		{Columna: "usuario", Operador: "contains", Valor: " Ana "},
+		{Columna: "fecha", Operador: "between", Valor: "2026-10-01", ValorHasta: "2026-10-31"},
+		{Columna: "inventada", Operador: "equals", Valor: "x"},    // se ignora
+		{Columna: "entidadId", Operador: "contains", Valor: "  "}, // vacío: no filtra
+	}}
+	f, err := c.AFiltro()
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = pedido
+	if f.Entidad != "Usuario" || f.Accion != Creado || f.Usuario != "Ana" || f.Registro != "" {
+		t.Fatalf("%+v", f)
+	}
+	if f.Desde.String() != "2026-10-01" || f.Hasta.String() != "2026-10-31" {
+		t.Fatalf("fechas: %v %v", f.Desde, f.Hasta)
+	}
+
+	// Un solo día: desde y hasta son el mismo.
+	d, _ := Consulta{Filtros: []FiltroTabla{{Columna: "fecha", Valor: "2026-10-05"}}}.AFiltro()
+	if d.Desde.String() != "2026-10-05" || d.Hasta.String() != "2026-10-05" {
+		t.Fatalf("un día: %v %v", d.Desde, d.Hasta)
+	}
+
+	// Una fecha mal escrita es un error del usuario, no un 500.
+	if _, err := (Consulta{Filtros: []FiltroTabla{{Columna: "fecha", Valor: "ayer"}}}).AFiltro(); err == nil {
+		t.Fatal("debía rechazar la fecha")
+	}
+}
+
+func TestOrdenSoloAceptaColumnasConocidas(t *testing.T) {
+	for _, c := range []struct {
+		in   Consulta
+		want Orden
+	}{
+		{Consulta{}, Orden{"fecha", true}},
+		{Consulta{Orden: "usuario", Sentido: "asc"}, Orden{"usuario", false}},
+		{Consulta{Orden: "fecha; DROP TABLE auditoria", Sentido: "asc"}, Orden{"fecha", false}},
+		{Consulta{Orden: "accion", Sentido: "cualquier cosa"}, Orden{"accion", true}},
+	} {
+		if got := c.in.orden(); got != c.want {
+			t.Errorf("%+v → %+v, esperaba %+v", c.in, got, c.want)
+		}
+	}
+}
+
+func TestListarAcotaLaPagina(t *testing.T) {
+	r := &repoFalso{}
+	p, err := servicio(r).Listar(context.Background(), Consulta{Pagina: 0, PorPagina: 100000})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if p.Pagina != 1 || p.PorPagina != PorPaginaMax || p.Items == nil {
 		t.Fatalf("%+v", p)
 	}

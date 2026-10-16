@@ -110,26 +110,36 @@ describe('accesos', () => {
 })
 
 describe('auditoría', () => {
-  const filtro = { entidad: '', accion: '' as const, desde: '', hasta: '', buscar: '', pagina: 1, porPagina: 25 }
+  const consulta = { pagina: 1, porPagina: 25, buscar: '', orden: null, sentido: null, filtros: [] }
+  const conFecha = (valor: string, valorHasta?: string) => ({
+    ...consulta,
+    filtros: [{ columna: 'fecha', operador: 'between', valor, valorHasta }],
+  })
 
   it('un rango de fechas invertido no llega al servidor', async () => {
     const repo = new FakeAuditoriaRepository()
     const uc = new ListarAuditoriaUseCase(repo)
 
-    expect((await uc.execute({ ...filtro, desde: '2026-11-10', hasta: '2026-11-01' })).isLeft()).toBe(true)
+    expect((await uc.execute(conFecha('2026-11-10', '2026-11-01'))).isLeft()).toBe(true)
     expect(repo.filtros).toHaveLength(0)
-    expect((await uc.execute({ ...filtro, desde: '2026-11-01', hasta: '2026-11-10' })).isRight()).toBe(true)
+    expect((await uc.execute(conFecha('2026-11-01', '2026-11-10'))).isRight()).toBe(true)
+    expect((await uc.execute(conFecha('2026-11-01'))).isRight()).toBe(true) // un solo día
   })
 
-  it('depurar exige una fecha bien escrita', async () => {
+  it('depurar manda LA MISMA consulta que se está viendo (borra lo que se ve)', async () => {
     const repo = new FakeAuditoriaRepository()
-    const uc = new DepurarAuditoriaUseCase(repo)
+    const vista = { ...consulta, buscar: 'rol', filtros: [{ columna: 'entidad', operador: 'equals', valor: 'Rol' }] }
 
-    expect((await uc.execute('')).isLeft()).toBe(true)
-    expect((await uc.execute('01/11/2026')).isLeft()).toBe(true)
-    expect(repo.depuradas).toHaveLength(0)
+    const r = await new DepurarAuditoriaUseCase(repo).execute(vista)
 
-    const r = await uc.execute('2026-08-01')
     expect(r.isRight() && r.value).toBe(4)
+    expect(repo.depuradas).toEqual([vista])
+  })
+
+  it('depurar con un rango invertido no llega al servidor', async () => {
+    const repo = new FakeAuditoriaRepository()
+    const r = await new DepurarAuditoriaUseCase(repo).execute(conFecha('2026-11-10', '2026-11-01'))
+    expect(r.isLeft()).toBe(true)
+    expect(repo.depuradas).toHaveLength(0)
   })
 })

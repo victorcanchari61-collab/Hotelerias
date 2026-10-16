@@ -9,7 +9,7 @@ import type {
   Empresa,
   EmpresaInput,
   Excepcion,
-  FiltroAuditoria,
+  ConsultaListado,
   PaginaAuditoria,
   ResumenAuditoria,
   Rol,
@@ -61,10 +61,13 @@ export interface AccesosRepository {
 }
 
 export interface AuditoriaRepository {
-  listar(filtro: FiltroAuditoria): R<PaginaAuditoria>
+  listar(consulta: ConsultaListado): R<PaginaAuditoria>
   detalle(id: number): R<DetalleAuditoria>
   resumen(): R<ResumenAuditoria>
   entidades(): R<string[]>
-  /** Borra lo anterior a esa fecha (AAAA-MM-DD) y devuelve cuántos. */
-  depurar(hasta: string): R<number>
+  /**
+   * Borra lo que la consulta deja a la vista (búsqueda y filtros) y devuelve
+   * cuántos. El servidor nunca toca lo de los últimos 30 días.
+   */
+  depurar(consulta: ConsultaListado): R<number>
 }

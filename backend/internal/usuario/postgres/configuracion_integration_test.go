@@ -442,7 +442,7 @@ func TestAuditoriaDejaConstanciaSinSecretos(t *testing.T) {
 		fmt.Sprintf(`{"nombre":"Ana","email":"ana@hotel.pe","password":"otra-secreta-1234","activo":true,"rolIds":[%d]}`, num(rol["id"])), e.admin, 200)
 
 	// La auditoría es asíncrona respecto a la respuesta? No: se registra antes de responder.
-	pagina := e.json("GET", "/api/auditoria?porPagina=50", "", e.admin, 200)
+	pagina := e.json("POST", "/api/auditoria/listar", `{"pagina":1,"porPagina":50}`, e.admin, 200)
 	items := pagina["items"].([]any)
 	if len(items) < 4 {
 		t.Fatalf("faltan registros: %d", len(items))
@@ -475,21 +475,56 @@ func TestAuditoriaDejaConstanciaSinSecretos(t *testing.T) {
 	}
 
 	// Filtros.
-	f := e.json("GET", "/api/auditoria?entidad=Usuario&accion=CREADO", "", e.admin, 200)
+	f := e.json("POST", "/api/auditoria/listar",
+		`{"pagina":1,"porPagina":50,"filtros":[{"columna":"entidad","operador":"equals","valor":"Usuario"},{"columna":"accion","operador":"equals","valor":"CREADO"}]}`, e.admin, 200)
 	if len(f["items"].([]any)) != 1 {
 		t.Fatalf("filtrado: %+v", f)
 	}
 
-	// Depurar lo reciente no se puede (retención mínima).
-	hoy := e.json("GET", "/api/auditoria/resumen", "", e.admin, 200)
-	_ = hoy
-	if c := e.codigo("POST", "/api/auditoria/depurar", `{"hasta":"2099-01-01"}`, e.admin); c != 400 {
-		t.Fatalf("depurar lo reciente: %d", c)
+	// El buscador mira entidad, registro, acción y persona; una fecha mal escrita es un 400.
+	b := e.json("POST", "/api/auditoria/listar", `{"pagina":1,"porPagina":50,"buscar":"super"}`, e.admin, 200)
+	if len(b["items"].([]any)) == 0 {
+		t.Fatalf("el buscador no encontró nada: %+v", b)
+	}
+	if c := e.codigo("POST", "/api/auditoria/listar",
+		`{"orden":"fecha; DROP TABLE auditoria","filtros":[{"columna":"fecha","valor":"ayer"}]}`, e.admin); c != 400 {
+		t.Fatalf("una fecha mal escrita: %d", c)
+	}
+
+	// Depurar borra lo que se ve, pero NUNCA lo reciente: nada de lo de hoy se va.
+	totalAntes := e.json("GET", "/api/auditoria/resumen", "", e.admin, 200)
+	dep := e.json("POST", "/api/auditoria/depurar", `{"filtros":[]}`, e.admin, 200)
+	if dep["eliminados"].(float64) != 0 {
+		t.Fatalf("depuró lo reciente: %+v", dep)
+	}
+	totalDespues := e.json("GET", "/api/auditoria/resumen", "", e.admin, 200)
+	if totalAntes["total"] != totalDespues["total"] {
+		t.Fatalf("la bitácora cambió: %v → %v", totalAntes["total"], totalDespues["total"])
+	}
+
+	// Con registros viejos sí: se borran solo los que casan con el filtro y se deja constancia.
+	_, _ = e.pool.Exec(context.Background(), `
+		INSERT INTO auditoria (fecha, entidad, entidad_id, accion) VALUES
+		(now() - interval '90 days', 'Vieja', '1', 'CREADO'), (now() - interval '91 days', 'Otra', '2', 'CREADO')`)
+	dep = e.json("POST", "/api/auditoria/depurar",
+		`{"filtros":[{"columna":"entidad","operador":"equals","valor":"Vieja"}]}`, e.admin, 200)
+	if dep["eliminados"].(float64) != 1 {
+		t.Fatalf("debía borrar solo 'Vieja': %+v", dep)
+	}
+	var quedan int
+	_ = e.pool.QueryRow(context.Background(), `SELECT count(*) FROM auditoria WHERE entidad = 'Otra'`).Scan(&quedan)
+	if quedan != 1 {
+		t.Fatalf("'Otra' no debía tocarse: %d", quedan)
+	}
+	var constancia int
+	_ = e.pool.QueryRow(context.Background(), `SELECT count(*) FROM auditoria WHERE entidad = 'Auditoria' AND accion = 'ELIMINADO'`).Scan(&constancia)
+	if constancia != 1 {
+		t.Fatalf("la depuración debía dejar un registro: %d", constancia)
 	}
 
 	// Y quien no tiene permiso, ni la ve.
 	_, tok := e.persona("curioso@hotel.pe", "Recepcionista")
-	if c := e.codigo("GET", "/api/auditoria", "", tok); c != 403 {
+	if c := e.codigo("POST", "/api/auditoria/listar", `{}`, tok); c != 403 {
 		t.Fatalf("sin permiso: %d", c)
 	}
 }

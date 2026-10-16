@@ -4,7 +4,7 @@ import type {
   AprobarInput,
   ConcederInput,
   EmpresaInput,
-  FiltroAuditoria,
+  ConsultaListado,
   RolInput,
   SedeInput,
   SolicitarInput,
@@ -51,11 +51,11 @@ export interface ConfiguracionRemoteDataSource {
   alcancesUsuario(usuarioId: number): Promise<Record<string, string> | null>
   guardarAlcancesUsuario(usuarioId: number, a: Record<string, string>): Promise<void>
   // auditoría
-  auditoria(f: FiltroAuditoria): Promise<PaginaAuditoriaDto>
+  auditoria(c: ConsultaListado): Promise<PaginaAuditoriaDto>
   auditoriaDetalle(id: number): Promise<DetalleAuditoriaDto>
   auditoriaResumen(): Promise<ResumenAuditoriaDto>
   auditoriaEntidades(): Promise<string[] | null>
-  depurar(hasta: string): Promise<{ eliminados: number }>
+  depurar(c: ConsultaListado): Promise<{ eliminados: number }>
 }
 
 export class ConfiguracionRemoteDataSourceImpl implements ConfiguracionRemoteDataSource {
@@ -140,18 +140,10 @@ export class ConfiguracionRemoteDataSourceImpl implements ConfiguracionRemoteDat
     await this.http.put(ApiPaths.permiso.alcancesUsuario(usuarioId), a)
   }
 
-  auditoria(f: FiltroAuditoria) {
-    return this.http.get<PaginaAuditoriaDto>(ApiPaths.auditoria.base, {
-      query: {
-        entidad: f.entidad || undefined,
-        accion: f.accion || undefined,
-        desde: f.desde || undefined,
-        hasta: f.hasta || undefined,
-        buscar: f.buscar || undefined,
-        pagina: f.pagina,
-        porPagina: f.porPagina,
-      },
-    })
+  auditoria(c: ConsultaListado) {
+    // POST: los filtros son una lista de objetos; en la query string habría que
+    // inventar una codificación propia y mantenerla en los dos lados.
+    return this.http.post<PaginaAuditoriaDto>(ApiPaths.auditoria.listar, c)
   }
   auditoriaDetalle(id: number) {
     return this.http.get<DetalleAuditoriaDto>(ApiPaths.auditoria.porId(id))
@@ -162,7 +154,7 @@ export class ConfiguracionRemoteDataSourceImpl implements ConfiguracionRemoteDat
   auditoriaEntidades() {
     return this.http.get<string[] | null>(ApiPaths.auditoria.entidades)
   }
-  depurar(hasta: string) {
-    return this.http.post<{ eliminados: number }>(ApiPaths.auditoria.depurar, { hasta })
+  depurar(c: ConsultaListado) {
+    return this.http.post<{ eliminados: number }>(ApiPaths.auditoria.depurar, c)
   }
 }

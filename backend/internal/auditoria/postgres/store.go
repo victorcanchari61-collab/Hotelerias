@@ -45,37 +45,44 @@ func (s *Store) Insertar(ctx context.Context, e auditoria.Evento) error {
 	return err
 }
 
-// donde arma el WHERE del filtro con parámetros numerados.
+// donde arma el WHERE del filtro con parámetros numerados. Nada del cliente
+// entra al SQL como texto: solo como parámetros.
 func donde(f auditoria.Filtro) (string, []any) {
 	var cond []string
 	var args []any
-	add := func(sql string, v any) {
+	param := func(v any) string {
 		args = append(args, v)
-		cond = append(cond, strings.ReplaceAll(sql, "?", fmt.Sprintf("$%d", len(args))))
+		return fmt.Sprintf("$%d", len(args))
 	}
 
 	if f.Entidad != "" {
-		add("a.entidad = ?", f.Entidad)
+		cond = append(cond, "a.entidad = "+param(f.Entidad))
 	}
 	if f.Accion != "" {
-		add("a.accion = ?", string(f.Accion))
+		cond = append(cond, "a.accion = "+param(string(f.Accion)))
 	}
-	if f.UsuarioID != 0 {
-		add("a.usuario_id = ?", f.UsuarioID)
+	if f.Usuario != "" {
+		p := param("%" + escaparLike(f.Usuario) + "%")
+		cond = append(cond, fmt.Sprintf("(u.nombre ILIKE %s OR u.apellido ILIKE %s)", p, p))
+	}
+	if f.Registro != "" {
+		cond = append(cond, "a.entidad_id ILIKE "+param("%"+escaparLike(f.Registro)+"%"))
 	}
 	if !f.Desde.IsZero() {
-		add("a.fecha >= ?", f.Desde.Time())
+		cond = append(cond, "a.fecha >= "+param(f.Desde.Time()))
 	}
 	if !f.Hasta.IsZero() {
 		// Inclusive: hasta el final de ese día.
-		add("a.fecha < ?", f.Hasta.Mas(1).Time())
+		cond = append(cond, "a.fecha < "+param(f.Hasta.Mas(1).Time()))
 	}
 	if b := strings.TrimSpace(f.Buscar); b != "" {
-		// Un solo patrón que sirve para las cuatro columnas.
-		args = append(args, "%"+escaparLike(b)+"%")
-		n := len(args)
+		// Un solo patrón que sirve para las columnas de texto. Los valores
+		// viejo/nuevo quedan fuera a propósito: son JSON y buscar dentro sería
+		// un escaneo completo.
+		p := param("%" + escaparLike(b) + "%")
 		cond = append(cond, fmt.Sprintf(
-			"(a.entidad ILIKE $%d OR a.entidad_id ILIKE $%d OR u.nombre ILIKE $%d OR u.apellido ILIKE $%d)", n, n, n, n))
+			"(a.entidad ILIKE %s OR a.entidad_id ILIKE %s OR a.accion ILIKE %s OR u.nombre ILIKE %s OR u.apellido ILIKE %s)",
+			p, p, p, p, p))
 	}
 
 	if len(cond) == 0 {
@@ -89,7 +96,27 @@ func escaparLike(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
 
-func (s *Store) Listar(ctx context.Context, f auditoria.Filtro, pagina, porPagina int) ([]auditoria.Fila, int, error) {
+// ordenSQL traduce la columna (de una lista cerrada) a su expresión. El
+// desempate por id es lo que hace estable la paginación.
+func ordenSQL(o auditoria.Orden) string {
+	col := map[string]string{
+		"fecha":     "a.fecha",
+		"usuario":   "btrim(COALESCE(u.nombre,'') || ' ' || COALESCE(u.apellido,''))",
+		"entidad":   "a.entidad",
+		"entidadId": "a.entidad_id",
+		"accion":    "a.accion",
+	}[o.Columna]
+	if col == "" {
+		col = "a.fecha"
+	}
+	sentido := "ASC"
+	if o.Desc {
+		sentido = "DESC"
+	}
+	return fmt.Sprintf(" ORDER BY %s %s, a.id %s", col, sentido, sentido)
+}
+
+func (s *Store) Listar(ctx context.Context, f auditoria.Filtro, o auditoria.Orden, pagina, porPagina int) ([]auditoria.Fila, int, error) {
 	where, args := donde(f)
 	const desde = ` FROM auditoria a LEFT JOIN usuario u ON u.id = a.usuario_id`
 
@@ -101,8 +128,9 @@ func (s *Store) Listar(ctx context.Context, f auditoria.Filtro, pagina, porPagin
 	args = append(args, porPagina, (pagina-1)*porPagina)
 	rows, err := s.pool.Query(ctx, fmt.Sprintf(`
 		SELECT a.id, a.fecha, a.usuario_id, btrim(COALESCE(u.nombre,'') || ' ' || COALESCE(u.apellido,'')),
-		       a.entidad, a.entidad_id, a.accion`+desde+where+`
-		ORDER BY a.fecha DESC, a.id DESC
+		       a.entidad, a.entidad_id, a.accion,
+		       (SELECT count(*) FROM jsonb_object_keys(COALESCE(a.valores_nuevos, a.valores_anteriores, '{}'::jsonb)))`+
+		desde+where+ordenSQL(o)+`
 		LIMIT $%d OFFSET $%d`, len(args)-1, len(args)), args...)
 	if err != nil {
 		return nil, 0, err
@@ -113,7 +141,7 @@ func (s *Store) Listar(ctx context.Context, f auditoria.Filtro, pagina, porPagin
 	for rows.Next() {
 		var f auditoria.Fila
 		var accion string
-		if err := rows.Scan(&f.ID, &f.Fecha, &f.UsuarioID, &f.Usuario, &f.Entidad, &f.EntidadID, &accion); err != nil {
+		if err := rows.Scan(&f.ID, &f.Fecha, &f.UsuarioID, &f.Usuario, &f.Entidad, &f.EntidadID, &accion, &f.Campos); err != nil {
 			return nil, 0, err
 		}
 		f.Accion = auditoria.Accion(accion)
@@ -183,7 +211,18 @@ func (s *Store) Entidades(ctx context.Context) ([]string, error) {
 	return out, rows.Err()
 }
 
-func (s *Store) EliminarAnteriores(ctx context.Context, antes time.Time) (int64, error) {
-	tag, err := s.pool.Exec(ctx, `DELETE FROM auditoria WHERE fecha < $1`, antes)
+// Eliminar borra lo que casa con el filtro y es anterior a `antes`. Es el mismo
+// WHERE del listado: borra exactamente lo que se estaba viendo.
+func (s *Store) Eliminar(ctx context.Context, f auditoria.Filtro, antes time.Time) (int64, error) {
+	where, args := donde(f)
+	args = append(args, antes)
+	conector := " WHERE "
+	if where != "" {
+		conector = " AND "
+	}
+	tag, err := s.pool.Exec(ctx, fmt.Sprintf(`
+		DELETE FROM auditoria WHERE id IN (
+			SELECT a.id FROM auditoria a LEFT JOIN usuario u ON u.id = a.usuario_id%s%s a.fecha < $%d)`,
+		where, conector, len(args)), args...)
 	return tag.RowsAffected(), err
 }

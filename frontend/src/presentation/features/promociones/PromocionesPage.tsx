@@ -1,30 +1,17 @@
 import { useState } from 'react'
-import { Package, Plus } from 'lucide-react'
+import { FaBan, FaCircleCheck, FaPencil } from 'react-icons/fa6'
+import { BadgePercent, Package, Plus, Tag } from 'lucide-react'
 import { describeFailure } from '@/core/errors/failures'
-import { sumarDias } from '@/domain/fechas'
 import { ACCION } from '@/domain/entities/Permiso'
 import type { Promocion, PromocionInput, TipoPromocion } from '@/domain/entities/Portal'
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  Checkbox,
-  Input,
-  Modal,
-  PageHeader,
-  Select,
-  useToast,
-} from '@/shared/ui'
+import { sumarDias } from '@/domain/fechas'
+import { Alert, Badge, Button, Checkbox, Input, ListPage, Modal, Select, StatCard, useToast } from '@/shared/ui'
+import type { DataTableColumn } from '@/shared/ui'
+import { BotonFila, FilaAcciones } from '../../components/BotonesFila'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { usePermisos } from '../../providers/PermisosProvider'
-import {
-  beneficioTexto,
-  centimosASoles,
-  fechaCorta,
-  solesACentimos,
-} from '../portal/format'
+import { beneficioTexto, centimosASoles, fechaCorta, solesACentimos } from '../portal/format'
 
 const SUBMODULO = 'reservas.paquetes'
 
@@ -92,6 +79,7 @@ export function PromocionesPage() {
 
   const [editando, setEditando] = useState<{ id: number | null; form: Formulario } | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const [ocupada, setOcupada] = useState<number | null>(null)
   const [errorForm, setErrorForm] = useState<string | null>(null)
 
   const nombreSede = (id: number | null) =>
@@ -99,15 +87,8 @@ export function PromocionesPage() {
   const nombreTipo = (id: number | null) =>
     id === null ? 'Todos los huéspedes' : (tipos.datos.find((t) => t.id === id)?.nombre ?? `Tipo ${id}`)
 
-  function abrirNueva() {
-    setErrorForm(null)
-    setEditando({ id: null, form: vacio(hoy()) })
-  }
-
-  function abrirEditar(p: Promocion) {
-    setErrorForm(null)
-    setEditando({ id: p.id, form: deOferta(p) })
-  }
+  const activas = promos.datos.filter((p) => p.activo).length
+  const conCodigo = promos.datos.filter((p) => p.codigo !== null).length
 
   async function guardar() {
     if (!editando) return
@@ -156,10 +137,9 @@ export function PromocionesPage() {
   }
 
   async function alternar(p: Promocion) {
-    const resultado = await useCases.actualizarPromocion.execute({
-      id: p.id,
-      datos: { ...p, activo: !p.activo },
-    })
+    setOcupada(p.id)
+    const resultado = await useCases.actualizarPromocion.execute({ id: p.id, datos: { ...p, activo: !p.activo } })
+    setOcupada(null)
     if (resultado.isLeft()) {
       toast.error(describeFailure(resultado.value))
       return
@@ -171,104 +151,153 @@ export function PromocionesPage() {
   const set = <K extends keyof Formulario>(k: K, v: Formulario[K]) =>
     setEditando((e) => (e ? { ...e, form: { ...e.form, [k]: v } } : e))
 
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Paquetes y promociones"
-        description="Las ofertas que el hotel ofrece en la web. Se aplican solas o con un código; no se acumulan: gana la mejor para el huésped."
-        icon={<Package size={20} />}
-        actions={
-          puedeCrear ? (
-            <Button onClick={abrirNueva} iconRight={<Plus size={16} />}>
-              Nueva oferta
-            </Button>
-          ) : undefined
-        }
-      />
-
-      {promos.error && <Alert>{promos.error}</Alert>}
-
-      <Card className="overflow-hidden p-0 sm:p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line bg-surface-alt text-xs uppercase text-ink-muted">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Oferta</th>
-                <th className="px-4 py-3 font-semibold">Beneficio</th>
-                <th className="px-4 py-3 font-semibold">Para</th>
-                <th className="px-4 py-3 font-semibold">Estadías</th>
-                <th className="px-4 py-3 font-semibold">Código</th>
-                <th className="px-4 py-3 font-semibold">Estado</th>
-                {puedeEditar && <th className="px-4 py-3 text-right font-semibold">Acciones</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {promos.cargando && (
-                <tr><td colSpan={7} className="px-4 py-6 text-center text-ink-muted">Cargando…</td></tr>
-              )}
-              {!promos.cargando && promos.datos.length === 0 && !promos.error && (
-                <tr><td colSpan={7} className="px-4 py-6 text-center text-ink-muted">Aún no hay ofertas.</td></tr>
-              )}
-              {promos.datos.map((p) => (
-                <tr key={p.id}>
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-ink">{p.nombre}</p>
-                    {p.minNoches > 1 && <p className="text-xs text-ink-muted">Desde {p.minNoches} noches</p>}
-                  </td>
-                  <td className="px-4 py-3 text-ink">{beneficioTexto(p)}</td>
-                  <td className="px-4 py-3 text-ink-muted">
-                    <p>{nombreSede(p.sedeId)}</p>
-                    <p className="text-xs">{nombreTipo(p.tipoClienteId)}</p>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-ink-muted">
-                    {fechaCorta(p.desde)} → {fechaCorta(p.hasta)}
-                  </td>
-                  <td className="px-4 py-3">
-                    {p.codigo ? <Badge tone="info">{p.codigo}</Badge> : <span className="text-ink-soft">Automática</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge tone={p.activo ? 'success' : 'neutral'}>{p.activo ? 'Activa' : 'Inactiva'}</Badge>
-                  </td>
-                  {puedeEditar && (
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" onClick={() => abrirEditar(p)}>Editar</Button>
-                        <Button variant="ghost" onClick={() => void alternar(p)}>
-                          {p.activo ? 'Desactivar' : 'Activar'}
-                        </Button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+  const columnas: DataTableColumn<Promocion>[] = [
+    {
+      key: 'nombre',
+      label: 'Oferta',
+      filterable: false,
+      render: (p) => (
+        <div className="min-w-0">
+          <div className="font-medium text-ink">{p.nombre}</div>
+          {p.minNoches > 1 && <div className="text-xs text-ink-soft">Desde {p.minNoches} noches</div>}
         </div>
-      </Card>
+      ),
+    },
+    {
+      key: 'beneficio',
+      label: 'Beneficio',
+      filterable: false,
+      value: (p) => beneficioTexto(p),
+      render: (p) => beneficioTexto(p),
+    },
+    {
+      key: 'para',
+      label: 'Para',
+      filterable: false,
+      value: (p) => `${nombreSede(p.sedeId)} ${nombreTipo(p.tipoClienteId)}`,
+      render: (p) => (
+        <div className="min-w-0">
+          <div>{nombreSede(p.sedeId)}</div>
+          <div className="text-xs text-ink-soft">{nombreTipo(p.tipoClienteId)}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'estadias',
+      label: 'Estadías',
+      filterType: 'date',
+      value: (p) => new Date(`${p.desde}T00:00:00`).getTime(),
+      render: (p) => `${fechaCorta(p.desde)} → ${fechaCorta(p.hasta)}`,
+    },
+    {
+      key: 'codigo',
+      label: 'Código',
+      filterable: false,
+      value: (p) => p.codigo ?? '',
+      render: (p) => (p.codigo ? <Badge tone="info">{p.codigo}</Badge> : <span className="text-ink-soft">Automática</span>),
+    },
+    {
+      key: 'activo',
+      label: 'Estado',
+      filterType: 'select',
+      filterOptions: [
+        { value: 'Activa', label: 'Activa' },
+        { value: 'Inactiva', label: 'Inactiva' },
+      ],
+      value: (p) => (p.activo ? 'Activa' : 'Inactiva'),
+      render: (p) => <Badge tone={p.activo ? 'sys' : 'neutral'}>{p.activo ? 'Activa' : 'Inactiva'}</Badge>,
+    },
+  ]
 
+  return (
+    <ListPage
+      icon={<Package size={20} />}
+      title="Paquetes y promociones"
+      description="Las ofertas que el hotel ofrece en la web. Se aplican solas o con un código; no se acumulan: gana la mejor para el huésped."
+      actions={
+        puedeCrear ? (
+          <Button
+            size="sm"
+            iconRight={<Plus size={15} />}
+            onClick={() => {
+              setErrorForm(null)
+              setEditando({ id: null, form: vacio(hoy()) })
+            }}
+          >
+            Nueva oferta
+          </Button>
+        ) : undefined
+      }
+      alert={promos.error ? <Alert>{promos.error}</Alert> : undefined}
+      stats={
+        <>
+          <StatCard label="Ofertas" value={String(promos.datos.length)} icon={<Package size={18} />} />
+          <StatCard
+            label="Activas"
+            value={String(activas)}
+            icon={<BadgePercent size={18} />}
+            hint={`${promos.datos.length - activas} desactivadas`}
+          />
+          <StatCard label="Con código" value={String(conCodigo)} icon={<Tag size={18} />} hint="solo con el código" />
+        </>
+      }
+      columns={columnas}
+      rows={promos.datos}
+      rowKey="id"
+      cardIcon={Package}
+      actionsWidth={puedeEditar ? 130 : 0}
+      searchPlaceholder="Buscar por nombre o código..."
+      empty={promos.cargando ? 'Cargando ofertas...' : 'Aún no hay ofertas.'}
+      rowActions={
+        puedeEditar
+          ? (p) => (
+              <FilaAcciones>
+                <BotonFila
+                  color="info"
+                  titulo={`Editar ${p.nombre}`}
+                  onClick={() => {
+                    setErrorForm(null)
+                    setEditando({ id: p.id, form: deOferta(p) })
+                  }}
+                >
+                  <FaPencil />
+                </BotonFila>
+                <BotonFila
+                  color={p.activo ? 'warning' : 'success'}
+                  titulo={`${p.activo ? 'Desactivar' : 'Activar'} ${p.nombre}`}
+                  loading={ocupada === p.id}
+                  onClick={() => void alternar(p)}
+                >
+                  {p.activo ? <FaBan /> : <FaCircleCheck />}
+                </BotonFila>
+              </FilaAcciones>
+            )
+          : undefined
+      }
+    >
       <Modal
         open={editando !== null}
         title={editando?.id === null ? 'Nueva oferta' : 'Editar oferta'}
+        description="Para qué estadías vale y a quién."
         size="lg"
         onClose={() => setEditando(null)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setEditando(null)}>Cancelar</Button>
-            <Button loading={guardando} onClick={() => void guardar()}>Guardar</Button>
+            <Button variant="secondary" size="sm" onClick={() => setEditando(null)}>
+              Cancelar
+            </Button>
+            <Button size="sm" loading={guardando} onClick={() => void guardar()}>
+              {editando?.id === null ? 'Crear oferta' : 'Guardar cambios'}
+            </Button>
           </>
         }
       >
         {editando && (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             {errorForm && <Alert>{errorForm}</Alert>}
 
             <Input label="Nombre" value={editando.form.nombre} onChange={(e) => set('nombre', e.target.value)} />
-            <Input
-              label="Descripción"
-              optional
-              value={editando.form.descripcion}
-              onChange={(e) => set('descripcion', e.target.value)}
-            />
+            <Input label="Descripción" optional value={editando.form.descripcion} onChange={(e) => set('descripcion', e.target.value)} />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Select label="Tipo de descuento" value={editando.form.tipo} onChange={(e) => set('tipo', e.target.value as TipoPromocion)}>
@@ -300,11 +329,7 @@ export function PromocionesPage() {
                 <option value="">Todos los hoteles</option>
                 {sedes.datos.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
               </Select>
-              <Select
-                label="Tipo de huésped"
-                value={editando.form.tipoClienteId}
-                onChange={(e) => set('tipoClienteId', e.target.value)}
-              >
+              <Select label="Tipo de huésped" value={editando.form.tipoClienteId} onChange={(e) => set('tipoClienteId', e.target.value)}>
                 <option value="">Todos los huéspedes</option>
                 {tipos.datos.map((t) => <option key={t.id} value={t.id}>Solo {t.nombre}</option>)}
               </Select>
@@ -313,13 +338,7 @@ export function PromocionesPage() {
             <div className="grid gap-4 sm:grid-cols-3">
               <Input label="Estadías desde" type="date" value={editando.form.desde} onChange={(e) => set('desde', e.target.value)} />
               <Input label="Hasta" type="date" min={editando.form.desde} value={editando.form.hasta} onChange={(e) => set('hasta', e.target.value)} />
-              <Input
-                label="Mínimo de noches"
-                type="number"
-                min={1}
-                value={editando.form.minNoches}
-                onChange={(e) => set('minNoches', e.target.value)}
-              />
+              <Input label="Mínimo de noches" type="number" min={1} value={editando.form.minNoches} onChange={(e) => set('minNoches', e.target.value)} />
             </div>
 
             <Input
@@ -335,6 +354,6 @@ export function PromocionesPage() {
           </div>
         )}
       </Modal>
-    </div>
+    </ListPage>
   )
 }

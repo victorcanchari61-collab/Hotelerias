@@ -42,6 +42,8 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
     environment: 'node',
+    // Lo que jsdom no trae y el kit de UI usa (ResizeObserver, matchMedia).
+    setupFiles: ['src/test/setup.ts'],
   },
   server: { proxy },
   // Igual que arriba, para poder abrir el build ya compilado contra el backend.

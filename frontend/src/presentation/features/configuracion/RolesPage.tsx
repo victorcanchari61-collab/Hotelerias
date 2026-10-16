@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { IdCard, Lock, Plus } from 'lucide-react'
+import { FaBan, FaCircleCheck, FaPencil, FaTrash } from 'react-icons/fa6'
+import { IdCard, Plus, ShieldCheck, Users } from 'lucide-react'
 import { describeFailure } from '@/core/errors/failures'
 import type { Rol, RolInput } from '@/domain/entities/Configuracion'
 import { ACCION } from '@/domain/entities/Permiso'
@@ -7,14 +8,16 @@ import {
   Alert,
   Badge,
   Button,
-  Card,
   Checkbox,
   Input,
+  ListPage,
   Modal,
-  PageHeader,
+  StatCard,
   useConfirmacion,
   useToast,
 } from '@/shared/ui'
+import type { DataTableColumn } from '@/shared/ui'
+import { BotonFila, FilaAcciones } from '../../components/BotonesFila'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { usePermisos } from '../../providers/PermisosProvider'
@@ -38,7 +41,11 @@ export function RolesPage() {
   const roles = useCarga<Rol[]>(() => useCases.listarRoles.execute(), [useCases], [])
   const [editando, setEditando] = useState<{ id: number | null; form: RolInput; protegido: boolean } | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const [ocupado, setOcupado] = useState<number | null>(null)
   const [errorForm, setErrorForm] = useState<string | null>(null)
+
+  const activos = roles.datos.filter((r) => r.activo).length
+  const personas = roles.datos.reduce((suma, r) => suma + r.usuarios, 0)
 
   async function guardar() {
     if (!editando) return
@@ -56,6 +63,21 @@ export function RolesPage() {
     }
     toast.exito(editando.id === null ? 'Rol creado.' : 'Rol guardado.')
     setEditando(null)
+    await roles.recargar()
+  }
+
+  async function alternar(r: Rol) {
+    setOcupado(r.id)
+    const resultado = await useCases.actualizarRol.execute({
+      id: r.id,
+      datos: { nombre: r.nombre, descripcion: r.descripcion, activo: !r.activo },
+    })
+    setOcupado(null)
+    if (resultado.isLeft()) {
+      toast.error(describeFailure(resultado.value))
+      return
+    }
+    toast.exito(r.activo ? 'Rol desactivado.' : 'Rol activado.')
     await roles.recargar()
   }
 
@@ -77,120 +99,177 @@ export function RolesPage() {
     })
   }
 
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Roles"
-        description="Un rol es un conjunto de permisos. Una persona puede tener varios: sus permisos se suman."
-        icon={<IdCard size={20} />}
-        actions={
-          puedeCrear ? (
-            <Button
-              iconRight={<Plus size={16} />}
-              onClick={() => {
-                setErrorForm(null)
-                setEditando({ id: null, form: { nombre: '', descripcion: '', activo: true }, protegido: false })
-              }}
-            >
-              Nuevo rol
-            </Button>
-          ) : undefined
-        }
-      />
-
-      {roles.error && <Alert>{roles.error}</Alert>}
-
-      <Card className="overflow-hidden p-0 sm:p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line bg-surface-alt text-xs uppercase text-ink-muted">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Rol</th>
-                <th className="px-4 py-3 font-semibold">Descripción</th>
-                <th className="px-4 py-3 text-right font-semibold">Personas</th>
-                <th className="px-4 py-3 text-right font-semibold">Permisos</th>
-                <th className="px-4 py-3 font-semibold">Estado</th>
-                {(puedeEditar || puedeEliminar) && (
-                  <th className="px-4 py-3 text-right font-semibold">Acciones</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {roles.cargando && (
-                <tr><td colSpan={6} className="px-4 py-6 text-center text-ink-muted">Cargando…</td></tr>
-              )}
-              {roles.datos.map((r) => (
-                <tr key={r.id}>
-                  <td className="px-4 py-3">
-                    <span className="flex items-center gap-2 font-medium text-ink">
-                      {r.nombre}
-                      {r.accesoTotal && <Lock size={13} className="text-ink-soft" aria-label="Protegido" />}
-                      {r.delSistema && !r.accesoTotal && <Badge tone="neutral">Del sistema</Badge>}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-ink-muted">{r.descripcion || '—'}</td>
-                  <td className="px-4 py-3 text-right">{r.usuarios}</td>
-                  <td className="px-4 py-3 text-right text-ink-muted">
-                    {r.accesoTotal ? 'Todos' : r.permisos.length}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge tone={r.activo ? 'success' : 'neutral'}>{r.activo ? 'Activo' : 'Inactivo'}</Badge>
-                  </td>
-                  {(puedeEditar || puedeEliminar) && (
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1">
-                        {puedeEditar && (
-                          <Button
-                            variant="ghost"
-                            onClick={() => {
-                              setErrorForm(null)
-                              setEditando({
-                                id: r.id,
-                                form: { nombre: r.nombre, descripcion: r.descripcion, activo: r.activo },
-                                protegido: r.accesoTotal,
-                              })
-                            }}
-                          >
-                            Editar
-                          </Button>
-                        )}
-                        {puedeEliminar && !r.delSistema && !r.accesoTotal && (
-                          <Button variant="ghost" onClick={() => pedirEliminar(r)}>
-                            Eliminar
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+  const columnas: DataTableColumn<Rol>[] = [
+    {
+      key: 'nombre',
+      label: 'Rol',
+      filterable: false,
+      render: (r) => (
+        <div className="min-w-0">
+          <div className="font-medium text-ink">{r.nombre}</div>
+          {r.descripcion && <div className="truncate text-xs text-ink-soft">{r.descripcion}</div>}
         </div>
-      </Card>
+      ),
+    },
+    {
+      key: 'permisos',
+      label: 'Permisos',
+      filterable: false,
+      value: (r) => (r.accesoTotal ? 'Todos' : String(r.permisos.length)),
+      render: (r) => (r.accesoTotal ? 'Todos' : r.permisos.length ? `${r.permisos.length} permisos` : 'Sin permisos'),
+    },
+    {
+      key: 'usuarios',
+      label: 'Personas',
+      filterable: false,
+      value: (r) => String(r.usuarios),
+      render: (r) => r.usuarios,
+    },
+    {
+      key: 'tipo',
+      label: 'Tipo',
+      filterType: 'select',
+      filterOptions: [
+        { value: 'Protegido', label: 'Protegido (acceso total)' },
+        { value: 'Del sistema', label: 'Del sistema' },
+        { value: 'Personalizado', label: 'Personalizado' },
+      ],
+      value: (r) => (r.accesoTotal ? 'Protegido' : r.delSistema ? 'Del sistema' : 'Personalizado'),
+      render: (r) => (
+        <Badge tone={r.accesoTotal ? 'warning' : r.delSistema ? 'neutral' : 'sys'}>
+          {r.accesoTotal ? 'Protegido' : r.delSistema ? 'Del sistema' : 'Personalizado'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'activo',
+      label: 'Estado',
+      filterType: 'select',
+      filterOptions: [
+        { value: 'Activo', label: 'Activo' },
+        { value: 'Inactivo', label: 'Inactivo' },
+      ],
+      value: (r) => (r.activo ? 'Activo' : 'Inactivo'),
+      render: (r) => <Badge tone={r.activo ? 'sys' : 'neutral'}>{r.activo ? 'Activo' : 'Inactivo'}</Badge>,
+    },
+  ]
 
+  return (
+    <ListPage
+      icon={<IdCard size={20} />}
+      title="Roles"
+      description="Un rol es un conjunto de permisos. Una persona puede tener varios: sus permisos se suman."
+      actions={
+        puedeCrear ? (
+          <Button
+            size="sm"
+            iconRight={<Plus size={15} />}
+            onClick={() => {
+              setErrorForm(null)
+              setEditando({ id: null, form: { nombre: '', descripcion: '', activo: true }, protegido: false })
+            }}
+          >
+            Nuevo rol
+          </Button>
+        ) : undefined
+      }
+      alert={roles.error ? <Alert>{roles.error}</Alert> : undefined}
+      stats={
+        <>
+          <StatCard label="Roles" value={String(roles.datos.length)} icon={<IdCard size={18} />} />
+          <StatCard
+            label="Activos"
+            value={String(activos)}
+            icon={<ShieldCheck size={18} />}
+            hint={`${roles.datos.length - activos} desactivados`}
+          />
+          <StatCard label="Personas con rol" value={String(personas)} icon={<Users size={18} />} />
+        </>
+      }
+      columns={columnas}
+      rows={roles.datos}
+      rowKey="id"
+      cardIcon={IdCard}
+      actionsWidth={puedeEditar || puedeEliminar ? 170 : 0}
+      searchPlaceholder="Buscar por nombre..."
+      empty={roles.cargando ? 'Cargando roles...' : 'Todavía no hay roles.'}
+      rowActions={
+        puedeEditar || puedeEliminar
+          ? (r) => (
+              <FilaAcciones>
+                {puedeEditar && (
+                  <BotonFila
+                    color="info"
+                    titulo={`Editar ${r.nombre}`}
+                    onClick={() => {
+                      setErrorForm(null)
+                      setEditando({
+                        id: r.id,
+                        form: { nombre: r.nombre, descripcion: r.descripcion, activo: r.activo },
+                        protegido: r.accesoTotal,
+                      })
+                    }}
+                  >
+                    <FaPencil />
+                  </BotonFila>
+                )}
+                {puedeEditar && (
+                  <BotonFila
+                    color={r.activo ? 'warning' : 'success'}
+                    titulo={`${r.activo ? 'Desactivar' : 'Activar'} ${r.nombre}`}
+                    loading={ocupado === r.id}
+                    disabled={r.accesoTotal}
+                    onClick={() => void alternar(r)}
+                  >
+                    {r.activo ? <FaBan /> : <FaCircleCheck />}
+                  </BotonFila>
+                )}
+                {puedeEliminar && (
+                  <BotonFila
+                    color="danger"
+                    titulo={`Eliminar ${r.nombre}`}
+                    disabled={r.delSistema || r.accesoTotal}
+                    onClick={() => pedirEliminar(r)}
+                  >
+                    <FaTrash />
+                  </BotonFila>
+                )}
+              </FilaAcciones>
+            )
+          : undefined
+      }
+    >
       <Modal
         open={editando !== null}
         title={editando?.id === null ? 'Nuevo rol' : 'Editar rol'}
+        description="Define el nombre; qué puede hacer se configura en Accesos."
+        size="sm"
         onClose={() => setEditando(null)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setEditando(null)}>Cancelar</Button>
-            <Button loading={guardando} onClick={() => void guardar()}>Guardar</Button>
+            <Button variant="secondary" size="sm" onClick={() => setEditando(null)}>
+              Cancelar
+            </Button>
+            <Button size="sm" loading={guardando} onClick={() => void guardar()}>
+              {editando?.id === null ? 'Crear rol' : 'Guardar cambios'}
+            </Button>
           </>
         }
       >
         {editando && (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             {errorForm && <Alert>{errorForm}</Alert>}
             <Input
               label="Nombre"
+              placeholder="Ej. Jefe de recepción"
+              maxLength={60}
               value={editando.form.nombre}
               onChange={(e) => setEditando({ ...editando, form: { ...editando.form, nombre: e.target.value } })}
             />
             <Input
               label="Descripción"
               optional
+              maxLength={200}
               value={editando.form.descripcion}
               onChange={(e) => setEditando({ ...editando, form: { ...editando.form, descripcion: e.target.value } })}
             />
@@ -202,7 +281,7 @@ export function RolesPage() {
                 onChange={(e) => setEditando({ ...editando, form: { ...editando.form, activo: e.target.checked } })}
               />
               {editando.protegido && (
-                <p className="mt-1 text-xs text-ink-muted">
+                <p className="mt-1 text-xs text-ink-soft">
                   Este rol tiene acceso total: no se puede desactivar, o nadie podría configurar el sistema.
                 </p>
               )}
@@ -212,6 +291,6 @@ export function RolesPage() {
       </Modal>
 
       {dialogo}
-    </div>
+    </ListPage>
   )
 }

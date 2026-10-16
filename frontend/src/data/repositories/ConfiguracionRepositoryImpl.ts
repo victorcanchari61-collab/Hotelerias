@@ -4,7 +4,7 @@ import type {
   AprobarInput,
   ConcederInput,
   EmpresaInput,
-  FiltroAuditoria,
+  ConsultaListado,
   RolInput,
   SedeInput,
   SolicitarInput,
@@ -122,8 +122,8 @@ export class AccesosRepositoryImpl implements AccesosRepository {
 export class AuditoriaRepositoryImpl implements AuditoriaRepository {
   constructor(private readonly remote: Remote) {}
 
-  listar(filtro: FiltroAuditoria) {
-    return attempt(async () => paginaAuditoriaFromDto(await this.remote.auditoria(filtro)))
+  listar(consulta: ConsultaListado) {
+    return attempt(async () => paginaAuditoriaFromDto(await this.remote.auditoria(consulta)))
   }
   detalle(id: number) {
     return attempt(async () => detalleAuditoriaFromDto(await this.remote.auditoriaDetalle(id)))
@@ -134,7 +134,7 @@ export class AuditoriaRepositoryImpl implements AuditoriaRepository {
   entidades() {
     return attempt(async () => (await this.remote.auditoriaEntidades()) ?? [])
   }
-  depurar(hasta: string) {
-    return attempt(async () => (await this.remote.depurar(hasta)).eliminados)
+  depurar(consulta: ConsultaListado) {
+    return attempt(async () => (await this.remote.depurar(consulta)).eliminados)
   }
 }

@@ -4,7 +4,7 @@ import { describeFailure } from '@/core/errors/failures'
 import type { Alcance, Alcances, CatalogoAlcances, Rol } from '@/domain/entities/Configuracion'
 import { clavePermiso } from '@/domain/entities/Permiso'
 import type { SubmoduloCatalogo } from '@/domain/entities/Permiso'
-import { Alert, Button, Card, Select, useToast } from '@/shared/ui'
+import { Alert, Button, Card, Checkbox, Select, useToast } from '@/shared/ui'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { usePermisos } from '../../providers/PermisosProvider'
@@ -148,64 +148,44 @@ export function MatrizRol({ roles, onCambioRoles }: { roles: Rol[]; onCambioRole
 
       {rol && !rol.accesoTotal && (
         <>
-          <Card className="overflow-hidden p-0 sm:p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b border-line bg-surface-alt text-xs uppercase text-ink-muted">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-semibold">Pantalla</th>
-                    {columnas.map((a) => (
-                      <th key={a} className="px-2 py-3 text-center font-semibold">
-                        {ETIQUETA_ACCION[a]}
-                      </th>
-                    ))}
-                    <th className="px-2 py-3 text-center font-semibold">Todo</th>
-                  </tr>
-                </thead>
-                {grupos.map((g) => (
-                  <tbody key={g.modulo} className="divide-y divide-line border-b border-line">
-                    <tr className="bg-surface-alt/60">
-                      <th colSpan={columnas.length + 2} className="px-4 py-2 text-left text-xs font-bold tracking-wide text-ink-muted uppercase">
-                        {g.etiqueta}
-                      </th>
-                    </tr>
-                    {g.filas.map((fila) => {
-                      const completa = fila.acciones.every((a) => seleccion.has(clavePermiso(fila.submodulo, a)))
-                      return (
-                        <tr key={fila.submodulo}>
-                          <td className="px-4 py-2 text-ink">{etiquetaSubmodulo(fila.submodulo)}</td>
-                          {columnas.map((a) => (
-                            <td key={a} className="px-2 py-2 text-center">
-                              {fila.acciones.includes(a) ? (
-                                <input
-                                  type="checkbox"
-                                  className="size-4 cursor-pointer accent-[var(--accent)]"
-                                  aria-label={`${etiquetaSubmodulo(fila.submodulo)}: ${ETIQUETA_ACCION[a]}`}
-                                  checked={seleccion.has(clavePermiso(fila.submodulo, a))}
-                                  onChange={(e) => setSeleccion((s) => alternarPermiso(s, fila, a, e.target.checked))}
-                                />
-                              ) : (
-                                <span className="text-ink-soft">·</span>
-                              )}
-                            </td>
-                          ))}
-                          <td className="px-2 py-2 text-center">
-                            <input
-                              type="checkbox"
-                              className="size-4 cursor-pointer accent-[var(--accent)]"
-                              aria-label={`${etiquetaSubmodulo(fila.submodulo)}: todo`}
-                              checked={completa}
-                              onChange={(e) => setSeleccion((s) => alternarFila(s, fila, e.target.checked))}
-                            />
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                ))}
-              </table>
-            </div>
-          </Card>
+          {/* Como la matriz del proyecto de referencia: una sección por módulo, una fila por pantalla. */}
+          <div className="flex flex-col gap-4">
+            {grupos.map((g) => (
+              <section key={g.modulo}>
+                <h4 className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">{g.etiqueta}</h4>
+                <div className="divide-y divide-line rounded-xl border border-line bg-surface">
+                  {g.filas.map((fila) => {
+                    const completa = fila.acciones.every((a) => seleccion.has(clavePermiso(fila.submodulo, a)))
+                    const nombre = etiquetaSubmodulo(fila.submodulo)
+                    return (
+                      <div key={fila.submodulo} className="flex flex-wrap items-center gap-x-5 gap-y-2 px-3 py-2.5">
+                        <span className="min-w-40 flex-1 text-sm font-medium text-ink">{nombre}</span>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                          {columnas
+                            .filter((a) => fila.acciones.includes(a))
+                            .map((a) => (
+                              <Checkbox
+                                key={a}
+                                label={ETIQUETA_ACCION[a]}
+                                aria-label={`${nombre}: ${ETIQUETA_ACCION[a]}`}
+                                checked={seleccion.has(clavePermiso(fila.submodulo, a))}
+                                onChange={(e) => setSeleccion((s) => alternarPermiso(s, fila, a, e.target.checked))}
+                              />
+                            ))}
+                          <Checkbox
+                            label="Todo"
+                            aria-label={`${nombre}: todo`}
+                            checked={completa}
+                            onChange={(e) => setSeleccion((s) => alternarFila(s, fila, e.target.checked))}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
 
           {catAlcances.datos.submodulos.length > 0 && (
             <Card className="space-y-3">

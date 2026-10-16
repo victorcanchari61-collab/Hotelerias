@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { CalendarDays } from 'lucide-react'
+import { CalendarCheck, CalendarDays, CalendarX2, Wallet } from 'lucide-react'
+import { FaBan } from 'react-icons/fa6'
 import { describeFailure } from '@/core/errors/failures'
 import { ACCION } from '@/domain/entities/Permiso'
 import type { EstadoReserva, Reserva } from '@/domain/entities/Portal'
-import { Alert, Badge, Button, Card, PageHeader, Select, useConfirmacion, useToast } from '@/shared/ui'
-import type { BadgeTone } from '@/shared/ui'
+import { Alert, Badge, ListPage, StatCard, useConfirmacion, useToast } from '@/shared/ui'
+import type { BadgeTone, DataTableColumn } from '@/shared/ui'
+import { BotonFila, FilaAcciones } from '../../components/BotonesFila'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { usePermisos } from '../../providers/PermisosProvider'
@@ -13,7 +14,7 @@ import { formatSoles, rangoFechas } from '../portal/format'
 const SUBMODULO = 'reservas.reservas'
 
 const ESTADO: Record<EstadoReserva, { texto: string; tono: BadgeTone }> = {
-  confirmada: { texto: 'Confirmada', tono: 'success' },
+  confirmada: { texto: 'Confirmada', tono: 'sys' },
   cancelada: { texto: 'Cancelada', tono: 'neutral' },
   completada: { texto: 'Completada', tono: 'info' },
 }
@@ -26,12 +27,11 @@ export function ReservasAdminPage() {
   const { confirmar, dialogo } = useConfirmacion()
   const puedeAnular = puede(SUBMODULO, ACCION.anular)
 
-  const [estado, setEstado] = useState<EstadoReserva | ''>('')
-  const reservas = useCarga<Reserva[]>(
-    () => useCases.listarReservasAdmin.execute(estado === '' ? undefined : estado),
-    [useCases, estado],
-    [],
-  )
+  const reservas = useCarga<Reserva[]>(() => useCases.listarReservasAdmin.execute(undefined), [useCases], [])
+
+  const confirmadas = reservas.datos.filter((r) => r.estado === 'confirmada')
+  const canceladas = reservas.datos.filter((r) => r.estado === 'cancelada').length
+  const facturado = confirmadas.reduce((suma, r) => suma + r.totalCent, 0)
 
   function pedirCancelar(r: Reserva) {
     confirmar({
@@ -52,93 +52,107 @@ export function ReservasAdminPage() {
     })
   }
 
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Reservas"
-        description="Las reservas hechas por la web en todos los hoteles."
-        icon={<CalendarDays size={20} />}
-        actions={
-          <div className="w-44">
-            <Select
-              size="sm"
-              aria-label="Filtrar por estado"
-              value={estado}
-              onChange={(e) => setEstado(e.target.value as EstadoReserva | '')}
-            >
-              <option value="">Todas</option>
-              <option value="confirmada">Confirmadas</option>
-              <option value="cancelada">Canceladas</option>
-              <option value="completada">Completadas</option>
-            </Select>
-          </div>
-        }
-      />
-
-      {reservas.error && <Alert>{reservas.error}</Alert>}
-
-      <Card className="overflow-hidden p-0 sm:p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line bg-surface-alt text-xs uppercase text-ink-muted">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Código</th>
-                <th className="px-4 py-3 font-semibold">Huésped</th>
-                <th className="px-4 py-3 font-semibold">Hotel y habitación</th>
-                <th className="px-4 py-3 font-semibold">Estadía</th>
-                <th className="px-4 py-3 text-right font-semibold">Total</th>
-                <th className="px-4 py-3 font-semibold">Estado</th>
-                {puedeAnular && <th className="px-4 py-3 text-right font-semibold">Acciones</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {reservas.cargando && (
-                <tr><td colSpan={7} className="px-4 py-6 text-center text-ink-muted">Cargando…</td></tr>
-              )}
-              {!reservas.cargando && reservas.datos.length === 0 && !reservas.error && (
-                <tr><td colSpan={7} className="px-4 py-6 text-center text-ink-muted">No hay reservas.</td></tr>
-              )}
-              {reservas.datos.map((r) => {
-                const e = ESTADO[r.estado]
-                return (
-                  <tr key={r.id}>
-                    <td className="px-4 py-3 font-mono text-xs text-ink">{r.codigo}</td>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-ink">{r.clienteNombre}</p>
-                      <p className="text-xs text-ink-muted">{r.clienteEmail}</p>
-                    </td>
-                    <td className="px-4 py-3 text-ink-muted">
-                      <p>{r.sedeNombre}</p>
-                      <p className="text-xs">{r.habitacion}</p>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-ink-muted">
-                      {rangoFechas(r.checkIn, r.checkOut)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <p className="font-medium text-ink">{formatSoles(r.totalCent)}</p>
-                      {r.descuentoCent > 0 && (
-                        <p className="text-xs text-accent-ink">− {formatSoles(r.descuentoCent)}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3"><Badge tone={e.tono}>{e.texto}</Badge></td>
-                    {puedeAnular && (
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end">
-                          {r.estado === 'confirmada' && (
-                            <Button variant="ghost" onClick={() => pedirCancelar(r)}>Cancelar</Button>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+  const columnas: DataTableColumn<Reserva>[] = [
+    {
+      key: 'codigo',
+      label: 'Código',
+      filterable: false,
+      render: (r) => <span className="font-mono text-xs text-ink">{r.codigo}</span>,
+    },
+    {
+      key: 'huesped',
+      label: 'Huésped',
+      filterable: false,
+      value: (r) => `${r.clienteNombre} ${r.clienteEmail}`,
+      render: (r) => (
+        <div className="min-w-0">
+          <div className="font-medium text-ink">{r.clienteNombre}</div>
+          <div className="truncate text-xs text-ink-soft">{r.clienteEmail}</div>
         </div>
-      </Card>
+      ),
+    },
+    {
+      key: 'hotel',
+      label: 'Hotel y habitación',
+      filterType: 'select',
+      filterOptions: [...new Set(reservas.datos.map((r) => r.sedeNombre))].map((s) => ({ value: s, label: s })),
+      value: (r) => r.sedeNombre,
+      render: (r) => (
+        <div className="min-w-0">
+          <div>{r.sedeNombre}</div>
+          <div className="text-xs text-ink-soft">{r.habitacion}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'estadia',
+      label: 'Estadía',
+      filterType: 'date',
+      value: (r) => new Date(`${r.checkIn}T00:00:00`).getTime(),
+      render: (r) => <span className="whitespace-nowrap">{rangoFechas(r.checkIn, r.checkOut)}</span>,
+    },
+    {
+      key: 'total',
+      label: 'Total',
+      align: 'right',
+      filterable: false,
+      value: (r) => r.totalCent,
+      render: (r) => (
+        <div>
+          <div className="font-medium text-ink">{formatSoles(r.totalCent)}</div>
+          {r.descuentoCent > 0 && <div className="text-xs text-[var(--accent-ink)]">− {formatSoles(r.descuentoCent)}</div>}
+        </div>
+      ),
+    },
+    {
+      key: 'estado',
+      label: 'Estado',
+      filterType: 'select',
+      filterOptions: (Object.keys(ESTADO) as EstadoReserva[]).map((e) => ({ value: ESTADO[e].texto, label: ESTADO[e].texto })),
+      value: (r) => ESTADO[r.estado].texto,
+      render: (r) => <Badge tone={ESTADO[r.estado].tono}>{ESTADO[r.estado].texto}</Badge>,
+    },
+  ]
 
+  return (
+    <ListPage
+      icon={<CalendarDays size={20} />}
+      title="Reservas"
+      description="Las reservas hechas por la web en todos los hoteles."
+      alert={reservas.error ? <Alert>{reservas.error}</Alert> : undefined}
+      stats={
+        <>
+          <StatCard label="Reservas" value={String(reservas.datos.length)} icon={<CalendarDays size={18} />} />
+          <StatCard label="Confirmadas" value={String(confirmadas.length)} icon={<CalendarCheck size={18} />} hint={`${canceladas} canceladas`} />
+          <StatCard label="Importe confirmado" value={formatSoles(facturado)} icon={<Wallet size={18} />} />
+          <StatCard label="Canceladas" value={String(canceladas)} icon={<CalendarX2 size={18} />} tono={canceladas > 0 ? 'warning' : 'neutral'} />
+        </>
+      }
+      columns={columnas}
+      rows={reservas.datos}
+      rowKey="id"
+      cardIcon={CalendarDays}
+      actionsWidth={puedeAnular ? 90 : 0}
+      searchPlaceholder="Buscar por código, huésped u hotel..."
+      empty={reservas.cargando ? 'Cargando reservas...' : 'No hay reservas.'}
+      rowActions={
+        puedeAnular
+          ? (r) => (
+              <FilaAcciones>
+                <BotonFila
+                  color="danger"
+                  titulo={`Cancelar ${r.codigo}`}
+                  disabled={r.estado !== 'confirmada'}
+                  onClick={() => pedirCancelar(r)}
+                >
+                  <FaBan />
+                </BotonFila>
+              </FilaAcciones>
+            )
+          : undefined
+      }
+    >
       {dialogo}
-    </div>
+    </ListPage>
   )
 }

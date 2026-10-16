@@ -149,6 +149,8 @@ export interface RegistroAuditoria {
   entidad: string
   entidadId: string
   accion: AccionAuditoria
+  /** Cuántos datos guardó el registro. */
+  campos: number
 }
 
 export interface DetalleAuditoria extends RegistroAuditoria {
@@ -156,15 +158,17 @@ export interface DetalleAuditoria extends RegistroAuditoria {
   valoresNuevos: Record<string, unknown> | null
 }
 
-export interface FiltroAuditoria {
-  entidad: string
-  accion: AccionAuditoria | ''
-  /** AAAA-MM-DD, inclusive. */
-  desde: string
-  hasta: string
-  buscar: string
+/**
+ * Lo que la tabla del listado pide (búsqueda, filtros por columna, orden y
+ * página): el mismo contrato que usa SysDataTable en modo servidor.
+ */
+export interface ConsultaListado {
   pagina: number
   porPagina: number
+  buscar: string
+  orden: string | null
+  sentido: 'asc' | 'desc' | null
+  filtros: { columna: string; operador: string; valor: string; valorHasta?: string }[]
 }
 
 export interface PaginaAuditoria {

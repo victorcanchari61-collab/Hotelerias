@@ -1,9 +1,12 @@
 import { useState } from 'react'
-import { Crown, Plus } from 'lucide-react'
+import { FaBan, FaCircleCheck, FaPencil } from 'react-icons/fa6'
+import { Crown, Percent, Plus, Users } from 'lucide-react'
 import { describeFailure } from '@/core/errors/failures'
 import type { TipoCliente } from '@/domain/entities/Cliente'
 import { ACCION } from '@/domain/entities/Permiso'
-import { Alert, Badge, Button, Card, Checkbox, Input, Modal, PageHeader, useToast } from '@/shared/ui'
+import { Alert, Badge, Button, Checkbox, Input, ListPage, Modal, StatCard, useToast } from '@/shared/ui'
+import type { DataTableColumn } from '@/shared/ui'
+import { BotonFila, FilaAcciones } from '../../components/BotonesFila'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { usePermisos } from '../../providers/PermisosProvider'
@@ -38,6 +41,15 @@ const deTipo = (t: TipoCliente): Formulario => ({
   activo: t.activo,
 })
 
+const aDatos = (f: Formulario) => ({
+  nombre: f.nombre,
+  descripcion: f.descripcion,
+  descuentoPct: Number(f.descuentoPct),
+  reservasMinimas: f.reservasMinimas.trim() === '' ? null : Number(f.reservasMinimas),
+  orden: Number(f.orden) || 0,
+  activo: f.activo,
+})
+
 /** Cómo el hotel clasifica a sus huéspedes y qué descuento da cada categoría. */
 export function FidelizacionPage() {
   const { useCases } = useDependencies()
@@ -51,19 +63,15 @@ export function FidelizacionPage() {
 
   const [editando, setEditando] = useState<{ id: number | null; form: Formulario } | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const [ocupado, setOcupado] = useState<number | null>(null)
   const [errorForm, setErrorForm] = useState<string | null>(null)
+
+  const activos = tipos.datos.filter((t) => t.activo).length
+  const mayorDescuento = tipos.datos.reduce((m, t) => Math.max(m, t.descuentoPct), 0)
 
   async function guardar() {
     if (!editando) return
-    const f = editando.form
-    const datos = {
-      nombre: f.nombre,
-      descripcion: f.descripcion,
-      descuentoPct: Number(f.descuentoPct),
-      reservasMinimas: f.reservasMinimas.trim() === '' ? null : Number(f.reservasMinimas),
-      orden: Number(f.orden) || 0,
-      activo: f.activo,
-    }
+    const datos = aDatos(editando.form)
 
     setGuardando(true)
     setErrorForm(null)
@@ -82,107 +90,147 @@ export function FidelizacionPage() {
     await tipos.recargar()
   }
 
+  async function alternar(t: TipoCliente) {
+    setOcupado(t.id)
+    const resultado = await useCases.actualizarTipoCliente.execute({
+      id: t.id,
+      datos: { ...aDatos(deTipo(t)), activo: !t.activo },
+    })
+    setOcupado(null)
+    if (resultado.isLeft()) {
+      toast.error(describeFailure(resultado.value))
+      return
+    }
+    toast.exito(t.activo ? 'Tipo desactivado.' : 'Tipo activado.')
+    await tipos.recargar()
+  }
+
   const set = <K extends keyof Formulario>(k: K, v: Formulario[K]) =>
     setEditando((e) => (e ? { ...e, form: { ...e.form, [k]: v } } : e))
 
+  const columnas: DataTableColumn<TipoCliente>[] = [
+    { key: 'orden', label: 'Orden', filterable: false, value: (t) => t.orden, render: (t) => t.orden },
+    {
+      key: 'nombre',
+      label: 'Tipo',
+      filterable: false,
+      render: (t) => (
+        <div className="min-w-0">
+          <div className="font-medium text-ink">{t.nombre}</div>
+          {t.descripcion && <div className="truncate text-xs text-ink-soft">{t.descripcion}</div>}
+        </div>
+      ),
+    },
+    { key: 'descuento', label: 'Descuento', filterable: false, value: (t) => t.descuentoPct, render: (t) => `${t.descuentoPct}%` },
+    {
+      key: 'regla',
+      label: 'Cómo se llega',
+      filterable: false,
+      value: (t) => (t.reservasMinimas === null ? 'A mano' : `Desde ${t.reservasMinimas} reservas`),
+      render: (t) => (t.reservasMinimas === null ? 'Se asigna a mano' : `Desde ${t.reservasMinimas} reservas`),
+    },
+    {
+      key: 'activo',
+      label: 'Estado',
+      filterType: 'select',
+      filterOptions: [
+        { value: 'Activo', label: 'Activo' },
+        { value: 'Inactivo', label: 'Inactivo' },
+      ],
+      value: (t) => (t.activo ? 'Activo' : 'Inactivo'),
+      render: (t) => <Badge tone={t.activo ? 'sys' : 'neutral'}>{t.activo ? 'Activo' : 'Inactivo'}</Badge>,
+    },
+  ]
+
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Fidelización y VIP"
-        description="Los tipos de huésped. Cada reserva cuenta: al llegar al mínimo, el huésped sube de tipo solo y recibe su descuento. El de menor orden es el de entrada."
-        icon={<Crown size={20} />}
-        actions={
-          puedeCrear ? (
-            <Button iconRight={<Plus size={16} />} onClick={() => {
+    <ListPage
+      icon={<Crown size={20} />}
+      title="Fidelización y VIP"
+      description="Los tipos de huésped. Cada reserva cuenta: al llegar al mínimo, el huésped sube de tipo solo y recibe su descuento. El de menor orden es el de entrada."
+      actions={
+        puedeCrear ? (
+          <Button
+            size="sm"
+            iconRight={<Plus size={15} />}
+            onClick={() => {
               setErrorForm(null)
               setEditando({ id: null, form: vacio(tipos.datos.length) })
-            }}>
-              Nuevo tipo
-            </Button>
-          ) : undefined
-        }
-      />
-
-      {tipos.error && <Alert>{tipos.error}</Alert>}
-
-      <Card className="overflow-hidden p-0 sm:p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line bg-surface-alt text-xs uppercase text-ink-muted">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Orden</th>
-                <th className="px-4 py-3 font-semibold">Tipo</th>
-                <th className="px-4 py-3 font-semibold">Descuento</th>
-                <th className="px-4 py-3 font-semibold">Cómo se llega</th>
-                <th className="px-4 py-3 font-semibold">Estado</th>
-                {puedeEditar && <th className="px-4 py-3 text-right font-semibold">Acciones</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {tipos.cargando && (
-                <tr><td colSpan={6} className="px-4 py-6 text-center text-ink-muted">Cargando…</td></tr>
-              )}
-              {!tipos.cargando && tipos.datos.length === 0 && !tipos.error && (
-                <tr><td colSpan={6} className="px-4 py-6 text-center text-ink-muted">Aún no hay tipos de huésped.</td></tr>
-              )}
-              {tipos.datos.map((t) => (
-                <tr key={t.id}>
-                  <td className="px-4 py-3 text-ink-muted">{t.orden}</td>
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-ink">{t.nombre}</p>
-                    {t.descripcion && <p className="text-xs text-ink-muted">{t.descripcion}</p>}
-                  </td>
-                  <td className="px-4 py-3">{t.descuentoPct}%</td>
-                  <td className="px-4 py-3 text-ink-muted">
-                    {t.reservasMinimas === null ? 'Se asigna a mano' : `Desde ${t.reservasMinimas} reservas`}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge tone={t.activo ? 'success' : 'neutral'}>{t.activo ? 'Activo' : 'Inactivo'}</Badge>
-                  </td>
-                  {puedeEditar && (
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end">
-                        <Button variant="ghost" onClick={() => {
-                          setErrorForm(null)
-                          setEditando({ id: t.id, form: deTipo(t) })
-                        }}>
-                          Editar
-                        </Button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
+            }}
+          >
+            Nuevo tipo
+          </Button>
+        ) : undefined
+      }
+      alert={tipos.error ? <Alert>{tipos.error}</Alert> : undefined}
+      stats={
+        <>
+          <StatCard label="Tipos de huésped" value={String(tipos.datos.length)} icon={<Users size={18} />} />
+          <StatCard
+            label="Activos"
+            value={String(activos)}
+            icon={<Crown size={18} />}
+            hint={`${tipos.datos.length - activos} desactivados`}
+          />
+          <StatCard label="Mayor descuento" value={`${mayorDescuento}%`} icon={<Percent size={18} />} />
+        </>
+      }
+      columns={columnas}
+      rows={tipos.datos}
+      rowKey="id"
+      cardIcon={Crown}
+      actionsWidth={puedeEditar ? 130 : 0}
+      searchPlaceholder="Buscar por nombre..."
+      empty={tipos.cargando ? 'Cargando tipos...' : 'Aún no hay tipos de huésped.'}
+      rowActions={
+        puedeEditar
+          ? (t) => (
+              <FilaAcciones>
+                <BotonFila
+                  color="info"
+                  titulo={`Editar ${t.nombre}`}
+                  onClick={() => {
+                    setErrorForm(null)
+                    setEditando({ id: t.id, form: deTipo(t) })
+                  }}
+                >
+                  <FaPencil />
+                </BotonFila>
+                <BotonFila
+                  color={t.activo ? 'warning' : 'success'}
+                  titulo={`${t.activo ? 'Desactivar' : 'Activar'} ${t.nombre}`}
+                  loading={ocupado === t.id}
+                  onClick={() => void alternar(t)}
+                >
+                  {t.activo ? <FaBan /> : <FaCircleCheck />}
+                </BotonFila>
+              </FilaAcciones>
+            )
+          : undefined
+      }
+    >
       <Modal
         open={editando !== null}
         title={editando?.id === null ? 'Nuevo tipo de huésped' : 'Editar tipo de huésped'}
+        size="sm"
         onClose={() => setEditando(null)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setEditando(null)}>Cancelar</Button>
-            <Button loading={guardando} onClick={() => void guardar()}>Guardar</Button>
+            <Button variant="secondary" size="sm" onClick={() => setEditando(null)}>
+              Cancelar
+            </Button>
+            <Button size="sm" loading={guardando} onClick={() => void guardar()}>
+              {editando?.id === null ? 'Crear tipo' : 'Guardar cambios'}
+            </Button>
           </>
         }
       >
         {editando && (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             {errorForm && <Alert>{errorForm}</Alert>}
             <Input label="Nombre" value={editando.form.nombre} onChange={(e) => set('nombre', e.target.value)} />
             <Input label="Descripción" optional value={editando.form.descripcion} onChange={(e) => set('descripcion', e.target.value)} />
             <div className="grid gap-4 sm:grid-cols-3">
-              <Input
-                label="Descuento (%)"
-                type="number"
-                min={0}
-                max={100}
-                value={editando.form.descuentoPct}
-                onChange={(e) => set('descuentoPct', e.target.value)}
-              />
+              <Input label="Descuento (%)" type="number" min={0} max={100} value={editando.form.descuentoPct} onChange={(e) => set('descuentoPct', e.target.value)} />
               <Input
                 label="Reservas mínimas"
                 optional
@@ -198,6 +246,6 @@ export function FidelizacionPage() {
           </div>
         )}
       </Modal>
-    </div>
+    </ListPage>
   )
 }

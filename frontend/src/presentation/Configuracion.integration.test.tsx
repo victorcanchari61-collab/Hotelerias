@@ -46,7 +46,16 @@ class PermisosConCatalogo extends FakePermisoRepository {
   }
 }
 
-function montar(ruta: string, permisos: string[]) {
+type Fakes = {
+  rol: FakeRolRepository
+  empresa: FakeEmpresaRepository
+  sedeAdmin: FakeSedeAdminRepository
+  accesos: FakeAccesosRepository
+  auditoria: FakeAuditoriaRepository
+  usuario: FakeUsuarioRepository
+}
+
+function montar(ruta: string, permisos: string[], preparar?: (fakes: Fakes) => void) {
   const permiso = new PermisosConCatalogo()
   permiso.claves = permisos
   const fakes = {
@@ -58,6 +67,7 @@ function montar(ruta: string, permisos: string[]) {
     usuario: new FakeUsuarioRepository(),
   }
   fakes.usuario.lista = [usuarioDe({ id: 5, nombre: 'Pepe', apellido: 'Rojas', rolIds: [2] })]
+  preparar?.(fakes)
 
   const container = createContainer({
     storage: { persistent: new MemoryStorage(), ephemeral: new MemoryStorage() },
@@ -87,22 +97,25 @@ describe('Roles', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Nuevo rol/ }))
     fireEvent.change(await screen.findByLabelText('Nombre'), { target: { value: '  Concierge ' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Crear rol' }))
 
     await waitFor(() => expect(app.rol.creados).toHaveLength(1))
     expect(app.rol.creados[0].nombre).toBe('Concierge')
   })
 
-  it('sin "crear" no ofrece el botón; un rol protegido no se elimina ni se desactiva', async () => {
-    const app = montar('/admin/config/roles', ['config.roles:ver', 'config.roles:editar', 'config.roles:eliminar'])
-    app.rol.lista = [rolDe({ id: 1, nombre: 'Administrador', accesoTotal: true, delSistema: true })]
-    cleanup()
-    const otra = montar('/admin/config/roles', ['config.roles:ver', 'config.roles:editar', 'config.roles:eliminar'])
-    otra.rol.lista.splice(0, 1, rolDe({ id: 1, nombre: 'Administrador', accesoTotal: true, delSistema: true }))
+  it('sin "crear" no ofrece el botón; un rol protegido no se desactiva ni se elimina', async () => {
+    const app = montar('/admin/config/roles', ['config.roles:ver', 'config.roles:editar', 'config.roles:eliminar'], ({ rol }) => {
+      rol.lista = [rolDe({ id: 1, nombre: 'Administrador', accesoTotal: true, delSistema: true })]
+    })
 
+    expect((await screen.findAllByText('Administrador')).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: /Nuevo rol/ })).toBeNull()
-    await screen.findByText('Administrador')
-    expect(screen.queryByRole('button', { name: 'Eliminar' })).toBeNull()
+    // Los botones existen pero están apagados: se ve por qué no se puede.
+    for (const nombre of ['Desactivar Administrador', 'Eliminar Administrador']) {
+      const botones = screen.getAllByRole('button', { name: nombre }) as HTMLButtonElement[]
+      expect(botones.every((b) => b.disabled), nombre).toBe(true)
+    }
+    expect(app.rol.eliminados).toHaveLength(0)
   })
 })
 
@@ -132,11 +145,9 @@ describe('Accesos', () => {
   })
 
   it('quitar "ver" quita las demás acciones de esa pantalla', async () => {
-    const app = montar('/admin/config/accesos', PERMISOS)
-    app.rol.lista[0] = rolDe({ permisos: ['reservas.reservas:ver', 'reservas.reservas:crear'] })
-    cleanup()
-    const otra = montar('/admin/config/accesos', PERMISOS)
-    otra.rol.lista[0] = rolDe({ permisos: ['reservas.reservas:ver', 'reservas.reservas:crear'] })
+    montar('/admin/config/accesos', PERMISOS, ({ rol }) => {
+      rol.lista[0] = rolDe({ permisos: ['reservas.reservas:ver', 'reservas.reservas:crear'] })
+    })
 
     await elegirRol('2', /Recepcionista/)
     fireEvent.click(await screen.findByLabelText('Reservas: Ver'))
@@ -145,11 +156,9 @@ describe('Accesos', () => {
   })
 
   it('el rol de acceso total no se configura', async () => {
-    const app = montar('/admin/config/accesos', PERMISOS)
-    app.rol.lista[0] = rolDe({ id: 1, nombre: 'Administrador', accesoTotal: true })
-    cleanup()
-    const otra = montar('/admin/config/accesos', PERMISOS)
-    otra.rol.lista[0] = rolDe({ id: 1, nombre: 'Administrador', accesoTotal: true })
+    montar('/admin/config/accesos', PERMISOS, ({ rol }) => {
+      rol.lista[0] = rolDe({ id: 1, nombre: 'Administrador', accesoTotal: true })
+    })
 
     await elegirRol('1', /Administrador/)
 
@@ -174,8 +183,8 @@ describe('Accesos', () => {
     expect(await screen.findByText(/modo consulta/)).toBeTruthy()
 
     fireEvent.click(screen.getByRole('tab', { name: /Solicitudes/ }))
-    await screen.findByText('Pepe Rojas')
-    expect(screen.queryByRole('button', { name: 'Aprobar' })).toBeNull()
+    await screen.findAllByText('Pepe Rojas')
+    expect(screen.queryByRole('button', { name: /Aprobar/ })).toBeNull()
     expect(app.accesos.aprobadas).toHaveLength(0)
   })
 
@@ -183,7 +192,7 @@ describe('Accesos', () => {
     const app = montar('/admin/config/accesos', PERMISOS)
 
     fireEvent.click(await screen.findByRole('tab', { name: /Solicitudes/ }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Aprobar' }))
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Aprobar la solicitud de Pepe Rojas' }))[0])
 
     const dialogo = await screen.findByRole('dialog')
     fireEvent.click(within(dialogo).getByRole('button', { name: 'Aprobar' }))
@@ -196,7 +205,7 @@ describe('Accesos', () => {
     const app = montar('/admin/config/accesos', PERMISOS)
 
     fireEvent.click(await screen.findByRole('tab', { name: /Solicitudes/ }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Rechazar' }))
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Rechazar la solicitud de Pepe Rojas' }))[0])
     const dialogo = await screen.findByRole('dialog')
     fireEvent.change(within(dialogo).getByLabelText(/Respuesta/), { target: { value: ' Pídelo a tu jefe ' } })
     fireEvent.click(within(dialogo).getByRole('button', { name: 'Rechazar' }))
@@ -228,37 +237,40 @@ describe('pedir un permiso al toparse con un 403', () => {
 })
 
 describe('Auditoría', () => {
-  it('lista, filtra y muestra los cambios de un registro', async () => {
+  it('la tabla pide al servidor (modo servidor) y muestra los cambios de un registro', async () => {
     const app = montar('/admin/config/auditoria', ['config.auditoria:ver'])
 
-    expect(await screen.findByText('Super Admin')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Ver cambios' }))
+    expect((await screen.findAllByText('Super Admin')).length).toBeGreaterThan(0)
+    // Pidió la primera página al servidor: no filtra ni pagina en memoria.
+    await waitFor(() => expect(app.auditoria.filtros.length).toBeGreaterThan(0))
+    expect(app.auditoria.filtros[0]).toMatchObject({ pagina: 1, porPagina: 25 })
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Ver cambios del registro 3/ })[0])
 
     const dialogo = await screen.findByRole('dialog')
     expect(within(dialogo).getByText('Housekeeping')).toBeTruthy()
     expect(within(dialogo).getByText('Limpieza')).toBeTruthy()
-    fireEvent.click(within(dialogo).getByRole('button', { name: 'Cerrar' }))
-
-    fireEvent.change(screen.getByLabelText('Entidad'), { target: { value: 'Rol' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
-    await waitFor(() => expect(app.auditoria.filtros.at(-1)).toMatchObject({ entidad: 'Rol', pagina: 1 }))
   })
 
-  it('depurar es solo con "eliminar" y pide confirmación', async () => {
+  it('depurar es solo con "eliminar" y borra lo que se está viendo, tras confirmar', async () => {
     const solo = montar('/admin/config/auditoria', ['config.auditoria:ver'])
-    await screen.findByText('Super Admin')
+    await screen.findAllByText('Super Admin')
     expect(screen.queryByRole('button', { name: /Depurar/ })).toBeNull()
     expect(solo.auditoria.depuradas).toHaveLength(0)
     cleanup()
 
     const app = montar('/admin/config/auditoria', ['config.auditoria:ver', 'config.auditoria:eliminar'])
+    await screen.findAllByText('Super Admin')
     fireEvent.click(await screen.findByRole('button', { name: /Depurar/ }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Continuar' }))
     expect(app.auditoria.depuradas).toHaveLength(0) // todavía no: falta confirmar
 
-    const botones = await screen.findAllByRole('button', { name: 'Depurar' })
-    fireEvent.click(botones[botones.length - 1])
-    await waitFor(() => expect(app.auditoria.depuradas).toEqual(['2026-08-03']))
+    const dialogo = await screen.findByRole('dialog')
+    expect(within(dialogo).getByText(/Nunca se borra lo de los últimos 30 días/)).toBeTruthy()
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Depurar' }))
+
+    await waitFor(() => expect(app.auditoria.depuradas).toHaveLength(1))
+    // La consulta que se envía es la que la tabla tiene a la vista.
+    expect(app.auditoria.depuradas[0]).toMatchObject({ pagina: 1, buscar: '', filtros: [] })
   })
 })
 
@@ -298,9 +310,10 @@ describe('Empresa y Sedes', () => {
     const app = montar('/admin/config/sedes', ['config.sedes:ver', 'config.sedes:crear'])
 
     fireEvent.click(await screen.findByRole('button', { name: /Nueva sede/ }))
-    fireEvent.change(await screen.findByLabelText('Nombre'), { target: { value: 'Velothr Cusco' } })
-    fireEvent.change(screen.getByLabelText('Ciudad'), { target: { value: 'Cusco' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }))
+    const modal = within(await screen.findByRole('dialog'))
+    fireEvent.change(modal.getByLabelText('Nombre'), { target: { value: 'Velothr Cusco' } })
+    fireEvent.change(modal.getByLabelText('Ciudad'), { target: { value: 'Cusco' } })
+    fireEvent.click(modal.getByRole('button', { name: 'Crear sede' }))
 
     await waitFor(() => expect(app.sedeAdmin.creadas).toHaveLength(1))
     expect(app.sedeAdmin.creadas[0]).toMatchObject({ nombre: 'Velothr Cusco', ciudad: 'Cusco', estrellas: 5 })
@@ -309,15 +322,17 @@ describe('Empresa y Sedes', () => {
 
 describe('Usuarios', () => {
   it('crea un usuario con sus roles', async () => {
-    const app = montar('/admin/config/usuarios', ['config.usuarios:ver', 'config.usuarios:crear', 'config.roles:ver'])
-    app.rol.lista = [rolDe({ id: 2, nombre: 'Recepcionista' }), rolDe({ id: 3, nombre: 'Housekeeping' })]
+    const app = montar('/admin/config/usuarios', ['config.usuarios:ver', 'config.usuarios:crear', 'config.roles:ver'], ({ rol }) => {
+      rol.lista = [rolDe({ id: 2, nombre: 'Recepcionista' }), rolDe({ id: 3, nombre: 'Housekeeping' })]
+    })
 
     fireEvent.click(await screen.findByRole('button', { name: /Nuevo usuario/ }))
-    fireEvent.change(await screen.findByLabelText('Nombre'), { target: { value: 'Rosa' } })
-    fireEvent.change(screen.getByLabelText('Correo'), { target: { value: 'rosa@hotel.pe' } })
-    fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'clave-larga-123' } })
-    fireEvent.click(await screen.findByLabelText('Housekeeping'))
-    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }))
+    const modal = within(await screen.findByRole('dialog'))
+    fireEvent.change(modal.getByLabelText('Nombre'), { target: { value: 'Rosa' } })
+    fireEvent.change(modal.getByLabelText('Correo'), { target: { value: 'rosa@hotel.pe' } })
+    fireEvent.change(modal.getByLabelText('Contraseña'), { target: { value: 'clave-larga-123' } })
+    fireEvent.click(await modal.findByLabelText('Housekeeping'))
+    fireEvent.click(modal.getByRole('button', { name: 'Guardar' }))
 
     await waitFor(() => expect(app.usuario.creados).toHaveLength(1))
     expect(app.usuario.creados[0]).toMatchObject({ nombre: 'Rosa', rolIds: [3], activo: true })
@@ -327,10 +342,11 @@ describe('Usuarios', () => {
     const app = montar('/admin/config/usuarios', ['config.usuarios:ver', 'config.usuarios:crear'])
 
     fireEvent.click(await screen.findByRole('button', { name: /Nuevo usuario/ }))
-    fireEvent.change(await screen.findByLabelText('Nombre'), { target: { value: 'Rosa' } })
-    fireEvent.change(screen.getByLabelText('Correo'), { target: { value: 'rosa@hotel.pe' } })
-    fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'clave-larga-123' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }))
+    const modal = within(await screen.findByRole('dialog'))
+    fireEvent.change(modal.getByLabelText('Nombre'), { target: { value: 'Rosa' } })
+    fireEvent.change(modal.getByLabelText('Correo'), { target: { value: 'rosa@hotel.pe' } })
+    fireEvent.change(modal.getByLabelText('Contraseña'), { target: { value: 'clave-larga-123' } })
+    fireEvent.click(modal.getByRole('button', { name: 'Guardar' }))
 
     expect(await screen.findByText('Elige al menos un rol.')).toBeTruthy()
     expect(app.usuario.creados).toHaveLength(0)
