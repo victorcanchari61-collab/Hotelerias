@@ -83,10 +83,16 @@ export interface Cotizacion {
   checkOut: FechaISO
   noches: number
   huespedes: number
+  /** Los importes de la cotización están en esta moneda ('PEN' o 'USD'). */
+  moneda: string
+  /** La venta (×1.000.000) con que se convirtió; null si es en soles. */
+  tipoCambioMicro: number | null
   precioNocheCent: number
   subtotalCent: number
   descuento: Descuento
   totalCent: number
+  /** El equivalente en soles del total (en soles es igual a totalCent). */
+  totalPenCent: number
   disponibles: number
   codigo: string
   /** El código existe y le corresponde a esta estadía (aunque otra oferta dé más). */
@@ -103,6 +109,8 @@ export interface SolicitudReserva {
   huespedes: number
   codigo: string
   notas: string
+  /** En qué moneda quiere ver y pagar; vacío es soles. */
+  moneda?: string
 }
 
 export type EstadoReserva = 'confirmada' | 'cancelada' | 'completada'
@@ -121,10 +129,15 @@ export interface Reserva {
   checkOut: FechaISO
   huespedes: number
   noches: number
+  /** Los importes están en esta moneda; el tipo de cambio se copió al reservar. */
+  moneda: string
+  tipoCambioMicro: number | null
   precioNocheCent: number
   subtotalCent: number
   descuentoCent: number
   totalCent: number
+  /** Lo que vale en soles (la contabilidad): en soles es igual a totalCent. */
+  totalPenCent: number
   descuentoOrigen: OrigenDescuento
   descuentoNombre: string
   estado: EstadoReserva

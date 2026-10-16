@@ -9,7 +9,7 @@ import { BotonFila, FilaAcciones } from '../../components/BotonesFila'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { usePermisos } from '../../providers/PermisosProvider'
-import { formatSoles, rangoFechas } from '../portal/format'
+import { formatMonto, formatSoles, rangoFechas } from '../portal/format'
 
 const SUBMODULO = 'reservas.reservas'
 
@@ -31,7 +31,8 @@ export function ReservasAdminPage() {
 
   const confirmadas = reservas.datos.filter((r) => r.estado === 'confirmada')
   const canceladas = reservas.datos.filter((r) => r.estado === 'cancelada').length
-  const facturado = confirmadas.reduce((suma, r) => suma + r.totalCent, 0)
+  // Siempre en soles: sumar importes de monedas distintas no tiene sentido.
+  const facturado = confirmadas.reduce((suma, r) => suma + r.totalPenCent, 0)
 
   function pedirCancelar(r: Reserva) {
     confirmar({
@@ -96,11 +97,14 @@ export function ReservasAdminPage() {
       label: 'Total',
       align: 'right',
       filterable: false,
-      value: (r) => r.totalCent,
+      value: (r) => r.totalPenCent,
       render: (r) => (
         <div>
-          <div className="font-medium text-ink">{formatSoles(r.totalCent)}</div>
-          {r.descuentoCent > 0 && <div className="text-xs text-[var(--accent-ink)]">− {formatSoles(r.descuentoCent)}</div>}
+          <div className="font-medium text-ink">{formatMonto(r.totalCent, r.moneda)}</div>
+          {r.moneda !== 'PEN' && <div className="text-xs text-ink-soft">≈ {formatSoles(r.totalPenCent)}</div>}
+          {r.descuentoCent > 0 && (
+            <div className="text-xs text-[var(--accent-ink)]">− {formatMonto(r.descuentoCent, r.moneda)}</div>
+          )}
         </div>
       ),
     },
@@ -124,7 +128,7 @@ export function ReservasAdminPage() {
         <>
           <StatCard label="Reservas" value={String(reservas.datos.length)} icon={<CalendarDays size={18} />} />
           <StatCard label="Confirmadas" value={String(confirmadas.length)} icon={<CalendarCheck size={18} />} hint={`${canceladas} canceladas`} />
-          <StatCard label="Importe confirmado" value={formatSoles(facturado)} icon={<Wallet size={18} />} />
+          <StatCard label="Importe confirmado" value={formatSoles(facturado)} icon={<Wallet size={18} />} hint="en soles" />
           <StatCard label="Canceladas" value={String(canceladas)} icon={<CalendarX2 size={18} />} tono={canceladas > 0 ? 'warning' : 'neutral'} />
         </>
       }

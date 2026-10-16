@@ -11,8 +11,10 @@ import type {
   Sede,
   SolicitudReserva,
 } from '@/domain/entities/Portal'
+import type { MonedasPublicas } from '@/domain/entities/Moneda'
 import type { PortalRepository } from '@/domain/repositories/PortalRepository'
 import type { PortalRemoteDataSource } from '../datasources/PortalRemoteDataSource'
+import { monedasPublicasFromDto } from '../models/moneda.model'
 import {
   cotizacionFromDto,
   detalleFromDto,
@@ -38,6 +40,10 @@ export class PortalRepositoryImpl implements PortalRepository {
     return attempt(async () =>
       ((await this.remote.disponibilidad(sedeId, busqueda)) ?? []).map(disponibleFromDto),
     )
+  }
+
+  monedas(): Promise<Either<Failure, MonedasPublicas>> {
+    return attempt(async () => monedasPublicasFromDto(await this.remote.monedas()))
   }
 
   promociones(): Promise<Either<Failure, Promocion[]>> {

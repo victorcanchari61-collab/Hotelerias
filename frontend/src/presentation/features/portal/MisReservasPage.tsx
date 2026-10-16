@@ -8,7 +8,7 @@ import { useCarga } from '../../hooks/useCarga'
 import { useClienteAuth } from '../../providers/ClienteAuthProvider'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { PATHS } from '../../routes/paths'
-import { formatSoles, pluralNoches, rangoFechas } from './format'
+import { formatMonto, formatSoles, pluralNoches, rangoFechas } from './format'
 
 const ESTADO: Record<EstadoReserva, { texto: string; tono: BadgeTone }> = {
   confirmada: { texto: 'Confirmada', tono: 'success' },
@@ -128,10 +128,13 @@ export function MisReservasPage() {
                 </div>
                 <div className="text-right">
                   <Badge tone={e.tono}>{e.texto}</Badge>
-                  <p className="mt-2 text-xl font-bold">{formatSoles(r.totalCent)}</p>
+                  <p className="mt-2 text-xl font-bold">{formatMonto(r.totalCent, r.moneda)}</p>
+                  {r.moneda !== 'PEN' && (
+                    <p className="text-xs text-ink-muted">≈ {formatSoles(r.totalPenCent)}</p>
+                  )}
                   {r.descuentoCent > 0 && (
                     <p className="text-xs text-accent-ink">
-                      Ahorraste {formatSoles(r.descuentoCent)} · {r.descuentoNombre}
+                      Ahorraste {formatMonto(r.descuentoCent, r.moneda)} · {r.descuentoNombre}
                     </p>
                   )}
                 </div>

@@ -15,6 +15,7 @@ import (
 	"hotelerias/backend/internal/auth"
 	"hotelerias/backend/internal/cliente"
 	"hotelerias/backend/internal/hotel"
+	"hotelerias/backend/internal/moneda"
 	"hotelerias/backend/internal/platform/fecha"
 	"hotelerias/backend/internal/platform/httpx"
 	"hotelerias/backend/internal/promocion"
@@ -39,6 +40,11 @@ type Cuentas interface {
 	Perfil(ctx context.Context, id int64) (cliente.Cliente, error)
 }
 
+// Monedas son las monedas que se ofrecen y el tipo de cambio de hoy.
+type Monedas interface {
+	Publico(ctx context.Context) (moneda.Publico, error)
+}
+
 type Reservas interface {
 	Cotizar(ctx context.Context, clienteID int64, sol reserva.Solicitud) (reserva.Cotizacion, error)
 	Reservar(ctx context.Context, clienteID int64, sol reserva.Solicitud) (reserva.Reserva, error)
@@ -52,6 +58,7 @@ type Handler struct {
 	ofertas  Ofertas
 	cuentas  Cuentas
 	reservas Reservas
+	monedas  Monedas
 	hoy      func() fecha.Fecha
 
 	// opcional anota al huésped si trae sesión, sin exigirla.
@@ -60,9 +67,9 @@ type Handler struct {
 	altas *auth.Limitador
 }
 
-func NewHandler(h Hoteles, o Ofertas, c Cuentas, r Reservas, hoy func() fecha.Fecha, opcional gin.HandlerFunc) *Handler {
+func NewHandler(h Hoteles, o Ofertas, c Cuentas, r Reservas, m Monedas, hoy func() fecha.Fecha, opcional gin.HandlerFunc) *Handler {
 	return &Handler{
-		hoteles: h, ofertas: o, cuentas: c, reservas: r, hoy: hoy, opcional: opcional,
+		hoteles: h, ofertas: o, cuentas: c, reservas: r, monedas: m, hoy: hoy, opcional: opcional,
 		// Cada alta cuesta un bcrypt: sin tope, es una forma barata de tumbar el servidor.
 		altas: auth.NuevoLimitador(10, time.Hour),
 	}
@@ -76,6 +83,7 @@ func (m modulo) Register(r gin.IRouter) { m(r) }
 func (h *Handler) Publico() interface{ Register(gin.IRouter) } {
 	return modulo(func(r gin.IRouter) {
 		r.GET("/portal/sedes", h.sedes)
+		r.GET("/portal/monedas", h.listarMonedas)
 		r.GET("/portal/sedes/:id", h.sede)
 		r.GET("/portal/sedes/:id/disponibilidad", h.disponibilidad)
 		r.POST("/portal/registro", h.registro)
@@ -102,6 +110,15 @@ func fail(c *gin.Context, err error) {
 
 func (h *Handler) sedes(c *gin.Context) {
 	out, err := h.hoteles.Sedes(c.Request.Context())
+	if err != nil {
+		fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, out)
+}
+
+func (h *Handler) listarMonedas(c *gin.Context) {
+	out, err := h.monedas.Publico(c.Request.Context())
 	if err != nil {
 		fail(c, err)
 		return

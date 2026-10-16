@@ -31,6 +31,8 @@ import (
 	"hotelerias/backend/internal/demo"
 	"hotelerias/backend/internal/hotel"
 	hotelpg "hotelerias/backend/internal/hotel/postgres"
+	"hotelerias/backend/internal/moneda"
+	monedapg "hotelerias/backend/internal/moneda/postgres"
 	"hotelerias/backend/internal/platform/httpx"
 	"hotelerias/backend/internal/platform/migrate"
 	"hotelerias/backend/internal/portal"
@@ -113,8 +115,9 @@ func armar(t *testing.T) *entorno {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reservaSvc := reserva.NewServicio(reservapg.NewStore(pool), hoteles, promoSvc, clienteSvc, hotel.Hoy)
-	h := portal.NewHandler(hotel.NewServicio(hoteles, hotel.Hoy), promoSvc, clienteSvc, reservaSvc, hotel.Hoy,
+	monedaSvc := moneda.NewServicio(monedapg.NewStore(pool), hotel.Hoy, auditoria.Nop{})
+	reservaSvc := reserva.NewServicio(reservapg.NewStore(pool), hoteles, promoSvc, clienteSvc, monedaSvc, hotel.Hoy)
+	h := portal.NewHandler(hotel.NewServicio(hoteles, hotel.Hoy), promoSvc, clienteSvc, reservaSvc, monedaSvc, hotel.Hoy,
 		auth.ClienteOpcional(tokens))
 
 	router := httpx.NewRouter(nil)
@@ -124,6 +127,7 @@ func armar(t *testing.T) *entorno {
 		Modules: []routes.Module{
 			// Sin guard de permiso: aquí solo importa que exija sesión de PERSONAL.
 			promocion.NewHandler(promoSvc, httpx.Guardas{}),
+			moneda.NewHandler(monedaSvc, httpx.Guardas{}),
 			reserva.NewAdminHandler(reservaSvc, httpx.Guardas{}, reserva.SinRestriccion{}, auditoria.Nop{}),
 		},
 		Cliente:        auth.AuthenticateCliente(tokens),
@@ -562,5 +566,148 @@ func TestLoginDeHuesped(t *testing.T) {
 		"nombre": "Otra", "email": "login@correo.pe", "password": "una-clave-larga-1",
 	}, ""); code != http.StatusConflict {
 		t.Fatalf("correo repetido: %d, esperaba 409", code)
+	}
+}
+
+// --- dos monedas ---
+
+// fijarTipoCambio registra el de hoy por la ruta del panel, como lo haría Finanzas.
+func (e *entorno) fijarTipoCambio(t *testing.T, compra, venta string) {
+	t.Helper()
+	var uid int64
+	if err := e.pool.QueryRow(context.Background(),
+		`INSERT INTO usuario (nombre) VALUES ('Finanzas') RETURNING id`).Scan(&uid); err != nil {
+		t.Fatal(err)
+	}
+	staff, _ := e.tokens.Emitir(uid)
+	code, body := e.do(t, "POST", "/api/tipo-cambio", map[string]any{
+		"fecha": hotel.Hoy().String(), "moneda": "USD", "compra": compra, "venta": venta,
+	}, staff)
+	if code != http.StatusOK {
+		t.Fatalf("tipo de cambio: %d %s", code, body)
+	}
+}
+
+func TestMonedasSoloOfreceDolaresSiHayTipoDeCambio(t *testing.T) {
+	e := armar(t)
+
+	code, body := e.do(t, "GET", "/api/portal/monedas", nil, "")
+	if code != 200 {
+		t.Fatalf("%d %s", code, body)
+	}
+	p := decode[moneda.Publico](t, body)
+	if len(p.Monedas) != 2 || p.Monedas[0].Codigo != "PEN" || !p.Monedas[0].Base {
+		t.Fatalf("%+v", p.Monedas)
+	}
+	if len(p.TipoCambio) != 0 {
+		t.Fatalf("sin tipo de cambio no se ofrece dólares: %+v", p.TipoCambio)
+	}
+
+	e.fijarTipoCambio(t, "3.745", "3.752")
+	_, body = e.do(t, "GET", "/api/portal/monedas", nil, "")
+	p = decode[moneda.Publico](t, body)
+	if p.TipoCambio["USD"].VentaMicro != 3_752_000 {
+		t.Fatalf("%+v", p.TipoCambio)
+	}
+}
+
+func TestCotizarYReservarEnDolares(t *testing.T) {
+	e := armar(t)
+	_, tipos := e.tipos(t)
+	deluxe := tipos["Habitación Deluxe"]
+	tok, _ := e.registrar(t, "dolares@correo.pe")
+	in, out := fechas(80, 2)
+	usd := map[string]any{"moneda": "USD"}
+
+	// Sin tipo de cambio no se cotiza en dólares, pero en soles sí.
+	if code, body := e.do(t, "POST", "/api/portal/cotizar", solicitud(deluxe.ID, in, out, usd), ""); code != http.StatusBadRequest {
+		t.Fatalf("sin tipo de cambio: %d %s, esperaba 400", code, body)
+	}
+	if code, _ := e.do(t, "POST", "/api/portal/cotizar", solicitud(deluxe.ID, in, out), ""); code != 200 {
+		t.Fatalf("en soles: %d", code)
+	}
+
+	e.fijarTipoCambio(t, "3.745", "3.752")
+
+	code, body := e.do(t, "POST", "/api/portal/cotizar", solicitud(deluxe.ID, in, out, usd), "")
+	if code != 200 {
+		t.Fatalf("%d %s", code, body)
+	}
+	q := decode[reserva.Cotizacion](t, body)
+	noche := moneda.DePenA(deluxe.PrecioNocheCent, 3_752_000)
+	if q.Moneda != "USD" || q.PrecioNocheCent != noche || q.SubtotalCent != noche*2 || q.TotalCent != noche*2 {
+		t.Fatalf("%+v", q)
+	}
+
+	code, body = e.do(t, "POST", "/api/portal/reservas", solicitud(deluxe.ID, in, out, usd), tok)
+	if code != http.StatusCreated {
+		t.Fatalf("%d %s", code, body)
+	}
+	r := decode[reserva.Reserva](t, body)
+	if r.Moneda != "USD" || r.TipoCambioMicro == nil || *r.TipoCambioMicro != 3_752_000 || r.TotalCent != q.TotalCent {
+		t.Fatalf("%+v", r)
+	}
+	if r.TotalPenCent != moneda.APen(r.TotalCent, 3_752_000) {
+		t.Fatalf("equivalente en soles = %d", r.TotalPenCent)
+	}
+
+	// Cambia el tipo de cambio: la reserva ya hecha conserva el suyo.
+	e.fijarTipoCambio(t, "3.900", "3.910")
+	_, body = e.do(t, "GET", "/api/portal/reservas", nil, tok)
+	mias := decode[[]reserva.Reserva](t, body)
+	if len(mias) != 1 || mias[0].TotalCent != r.TotalCent || *mias[0].TipoCambioMicro != 3_752_000 {
+		t.Fatalf("la reserva debía conservar su tipo de cambio: %+v", mias)
+	}
+
+	// El panel la ve igual, con su equivalente en soles.
+	staff, _ := e.tokens.Emitir(1)
+	_, body = e.do(t, "GET", "/api/reserva", nil, staff)
+	lista := decode[[]reserva.Reserva](t, body)
+	if len(lista) != 1 || lista[0].Moneda != "USD" || lista[0].TotalPenCent != r.TotalPenCent {
+		t.Fatalf("%+v", lista)
+	}
+}
+
+func TestReservaEnSolesNoTieneTipoDeCambio(t *testing.T) {
+	e := armar(t)
+	_, tipos := e.tipos(t)
+	tok, _ := e.registrar(t, "soles@correo.pe")
+	in, out := fechas(90, 1)
+
+	code, body := e.do(t, "POST", "/api/portal/reservas", solicitud(tipos["Habitación Deluxe"].ID, in, out), tok)
+	if code != http.StatusCreated {
+		t.Fatalf("%d %s", code, body)
+	}
+	r := decode[reserva.Reserva](t, body)
+	if r.Moneda != "PEN" || r.TipoCambioMicro != nil || r.TotalPenCent != r.TotalCent {
+		t.Fatalf("%+v", r)
+	}
+}
+
+func TestTipoCambioDelPanelExigeSesionDePersonalYValida(t *testing.T) {
+	e := armar(t)
+	hoy := hotel.Hoy().String()
+	body := map[string]any{"fecha": hoy, "moneda": "USD", "compra": "3.745", "venta": "3.752"}
+
+	if code, _ := e.do(t, "POST", "/api/tipo-cambio", body, ""); code != http.StatusUnauthorized {
+		t.Fatalf("sin sesión: %d", code)
+	}
+	tok, _ := e.registrar(t, "intruso@correo.pe")
+	if code, _ := e.do(t, "POST", "/api/tipo-cambio", body, tok); code != http.StatusUnauthorized {
+		t.Fatalf("un huésped no fija el tipo de cambio: %d", code)
+	}
+
+	var uid int64
+	if err := e.pool.QueryRow(context.Background(), `INSERT INTO usuario (nombre) VALUES ('Finanzas') RETURNING id`).Scan(&uid); err != nil {
+		t.Fatal(err)
+	}
+	staff, _ := e.tokens.Emitir(uid)
+	body["venta"] = "3.700" // menor que la compra
+	if code, _ := e.do(t, "POST", "/api/tipo-cambio", body, staff); code != http.StatusBadRequest {
+		t.Fatalf("venta < compra: %d", code)
+	}
+	body["venta"] = 3.752 // un número JSON, no texto: no se acepta
+	if code, _ := e.do(t, "POST", "/api/tipo-cambio", body, staff); code != http.StatusBadRequest {
+		t.Fatalf("número en vez de texto: %d", code)
 	}
 }

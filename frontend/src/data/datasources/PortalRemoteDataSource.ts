@@ -2,6 +2,7 @@ import { ApiPaths } from '@/core/constants/api'
 import type { HttpClient } from '@/core/network/HttpClient'
 import type { BusquedaEstadia, PromocionInput } from '@/domain/entities/Portal'
 import type { RegistroCliente, TipoClienteInput } from '@/domain/entities/Cliente'
+import type { MonedasPublicasDto } from '../models/moneda.model'
 import type {
   ClienteDto,
   CotizacionDto,
@@ -19,6 +20,7 @@ export interface PortalRemoteDataSource {
   sedes(): Promise<SedeDto[] | null>
   sede(id: number): Promise<DetalleSedeDto>
   disponibilidad(sedeId: number, busqueda: BusquedaEstadia): Promise<HabitacionDisponibleDto[] | null>
+  monedas(): Promise<MonedasPublicasDto>
   promociones(): Promise<PromocionDto[] | null>
   cotizar(body: unknown): Promise<CotizacionDto>
   reservar(body: unknown): Promise<ReservaDto>
@@ -45,6 +47,10 @@ export class PortalRemoteDataSourceImpl implements PortalRemoteDataSource {
     return this.http.get<HabitacionDisponibleDto[] | null>(ApiPaths.portal.disponibilidad(sedeId), {
       query: { entrada: b.entrada, salida: b.salida, huespedes: b.huespedes },
     })
+  }
+
+  monedas() {
+    return this.http.get<MonedasPublicasDto>(ApiPaths.portal.monedas)
   }
 
   promociones() {

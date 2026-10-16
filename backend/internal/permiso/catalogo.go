@@ -152,6 +152,9 @@ var Permisos = nuevoCatalogo([]Submodulo{
 	sub("recepcion.estancias", con(documentoConfirmable, Cobrar)),
 	// Consumos y servicios cargados a la habitación.
 	sub("recepcion.cargos", con(documento, Cobrar)),
+	// La ficha de registro del huésped: documento de identidad o pasaporte, nacionalidad y
+	// fecha de ingreso al país (lo que luego sustenta la exoneración del IGV a no domiciliados).
+	sub("recepcion.fichas", documento),
 
 	// --- Reservas ---
 	sub("reservas.reservas", con(documentoConfirmable, Cobrar)),
@@ -166,10 +169,16 @@ var Permisos = nuevoCatalogo([]Submodulo{
 	// Asignar la limpieza y confirmarla (la habitación pasa a disponible).
 	sub("habitaciones.housekeeping", []Accion{Ver, Crear, Editar, Confirmar}),
 	sub("habitaciones.mantenimiento", documentoConfirmable),
+	// Objetos olvidados (lost & found): "confirmar" es registrar la devolución al huésped.
+	sub("habitaciones.objetos", documentoConfirmable),
+	// Lavado, rotación de sábanas y toallas, y stock de lencería por piso.
+	sub("habitaciones.lenceria", documento),
 
 	// --- CRM ---
 	sub("crm.huespedes", catalogoImportable),
 	sub("crm.fidelizacion", catalogoSinBorrado),
+	// Programa de puntos y niveles (Silver, Gold, Platinum). "Confirmar" es canjear o ajustar puntos.
+	sub("crm.lealtad", con(catalogoSinBorrado, Confirmar)),
 	// "Confirmar" es enviar la campaña.
 	sub("crm.campanas", documentoConfirmable),
 	// Se leen, se responden (editar) y se exportan; no se crean a mano.
@@ -180,6 +189,8 @@ var Permisos = nuevoCatalogo([]Submodulo{
 	// Lo que sale de la cocina: "confirmar" es marcarla como servida.
 	sub("restaurantes.comandas", []Accion{Ver, Crear, Editar, Anular, Confirmar}),
 	sub("restaurantes.carta", catalogoSinBorrado),
+	// Recetas con escandallo: cuánto insumo descuenta cada plato o coctel vendido.
+	sub("restaurantes.recetas", catalogoSinBorrado),
 	sub("restaurantes.mesas", catalogoSinBorrado),
 	// Servicio a la habitación 24/7: se cobra a la habitación o en el momento.
 	sub("restaurantes.roomservice", con(documentoConfirmable, Cobrar)),
@@ -189,9 +200,15 @@ var Permisos = nuevoCatalogo([]Submodulo{
 	sub("servicios.catalogo", catalogoSinBorrado),
 	// Lo que el huésped pide: confirmar es asignarlo y darlo por atendido.
 	sub("servicios.pedidos", documentoConfirmable),
+	// Mayordomía y concierge: traslados de lujo, reservas en restaurantes, tours privados.
+	sub("servicios.mayordomia", documentoConfirmable),
+	// Pet concierge: perfil de la mascota, dieta y servicios contratados.
+	sub("servicios.mascotas", catalogoSinBorrado),
 	sub("servicios.spa", documentoConfirmable),
 	sub("servicios.transporte", documentoConfirmable),
 	sub("servicios.eventos", con(documentoConfirmable, Cobrar)),
+	// Separación de salones, armado de menús y facturación consolidada de banquetes.
+	sub("servicios.salones", con(documentoConfirmable, Cobrar)),
 
 	// --- Productos y amenidades ---
 	sub("productos.catalogo", catalogoImportable),
@@ -226,6 +243,8 @@ var Permisos = nuevoCatalogo([]Submodulo{
 	sub("finanzas.cobrar", []Accion{Ver, Cobrar, Exportar}),
 	sub("finanzas.pagar", []Accion{Ver, Cobrar, Exportar}),
 	sub("finanzas.resultados", []Accion{Ver, Exportar}),
+	// El tipo de cambio PEN/USD de cada día: de él salen los importes en dólares.
+	sub("finanzas.tipocambio", catalogoSinBorrado),
 
 	// --- RR. HH. ---
 	sub("rrhh.empleados", catalogo),
@@ -233,6 +252,14 @@ var Permisos = nuevoCatalogo([]Submodulo{
 	// Un hotel opera 24/7: los turnos y su rotación son parte del día a día.
 	sub("rrhh.turnos", catalogoSinBorrado),
 	sub("rrhh.planilla", []Accion{Ver, Crear, Editar, Anular, Exportar}),
+
+	// --- Integraciones (conectividad con plataformas externas) ---
+	// "Confirmar" es sincronizar a mano disponibilidad y tarifas con las OTAs.
+	sub("integraciones.channel", []Accion{Ver, Editar, Confirmar}),
+	// Niubiz, Izipay, Stripe, PayPal: las credenciales se editan, nunca se ven.
+	sub("integraciones.pagos", []Accion{Ver, Editar}),
+	// Central telefónica (cargo de llamadas a la habitación) y cerraduras electrónicas.
+	sub("integraciones.dispositivos", []Accion{Ver, Editar}),
 
 	// --- Configuración ---
 	sub("config.empresa", catalogo),

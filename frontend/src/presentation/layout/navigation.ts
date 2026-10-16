@@ -2,6 +2,16 @@ import type { LucideIcon } from 'lucide-react'
 import { PANEL_BASE } from '../routes/paths'
 import {
   Armchair,
+  Award,
+  CircleDollarSign,
+  Luggage,
+  NotebookText,
+  PawPrint,
+  Phone,
+  Plug,
+  Presentation,
+  RefreshCw,
+  ScanLine,
   BedDouble,
   BedSingle,
   Bell,
@@ -137,6 +147,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'recepcion.panel', label: 'Panel de habitaciones', icon: LayoutGrid },
       { id: 'recepcion.estancias', label: 'Check-in y check-out', icon: DoorOpen },
       { id: 'recepcion.cargos', label: 'Cargos a la habitación', icon: Receipt },
+      { id: 'recepcion.fichas', label: 'Fichas de registro', icon: ScanLine },
     ],
   },
   {
@@ -161,6 +172,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'habitaciones.tipos', label: 'Tipos de habitación', icon: KeyRound },
       { id: 'habitaciones.housekeeping', label: 'Limpieza (housekeeping)', icon: SprayCan },
       { id: 'habitaciones.mantenimiento', label: 'Mantenimiento', icon: Wrench },
+      { id: 'habitaciones.objetos', label: 'Objetos olvidados', icon: Luggage },
+      { id: 'habitaciones.lenceria', label: 'Lencería y lavandería', icon: Shirt },
     ],
   },
   {
@@ -171,6 +184,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'crm.huespedes', label: 'Huéspedes', icon: Contact },
       { id: 'crm.fidelizacion', label: 'Fidelización y VIP', icon: Crown },
+      { id: 'crm.lealtad', label: 'Puntos y membresías', icon: Award },
       { id: 'crm.campanas', label: 'Campañas', icon: Megaphone },
       { id: 'crm.opiniones', label: 'Opiniones', icon: MessageSquareHeart },
     ],
@@ -184,6 +198,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'restaurantes.pos', label: 'Punto de venta', icon: CreditCard },
       { id: 'restaurantes.comandas', label: 'Comandas y cocina', icon: ClipboardList },
       { id: 'restaurantes.carta', label: 'Carta y menús', icon: BookOpenText },
+      { id: 'restaurantes.recetas', label: 'Recetas y escandallo', icon: NotebookText },
       { id: 'restaurantes.mesas', label: 'Mesas y salones', icon: Armchair },
       { id: 'restaurantes.roomservice', label: 'Room service 24/7', icon: Bell },
     ],
@@ -196,9 +211,12 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'servicios.catalogo', label: 'Catálogo de servicios', icon: ListChecks },
       { id: 'servicios.pedidos', label: 'Pedidos del huésped', icon: ConciergeBell },
+      { id: 'servicios.mayordomia', label: 'Mayordomía y concierge', icon: KeyRound },
+      { id: 'servicios.mascotas', label: 'Mascotas (pet concierge)', icon: PawPrint },
       { id: 'servicios.spa', label: 'Wellness y spa', icon: Flower2 },
       { id: 'servicios.transporte', label: 'Traslados y transporte', icon: Car },
       { id: 'servicios.eventos', label: 'Eventos y experiencias', icon: PartyPopper },
+      { id: 'servicios.salones', label: 'Salones y banquetes', icon: Presentation },
     ],
   },
   {
@@ -261,6 +279,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'finanzas.cobrar', label: 'Cuentas por cobrar', icon: Wallet },
       { id: 'finanzas.pagar', label: 'Cuentas por pagar', icon: CreditCard },
       { id: 'finanzas.resultados', label: 'Estado de resultados', icon: FileBarChart },
+      { id: 'finanzas.tipocambio', label: 'Tipo de cambio', icon: CircleDollarSign },
     ],
   },
   {
@@ -273,6 +292,17 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'rrhh.asistencia', label: 'Asistencia', icon: Clock },
       { id: 'rrhh.turnos', label: 'Turnos y horarios', icon: CalendarClock },
       { id: 'rrhh.planilla', label: 'Planilla', icon: Banknote },
+    ],
+  },
+  {
+    id: 'integraciones',
+    label: 'Integraciones',
+    sys: 'brand',
+    icon: Plug,
+    items: [
+      { id: 'integraciones.channel', label: 'Channel manager', icon: RefreshCw },
+      { id: 'integraciones.pagos', label: 'Pasarelas de pago', icon: CreditCard },
+      { id: 'integraciones.dispositivos', label: 'Telefonía y cerraduras', icon: Phone },
     ],
   },
   {

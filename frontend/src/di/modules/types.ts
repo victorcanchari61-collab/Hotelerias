@@ -12,6 +12,7 @@ import type {
   PromocionRepository,
   ReservaAdminRepository,
 } from '@/domain/repositories/GestionRepository'
+import type { TipoCambioRepository } from '@/domain/repositories/FinanzasRepository'
 import type { PortalRepository } from '@/domain/repositories/PortalRepository'
 import type {
   AccesosRepository,
@@ -38,6 +39,8 @@ export interface RepositoryOverrides {
   promocion?: PromocionRepository
   fidelizacion?: FidelizacionRepository
   reservaAdmin?: ReservaAdminRepository
+  // Finanzas: tipo de cambio.
+  tipoCambio?: TipoCambioRepository
   // Configuración: roles, accesos, empresa, sedes y auditoría.
   rol?: RolRepository
   empresa?: EmpresaRepository

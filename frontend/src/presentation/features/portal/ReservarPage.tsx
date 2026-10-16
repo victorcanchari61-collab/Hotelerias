@@ -7,6 +7,7 @@ import { Alert, Button, Card, Input, buttonClasses } from '@/shared/ui'
 import { useCarga } from '../../hooks/useCarga'
 import { useClienteAuth } from '../../providers/ClienteAuthProvider'
 import { useDependencies } from '../../providers/DependencyProvider'
+import { useMoneda } from '../../providers/MonedaProvider'
 import { PATHS, hotelPath } from '../../routes/paths'
 import { ResumenPrecio } from './components/ResumenPrecio'
 import { pluralNoches, rangoFechas } from './format'
@@ -22,6 +23,7 @@ import { pluralNoches, rangoFechas } from './format'
 export function ReservarPage() {
   const [params] = useSearchParams()
   const { useCases } = useDependencies()
+  const { moneda } = useMoneda()
   const { cliente, refrescar } = useClienteAuth()
   const navigate = useNavigate()
 
@@ -45,8 +47,9 @@ export function ReservarPage() {
         huespedes,
         codigo: codigoAplicado,
         notas: '',
+        moneda,
       }),
-    [useCases, habitacionId, entrada, salida, huespedes, codigoAplicado, cliente?.tipoClienteId],
+    [useCases, habitacionId, entrada, salida, huespedes, codigoAplicado, cliente?.tipoClienteId, moneda],
     null,
   )
 
@@ -62,6 +65,7 @@ export function ReservarPage() {
       huespedes,
       codigo: codigoAplicado,
       notas,
+      moneda,
     })
 
     if (resultado.isLeft()) {

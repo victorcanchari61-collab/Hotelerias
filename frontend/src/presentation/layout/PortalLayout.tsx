@@ -5,6 +5,7 @@ import { Badge, Button, buttonClasses, cn } from '@/shared/ui'
 import { nombreCompletoCliente } from '@/domain/entities/Cliente'
 import { PantallaCargando } from '../pages/PantallaCargando'
 import { useClienteAuth } from '../providers/ClienteAuthProvider'
+import { MonedaProvider, useMoneda } from '../providers/MonedaProvider'
 import { PATHS } from '../routes/paths'
 
 const enlace = ({ isActive }: { isActive: boolean }) =>
@@ -20,6 +21,39 @@ const enlace = ({ isActive }: { isActive: boolean }) =>
  * exige (lo decide la ruta, no este marco).
  */
 export function PortalLayout() {
+  return (
+    <MonedaProvider>
+      <MarcoPortal />
+    </MonedaProvider>
+  )
+}
+
+/** Soles / dólares. Solo aparece si hay más de una moneda que se pueda cotizar hoy. */
+function SelectorMoneda() {
+  const { moneda, ofrecidas, setMoneda } = useMoneda()
+  if (ofrecidas.length < 2) return null
+  return (
+    <div role="group" aria-label="Moneda" className="flex rounded-field border border-line bg-surface p-0.5 text-xs font-semibold">
+      {ofrecidas.map((m) => (
+        <button
+          key={m.codigo}
+          type="button"
+          aria-pressed={m.codigo === moneda}
+          title={m.nombre}
+          onClick={() => setMoneda(m.codigo)}
+          className={cn(
+            'rounded-[calc(var(--radius-field,0.5rem)-2px)] px-2.5 py-1 transition-colors',
+            m.codigo === moneda ? 'sys-gradient' : 'text-ink-muted hover:text-ink',
+          )}
+        >
+          {m.simbolo}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function MarcoPortal() {
   const { status, cliente, logout } = useClienteAuth()
   const navigate = useNavigate()
   const conSesion = status === 'authenticated' && cliente !== null
@@ -50,6 +84,7 @@ export function PortalLayout() {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
+            <SelectorMoneda />
             {conSesion ? (
               <>
                 <span className="hidden items-center gap-2 text-sm md:flex">

@@ -245,7 +245,7 @@ func montarAPI(t *testing.T, pool *pgxpool.Pool) (*httptest.Server, *auth.Tokens
 	usuariosSvc := usuario.NewGestion(cuentas, barato, bitacora)
 	empresaSvc := empresa.NewServicio(empresapg.NewStore(pool), bitacora)
 	sedesSvc := hotel.NewAdmin(hotelpg.NewStore(pool), hoy, bitacora)
-	reservasSvc := reserva.NewServicio(reservapg.NewStore(pool), nil, nil, sinHuespedes{}, hoy)
+	reservasSvc := reserva.NewServicio(reservapg.NewStore(pool), nil, nil, sinHuespedes{}, nil, hoy)
 	alcance := alcanceDe{g: gestionPermisos, sub: "reservas.reservas"}
 
 	r := httpx.NewRouter(nil)

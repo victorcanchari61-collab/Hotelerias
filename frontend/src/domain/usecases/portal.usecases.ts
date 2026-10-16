@@ -3,6 +3,7 @@ import type { Failure } from '@/core/errors/failures'
 import { left, right } from '@/core/utils/either'
 import type { Either } from '@/core/utils/either'
 import { esFechaISO, noches } from '../fechas'
+import type { MonedasPublicas } from '../entities/Moneda'
 import type {
   BusquedaEstadia,
   Cotizacion,
@@ -96,6 +97,8 @@ export interface BuscarEstadiaInput {
   busqueda: BusquedaEstadia
   /** Código promocional que el huésped escribió (puede ir vacío). */
   codigo: string
+  /** Moneda en que se cotiza; vacío es soles. */
+  moneda?: string
 }
 
 /**
@@ -112,7 +115,7 @@ export class BuscarEstadiaUseCase implements UseCase<BuscarEstadiaInput, OpcionE
     private readonly hoy: () => string,
   ) {}
 
-  async execute({ sedeId, busqueda, codigo }: BuscarEstadiaInput) {
+  async execute({ sedeId, busqueda, codigo, moneda }: BuscarEstadiaInput) {
     const invalida = validarEstadia(busqueda, this.hoy())
     if (invalida) return left(invalida)
 
@@ -129,11 +132,21 @@ export class BuscarEstadiaUseCase implements UseCase<BuscarEstadiaInput, OpcionE
           huespedes: busqueda.huespedes,
           codigo: codigo.trim().toUpperCase(),
           notas: '',
+          moneda,
         })
         return { habitacion, cotizacion: cotizacion.isRight() ? cotizacion.value : null }
       }),
     )
     return right<OpcionEstadia[], Failure>(opciones)
+  }
+}
+
+/** Las monedas que se ofrecen y el tipo de cambio de hoy. */
+export class ListarMonedasUseCase implements UseCase<void, MonedasPublicas> {
+  constructor(private readonly portal: PortalRepository) {}
+
+  execute(): Promise<Either<Failure, MonedasPublicas>> {
+    return this.portal.monedas()
   }
 }
 

@@ -24,7 +24,8 @@ const seleccion = `
 	       btrim(c.nombre || ' ' || c.apellido), c.email,
 	       r.sede_id, s.nombre, r.tipo_habitacion_id, t.nombre,
 	       r.check_in, r.check_out, r.huespedes, r.noches,
-	       r.precio_noche_cent, r.subtotal_cent, r.descuento_cent, r.total_cent,
+	       r.moneda, r.tipo_cambio_micro,
+	       r.precio_noche_cent, r.subtotal_cent, r.descuento_cent, r.total_cent, r.total_pen_cent,
 	       r.descuento_origen, r.descuento_nombre, r.promocion_id,
 	       r.estado, r.notas, r.creado_en
 	FROM reserva r
@@ -40,7 +41,8 @@ func escanear(row pgx.Row) (reserva.Reserva, error) {
 	err := row.Scan(&r.ID, &r.Codigo, &r.ClienteID, &r.ClienteNombre, &r.ClienteEmail,
 		&r.SedeID, &r.SedeNombre, &r.TipoHabitacionID, &r.Habitacion,
 		&in, &out, &huespedes, &noches,
-		&r.PrecioNocheCent, &r.SubtotalCent, &r.DescuentoCent, &r.TotalCent,
+		&r.Moneda, &r.TipoCambioMicro,
+		&r.PrecioNocheCent, &r.SubtotalCent, &r.DescuentoCent, &r.TotalCent, &r.TotalPenCent,
 		&r.DescuentoOrigen, &r.DescuentoNombre, &r.PromocionID,
 		&estado, &r.Notas, &r.CreadoEn)
 	r.CheckIn, r.CheckOut = fecha.DeTiempo(in), fecha.DeTiempo(out)
@@ -137,7 +139,7 @@ func (s *Store) Crear(ctx context.Context, n reserva.Nueva) (reserva.Reserva, er
 	if !activo {
 		return reserva.Reserva{}, reserva.ErrSinDisponibilidad
 	}
-	if precio != n.PrecioNocheCent {
+	if precio != n.PrecioListaPenCent {
 		return reserva.Reserva{}, reserva.ErrPrecioCambio
 	}
 
@@ -158,12 +160,14 @@ func (s *Store) Crear(ctx context.Context, n reserva.Nueva) (reserva.Reserva, er
 	err = tx.QueryRow(ctx, `
 		INSERT INTO reserva (codigo, cliente_id, sede_id, tipo_habitacion_id, check_in, check_out,
 		                     huespedes, noches, precio_noche_cent, subtotal_cent, descuento_cent,
-		                     total_cent, descuento_origen, descuento_nombre, promocion_id, notas)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+		                     total_cent, descuento_origen, descuento_nombre, promocion_id, notas,
+		                     moneda, tipo_cambio_micro, total_pen_cent)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
 		RETURNING id`,
 		n.Codigo, n.ClienteID, n.SedeID, n.TipoHabitacionID, n.CheckIn.Time(), n.CheckOut.Time(),
 		n.Huespedes, n.Noches, n.PrecioNocheCent, n.SubtotalCent, n.DescuentoCent,
-		n.TotalCent, n.DescuentoOrigen, n.DescuentoNombre, n.PromocionID, n.Notas).Scan(&id)
+		n.TotalCent, n.DescuentoOrigen, n.DescuentoNombre, n.PromocionID, n.Notas,
+		n.Moneda, n.TipoCambioMicro, n.TotalPenCent).Scan(&id)
 	var pg *pgconn.PgError
 	if errors.As(err, &pg) && pg.Code == "23505" {
 		return reserva.Reserva{}, reserva.ErrCodigoDuplicado

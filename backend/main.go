@@ -24,6 +24,8 @@ import (
 	empresapg "hotelerias/backend/internal/empresa/postgres"
 	"hotelerias/backend/internal/hotel"
 	hotelpg "hotelerias/backend/internal/hotel/postgres"
+	"hotelerias/backend/internal/moneda"
+	monedapg "hotelerias/backend/internal/moneda/postgres"
 	"hotelerias/backend/internal/permiso"
 	permisopg "hotelerias/backend/internal/permiso/postgres"
 	"hotelerias/backend/internal/platform/cache"
@@ -148,9 +150,10 @@ func run() error {
 	}
 
 	reservaRepo := reservapg.NewStore(dbs.Postgres)
-	reservaSvc := reserva.NewServicio(reservaRepo, hoteles, promoSvc, clienteSvc, hotel.Hoy)
+	monedaSvc := moneda.NewServicio(monedapg.NewStore(dbs.Postgres), hotel.Hoy, bitacora)
+	reservaSvc := reserva.NewServicio(reservaRepo, hoteles, promoSvc, clienteSvc, monedaSvc, hotel.Hoy)
 
-	portalHandler := portal.NewHandler(hotelSvc, promoSvc, clienteSvc, reservaSvc, hotel.Hoy,
+	portalHandler := portal.NewHandler(hotelSvc, promoSvc, clienteSvc, reservaSvc, monedaSvc, hotel.Hoy,
 		auth.ClienteOpcional(tokens))
 
 	// Los permisos del panel por recurso: quien los arma decide qué exige cada
@@ -203,6 +206,7 @@ func run() error {
 			auditoria.NewHandler(bitacora, guardas("config.auditoria"), auth.UsuarioID),
 			promocion.NewHandler(promoSvc, guardas("reservas.paquetes")),
 			cliente.NewAdminHandler(clienteSvc, guardas("crm.huespedes"), guardas("crm.fidelizacion")),
+			moneda.NewHandler(monedaSvc, guardas("finanzas.tipocambio")),
 			reserva.NewAdminHandler(reservaSvc, guardas("reservas.reservas"), alcanceReservas, bitacora),
 		},
 		Cliente: auth.AuthenticateCliente(tokens),

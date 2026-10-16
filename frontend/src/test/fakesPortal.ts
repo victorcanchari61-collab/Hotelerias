@@ -23,6 +23,8 @@ import type {
   Sede,
   SolicitudReserva,
 } from '@/domain/entities/Portal'
+import type { MonedasPublicas } from '@/domain/entities/Moneda'
+import { convertirAPen, convertirPenA } from '@/domain/moneda'
 import type { ClienteRepository } from '@/domain/repositories/ClienteRepository'
 import type { PortalRepository } from '@/domain/repositories/PortalRepository'
 
@@ -105,10 +107,13 @@ export function cotizacionDe(parcial: Partial<Cotizacion> = {}): Cotizacion {
     checkOut: '2026-11-12',
     noches: 2,
     huespedes: 2,
+    moneda: 'PEN',
+    tipoCambioMicro: null,
     precioNocheCent: 38000,
     subtotalCent: 76000,
     descuento: { origen: '', promocionId: null, nombre: '', totalCent: 0 },
     totalCent: 76000,
+    totalPenCent: 76000,
     disponibles: 5,
     codigo: '',
     codigoValido: false,
@@ -132,10 +137,13 @@ export function reservaDe(parcial: Partial<Reserva> = {}): Reserva {
     checkOut: '2026-11-12',
     huespedes: 2,
     noches: 2,
+    moneda: 'PEN',
+    tipoCambioMicro: null,
     precioNocheCent: 38000,
     subtotalCent: 76000,
     descuentoCent: 0,
     totalCent: 76000,
+    totalPenCent: 76000,
     descuentoOrigen: '',
     descuentoNombre: '',
     estado: 'confirmada',
@@ -155,6 +163,8 @@ export class FakePortalRepository implements PortalRepository {
   descuentoPct = 0
   nombreDescuento = ''
 
+  /** La venta de hoy en dólares (×1.000.000); 0 = sin tipo de cambio, no se cotiza en dólares. */
+  ventaUsdMicro = 3_752_000
   reservaResult: Either<Failure, Reserva> | null = null
   misReservasLista: Reserva[] = []
 
@@ -194,7 +204,14 @@ export class FakePortalRepository implements PortalRepository {
     const noches = Math.round(
       (Date.parse(`${s.checkOut}T00:00:00Z`) - Date.parse(`${s.checkIn}T00:00:00Z`)) / 86_400_000,
     )
-    const subtotal = h.precioNocheCent * noches
+    const enDolares = s.moneda === 'USD'
+    if (enDolares && this.ventaUsdMicro === 0) {
+      return left<Failure, Cotizacion>(new ValidationFailure('Por ahora no podemos cotizar en esa moneda. Elige soles.'))
+    }
+    const venta = enDolares ? this.ventaUsdMicro : 0
+    const convertir = (pen: number) => (enDolares ? convertirPenA(pen, venta) : pen)
+    const noche = convertir(h.precioNocheCent)
+    const subtotal = noche * noches
     const desc = Math.round((subtotal * this.descuentoPct) / 100)
     return right(
       cotizacionDe({
@@ -205,7 +222,9 @@ export class FakePortalRepository implements PortalRepository {
         checkOut: s.checkOut,
         noches,
         huespedes: s.huespedes,
-        precioNocheCent: h.precioNocheCent,
+        moneda: enDolares ? 'USD' : 'PEN',
+        tipoCambioMicro: enDolares ? venta : null,
+        precioNocheCent: noche,
         subtotalCent: subtotal,
         descuento: {
           origen: desc > 0 ? 'tipo_cliente' : '',
@@ -214,6 +233,7 @@ export class FakePortalRepository implements PortalRepository {
           totalCent: desc,
         },
         totalCent: subtotal - desc,
+        totalPenCent: enDolares ? convertirAPen(subtotal - desc, venta) : subtotal - desc,
         disponibles: this.disponibles.get(h.id) ?? 5,
         codigo: s.codigo,
       }),
@@ -226,6 +246,18 @@ export class FakePortalRepository implements PortalRepository {
     return right<Reserva, Failure>(
       reservaDe({ tipoHabitacionId: s.tipoHabitacionId, checkIn: s.checkIn, checkOut: s.checkOut }),
     )
+  }
+
+  async monedas() {
+    const publico: MonedasPublicas = {
+      monedas: [
+        { codigo: 'PEN', nombre: 'Soles', simbolo: 'S/', decimales: 2, base: true, activa: true },
+        { codigo: 'USD', nombre: 'Dólares', simbolo: 'US$', decimales: 2, base: false, activa: true },
+      ],
+      cambios:
+        this.ventaUsdMicro > 0 ? { USD: { fecha: '2026-11-01', ventaMicro: this.ventaUsdMicro } } : {},
+    }
+    return right<MonedasPublicas, Failure>(publico)
   }
 
   async misReservas() {

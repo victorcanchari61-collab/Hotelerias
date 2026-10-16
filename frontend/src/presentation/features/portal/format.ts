@@ -1,15 +1,23 @@
 import type { FechaISO, Promocion, Sede } from '@/domain/entities/Portal'
 
+const SIMBOLOS: Record<string, string> = { PEN: 'S/', USD: 'US$' }
+
 /**
- * S/ 1,234.50 a partir de céntimos. Se separa en enteros y centavos en vez de
- * dividir entre 100: así nunca pasa por un decimal binario.
+ * S/ 1,234.50 o US$ 1,234.50 a partir de la unidad menor (céntimos, centavos).
+ * Se separa en enteros y centavos en vez de dividir entre 100: así nunca pasa
+ * por un decimal binario.
  */
+export function formatMonto(cent: number, moneda: string = 'PEN'): string {
+  const signo = cent < 0 ? '-' : ''
+  const abs = Math.abs(Math.round(cent))
+  const enteros = Math.trunc(abs / 100)
+  const menor = String(abs % 100).padStart(2, '0')
+  return `${signo}${SIMBOLOS[moneda] ?? moneda} ${enteros.toLocaleString('es-PE')}.${menor}`
+}
+
+/** Soles. Para lo que siempre es en soles (la lista de precios, las ofertas). */
 export function formatSoles(centimos: number): string {
-  const signo = centimos < 0 ? '-' : ''
-  const abs = Math.abs(Math.round(centimos))
-  const soles = Math.trunc(abs / 100)
-  const cent = String(abs % 100).padStart(2, '0')
-  return `${signo}S/ ${soles.toLocaleString('es-PE')}.${cent}`
+  return formatMonto(centimos, 'PEN')
 }
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic']

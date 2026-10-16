@@ -34,6 +34,7 @@ import {
   ConsultarDisponibilidadUseCase,
   CotizarEstadiaUseCase,
   ListarMisReservasUseCase,
+  ListarMonedasUseCase,
   ListarPromocionesUseCase,
   ListarSedesUseCase,
   ObtenerSedeUseCase,
@@ -47,6 +48,7 @@ export interface PortalUseCases {
   obtenerSede: ObtenerSedeUseCase
   consultarDisponibilidad: ConsultarDisponibilidadUseCase
   buscarEstadia: BuscarEstadiaUseCase
+  listarMonedas: ListarMonedasUseCase
   listarPromociones: ListarPromocionesUseCase
   cotizarEstadia: CotizarEstadiaUseCase
   reservarEstadia: ReservarEstadiaUseCase
@@ -71,6 +73,7 @@ export function portalModule({ portalHttp, clienteSession, hoy, overrides }: Mod
     obtenerSede: new ObtenerSedeUseCase(portal),
     consultarDisponibilidad: new ConsultarDisponibilidadUseCase(portal, hoy),
     buscarEstadia: new BuscarEstadiaUseCase(portal, hoy),
+    listarMonedas: new ListarMonedasUseCase(portal),
     listarPromociones: new ListarPromocionesUseCase(portal),
     cotizarEstadia: new CotizarEstadiaUseCase(portal, hoy),
     reservarEstadia: new ReservarEstadiaUseCase(portal, hoy),

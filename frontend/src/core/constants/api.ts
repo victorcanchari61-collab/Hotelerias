@@ -33,6 +33,7 @@ export const ApiPaths = {
     permisos: (id: number) => `/rol/${id}/permisos`,
   },
   empresa: { base: '/empresa' },
+  tipoCambio: { base: '/tipo-cambio' },
   sede: {
     base: '/sede',
     porId: (id: number) => `/sede/${id}`,
@@ -47,6 +48,7 @@ export const ApiPaths = {
   // Lo que ve y usa el huésped en la web pública.
   portal: {
     sedes: '/portal/sedes',
+    monedas: '/portal/monedas',
     sede: (id: number) => `/portal/sedes/${id}`,
     disponibilidad: (id: number) => `/portal/sedes/${id}/disponibilidad`,
     promociones: '/portal/promociones',

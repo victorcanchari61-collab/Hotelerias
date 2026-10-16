@@ -16,6 +16,8 @@ import { permisoModule } from './modules/permiso.module'
 import type { PermisoUseCases } from './modules/permiso.module'
 import { configuracionModule } from './modules/configuracion.module'
 import type { ConfiguracionUseCases } from './modules/configuracion.module'
+import { finanzasModule } from './modules/finanzas.module'
+import type { FinanzasUseCases } from './modules/finanzas.module'
 import { gestionModule, portalModule } from './modules/portal.module'
 import type { GestionUseCases, PortalUseCases } from './modules/portal.module'
 import type { RepositoryOverrides } from './modules/types'
@@ -28,6 +30,7 @@ export type UseCases = AuthUseCases &
   UsuarioUseCases &
   PortalUseCases &
   GestionUseCases &
+  FinanzasUseCases &
   ConfiguracionUseCases
 
 /** Avisos que el cliente HTTP emite y que la UI escucha. */
@@ -126,6 +129,7 @@ export function createContainer(options: ContainerOptions = {}): Container {
       ...usuarioModule(context),
       ...portalModule(context),
       ...gestionModule(context),
+      ...finanzasModule(context),
       ...configuracionModule(context),
     },
   }

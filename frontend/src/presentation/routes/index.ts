@@ -2,6 +2,7 @@ import { NAV_GROUPS } from '@/presentation/layout/navigation'
 import { authRoutes } from '../features/auth/routes'
 import { configuracionRoutes } from '../features/configuracion/routes'
 import { fidelizacionRoutes } from '../features/fidelizacion/routes'
+import { finanzasRoutes } from '../features/finanzas/routes'
 import { homeRoutes } from '../features/home/routes'
 import { portalRoutes } from '../features/portal/routes'
 import { promocionesRoutes } from '../features/promociones/routes'
@@ -23,6 +24,7 @@ export const ROUTE_MODULES: readonly RouteModule[] = [
   configuracionRoutes,
   promocionesRoutes,
   fidelizacionRoutes,
+  finanzasRoutes,
   reservasRoutes,
   portalRoutes,
 ]

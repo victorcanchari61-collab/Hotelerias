@@ -4,6 +4,7 @@ import type {
   TipoCliente,
   TipoClienteInput,
 } from '@/domain/entities/Cliente'
+import { MONEDA_BASE } from '@/domain/entities/Moneda'
 import type {
   Cotizacion,
   DetalleSede,
@@ -85,6 +86,9 @@ export interface CotizacionDto {
   checkOut: string
   noches: number
   huespedes: number
+  moneda?: string
+  tipoCambioMicro?: number | null
+  totalPenCent?: number
   precioNocheCent: number
   subtotalCent: number
   descuento: {
@@ -114,6 +118,9 @@ export interface ReservaDto {
   checkOut: string
   huespedes: number
   noches: number
+  moneda?: string
+  tipoCambioMicro?: number | null
+  totalPenCent?: number
   precioNocheCent: number
   subtotalCent: number
   descuentoCent: number
@@ -235,10 +242,13 @@ export function cotizacionFromDto(dto: CotizacionDto): Cotizacion {
     checkOut: dto.checkOut,
     noches: dto.noches,
     huespedes: dto.huespedes,
+    moneda: dto.moneda ?? MONEDA_BASE,
+    tipoCambioMicro: dto.tipoCambioMicro ?? null,
     precioNocheCent: dto.precioNocheCent,
     subtotalCent: dto.subtotalCent,
     descuento: { ...dto.descuento },
     totalCent: dto.totalCent,
+    totalPenCent: dto.totalPenCent ?? dto.totalCent,
     disponibles: dto.disponibles,
     codigo: dto.codigo,
     codigoValido: dto.codigoValido,
@@ -255,6 +265,7 @@ export function solicitudToDto(s: SolicitudReserva) {
     huespedes: s.huespedes,
     codigo: s.codigo,
     notas: s.notas,
+    moneda: s.moneda || MONEDA_BASE,
   }
 }
 
@@ -273,10 +284,13 @@ export function reservaFromDto(dto: ReservaDto): Reserva {
     checkOut: dto.checkOut,
     huespedes: dto.huespedes,
     noches: dto.noches,
+    moneda: dto.moneda ?? MONEDA_BASE,
+    tipoCambioMicro: dto.tipoCambioMicro ?? null,
     precioNocheCent: dto.precioNocheCent,
     subtotalCent: dto.subtotalCent,
     descuentoCent: dto.descuentoCent,
     totalCent: dto.totalCent,
+    totalPenCent: dto.totalPenCent ?? dto.totalCent,
     descuentoOrigen: dto.descuentoOrigen ?? '',
     descuentoNombre: dto.descuentoNombre ?? '',
     estado: dto.estado,

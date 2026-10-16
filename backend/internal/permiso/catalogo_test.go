@@ -6,10 +6,10 @@ import (
 )
 
 func TestCatalogoEsConsistente(t *testing.T) {
-	if len(Permisos.Submodulos()) != 59 {
+	if len(Permisos.Submodulos()) != 71 {
 		// Si el catálogo cambia a propósito, se actualiza aquí: que no cambie sin
 		// que nadie se entere (es la base de los permisos guardados en la base).
-		t.Errorf("el catálogo tiene %d submódulos, esperaba 59", len(Permisos.Submodulos()))
+		t.Errorf("el catálogo tiene %d submódulos, esperaba 71", len(Permisos.Submodulos()))
 	}
 
 	for _, s := range Permisos.Submodulos() {

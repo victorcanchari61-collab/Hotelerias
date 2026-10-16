@@ -9,16 +9,18 @@ import { Alert, Badge, Button, Card, Input, buttonClasses } from '@/shared/ui'
 import { useCarga } from '../../hooks/useCarga'
 import { useClienteAuth } from '../../providers/ClienteAuthProvider'
 import { useDependencies } from '../../providers/DependencyProvider'
+import { useMoneda } from '../../providers/MonedaProvider'
 import { PATHS } from '../../routes/paths'
 import { ResumenPrecio } from './components/ResumenPrecio'
 import { Visual } from './components/Visual'
-import { formatSoles, pluralNoches } from './format'
+import { formatMonto, pluralNoches } from './format'
 
 export function HotelPage() {
   const { id } = useParams()
   const sedeId = Number(id)
   const [params, setParams] = useSearchParams()
   const { useCases, hoy: hoyFn } = useDependencies()
+  const { moneda, convertir } = useMoneda()
   const { status } = useClienteAuth()
   const navigate = useNavigate()
 
@@ -47,8 +49,9 @@ export function HotelPage() {
         sedeId,
         busqueda: { entrada, salida, huespedes },
         codigo,
+        moneda,
       }),
-    [useCases, sedeId, entrada, salida, huespedes, codigo, status],
+    [useCases, sedeId, entrada, salida, huespedes, codigo, status, moneda],
     [],
   )
 
@@ -227,7 +230,7 @@ export function HotelPage() {
                         <p className="text-sm text-ink-muted">
                           {agotada
                             ? 'No quedan habitaciones para estas fechas.'
-                            : `Desde ${formatSoles(h.precioNocheCent)} por noche`}
+                            : `Desde ${formatMonto(convertir(h.precioNocheCent), moneda)} por noche`}
                         </p>
                       )}
                       <Button disabled={agotada} block onClick={() => reservar(h.id)}>

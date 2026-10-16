@@ -16,6 +16,7 @@ import (
 	"hotelerias/backend/internal/auth"
 	"hotelerias/backend/internal/cliente"
 	"hotelerias/backend/internal/hotel"
+	"hotelerias/backend/internal/moneda"
 	"hotelerias/backend/internal/platform/fecha"
 	"hotelerias/backend/internal/platform/httpx"
 	"hotelerias/backend/internal/promocion"
@@ -61,10 +62,17 @@ type Reserva struct {
 	Huespedes int         `json:"huespedes"`
 	Noches    int         `json:"noches"`
 
-	PrecioNocheCent int64 `json:"precioNocheCent"`
-	SubtotalCent    int64 `json:"subtotalCent"`
-	DescuentoCent   int64 `json:"descuentoCent"`
-	TotalCent       int64 `json:"totalCent"`
+	// Los importes están en Moneda (soles o dólares), en su unidad menor.
+	// Si no son soles, TipoCambioMicro es la venta (×1.000.000) con que se
+	// convirtió, copiada para siempre; TotalPenCent es el equivalente en soles
+	// que va a la contabilidad (en soles es igual a TotalCent).
+	Moneda          string `json:"moneda"`
+	TipoCambioMicro *int64 `json:"tipoCambioMicro"`
+	PrecioNocheCent int64  `json:"precioNocheCent"`
+	SubtotalCent    int64  `json:"subtotalCent"`
+	DescuentoCent   int64  `json:"descuentoCent"`
+	TotalCent       int64  `json:"totalCent"`
+	TotalPenCent    int64  `json:"totalPenCent"`
 
 	DescuentoOrigen string `json:"descuentoOrigen"`
 	DescuentoNombre string `json:"descuentoNombre"`
@@ -83,6 +91,8 @@ type Solicitud struct {
 	Huespedes        int         `json:"huespedes"`
 	Codigo           string      `json:"codigo"`
 	Notas            string      `json:"notas"`
+	// Moneda en que el huésped quiere ver y pagar: "PEN" (o vacío) o "USD".
+	Moneda string `json:"moneda"`
 }
 
 // Cotizacion es el precio que el huésped verá y pagará.
@@ -97,10 +107,14 @@ type Cotizacion struct {
 	Noches    int         `json:"noches"`
 	Huespedes int         `json:"huespedes"`
 
+	// Todos los importes de la cotización están en Moneda; ver Reserva.
+	Moneda          string              `json:"moneda"`
+	TipoCambioMicro *int64              `json:"tipoCambioMicro"`
 	PrecioNocheCent int64               `json:"precioNocheCent"`
 	SubtotalCent    int64               `json:"subtotalCent"`
 	Descuento       promocion.Descuento `json:"descuento"`
 	TotalCent       int64               `json:"totalCent"`
+	TotalPenCent    int64               `json:"totalPenCent"`
 
 	Disponibles int `json:"disponibles"`
 
@@ -123,14 +137,21 @@ type Nueva struct {
 	CheckOut         fecha.Fecha
 	Huespedes        int
 	Noches           int
+	Moneda           string
+	TipoCambioMicro  *int64
 	PrecioNocheCent  int64
 	SubtotalCent     int64
 	DescuentoCent    int64
 	TotalCent        int64
-	DescuentoOrigen  string
-	DescuentoNombre  string
-	PromocionID      *int64
-	Notas            string
+	TotalPenCent     int64
+	// PrecioListaPenCent es el precio por noche en soles que se cotizó: el
+	// repositorio lo compara con el vigente para no cobrar un precio viejo,
+	// sea cual sea la moneda de la reserva.
+	PrecioListaPenCent int64
+	DescuentoOrigen    string
+	DescuentoNombre    string
+	PromocionID        *int64
+	Notas              string
 }
 
 // Repositorio es lo que este paquete necesita de la base.
@@ -170,19 +191,91 @@ type Huespedes interface {
 	Reclasificar(ctx context.Context, id int64) error
 }
 
+// Cambios es el tipo de cambio de hoy.
+type Cambios interface {
+	// Vigente devuelve moneda.ErrSinTipoCambio si no hay uno reciente y
+	// moneda.ErrNoSoportada si la moneda no se ofrece.
+	Vigente(ctx context.Context, cod string) (moneda.TipoCambio, error)
+}
+
 // Servicio cotiza y reserva. No sabe de HTTP.
 type Servicio struct {
 	repo      Repositorio
 	catalogo  Catalogo
 	ofertas   Ofertas
 	huespedes Huespedes
+	cambios   Cambios
 	hoy       func() fecha.Fecha
 	// codigo genera el código de reserva (reemplazable en pruebas).
 	codigo func() string
 }
 
-func NewServicio(repo Repositorio, cat Catalogo, ofertas Ofertas, h Huespedes, hoy func() fecha.Fecha) *Servicio {
-	return &Servicio{repo: repo, catalogo: cat, ofertas: ofertas, huespedes: h, hoy: hoy, codigo: NuevoCodigo}
+func NewServicio(repo Repositorio, cat Catalogo, ofertas Ofertas, h Huespedes, cambios Cambios, hoy func() fecha.Fecha) *Servicio {
+	return &Servicio{repo: repo, catalogo: cat, ofertas: ofertas, huespedes: h, cambios: cambios, hoy: hoy, codigo: NuevoCodigo}
+}
+
+// importes son los números de una estadía en una moneda.
+type importes struct {
+	moneda          string
+	tipoCambioMicro *int64
+	precioNoche     int64
+	subtotal        int64
+	descuento       int64
+	total           int64
+	totalPen        int64
+}
+
+// enMoneda pasa a otra moneda lo calculado en soles. El motor de promociones
+// trabaja SIEMPRE en soles (la lista de precios lo está); aquí se convierte lo
+// que ya decidió, nunca se vuelve a decidir en dólares:
+//
+//	precio por noche = conv(precio en soles)       ← lo que el huésped ve por noche
+//	subtotal         = precio por noche × noches   ← suma exacta de lo mostrado
+//	descuento        = conv(descuento en soles), sin pasar del subtotal
+//	total            = subtotal − descuento
+//
+// Así las líneas de la cotización suman exactamente su total (no hay "faltan
+// dos centavos"). El equivalente en soles es el total convertido de vuelta.
+func (s *Servicio) enMoneda(ctx context.Context, cod string, noches int, precioNochePen, descuentoPen int64) (importes, error) {
+	sub := precioNochePen * int64(noches)
+	if cod == moneda.Base {
+		return importes{
+			moneda: moneda.Base, precioNoche: precioNochePen, subtotal: sub,
+			descuento: descuentoPen, total: sub - descuentoPen, totalPen: sub - descuentoPen,
+		}, nil
+	}
+
+	t, err := s.cambios.Vigente(ctx, cod)
+	switch {
+	case errors.Is(err, moneda.ErrSinTipoCambio):
+		return importes{}, httpx.Validacion("Por ahora no podemos cotizar en esa moneda. Elige soles.")
+	case errors.Is(err, moneda.ErrNoSoportada):
+		return importes{}, httpx.Validacion("Esa moneda no está disponible")
+	case err != nil:
+		return importes{}, err
+	}
+
+	venta := t.VentaMicro
+	noche := moneda.DePenA(precioNochePen, venta)
+	sc := noche * int64(noches)
+	dc := min(moneda.DePenA(descuentoPen, venta), sc)
+	total := sc - dc
+	return importes{
+		moneda: cod, tipoCambioMicro: &venta, precioNoche: noche, subtotal: sc,
+		descuento: dc, total: total, totalPen: moneda.APen(total, venta),
+	}, nil
+}
+
+// normalizarMoneda deja "" como soles y rechaza lo que no sea un código ISO simple.
+func normalizarMoneda(cod string) (string, error) {
+	cod = strings.ToUpper(strings.TrimSpace(cod))
+	if cod == "" {
+		return moneda.Base, nil
+	}
+	if len(cod) != 3 || strings.Trim(cod, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") != "" {
+		return "", httpx.Validacion("Esa moneda no está disponible")
+	}
+	return cod, nil
 }
 
 // cargar valida la solicitud y trae lo que hace falta para cotizarla.
@@ -210,7 +303,12 @@ func (s *Servicio) cargar(ctx context.Context, sol Solicitud) (hotel.TipoHabitac
 }
 
 // cotizar calcula el precio. `huesped` es nil para un visitante.
-func (s *Servicio) cotizar(ctx context.Context, tipo hotel.TipoHabitacion, sede hotel.Sede, huesped *cliente.Cliente, sol Solicitud) (Cotizacion, promocion.Descuento, error) {
+func (s *Servicio) cotizar(ctx context.Context, tipo hotel.TipoHabitacion, sede hotel.Sede, huesped *cliente.Cliente, sol Solicitud) (Cotizacion, error) {
+	cod, err := normalizarMoneda(sol.Moneda)
+	if err != nil {
+		return Cotizacion{}, err
+	}
+
 	est := promocion.Estadia{
 		SedeID:          sede.ID,
 		CheckIn:         sol.CheckIn,
@@ -230,7 +328,7 @@ func (s *Servicio) cotizar(ctx context.Context, tipo hotel.TipoHabitacion, sede 
 
 	promos, err := s.ofertas.Vigentes(ctx)
 	if err != nil {
-		return Cotizacion{}, promocion.Descuento{}, err
+		return Cotizacion{}, err
 	}
 	d := promocion.Mejor(promos, est, beneficio)
 
@@ -246,21 +344,26 @@ func (s *Servicio) cotizar(ctx context.Context, tipo hotel.TipoHabitacion, sede 
 
 	ocupadas, err := s.catalogo.Ocupadas(ctx, tipo.ID, sol.CheckIn, sol.CheckOut)
 	if err != nil {
-		return Cotizacion{}, promocion.Descuento{}, err
+		return Cotizacion{}, err
 	}
 	libres := max(tipo.Cantidad-ocupadas, 0)
 
-	sub := est.SubtotalCent()
+	imp, err := s.enMoneda(ctx, cod, est.Noches(), tipo.PrecioNocheCent, d.TotalCent)
+	if err != nil {
+		return Cotizacion{}, err
+	}
+	d.TotalCent = imp.descuento // el descuento se muestra en la misma moneda que el resto
 	return Cotizacion{
 		SedeID: sede.ID, SedeNombre: sede.Nombre,
 		TipoHabitacionID: tipo.ID, Habitacion: tipo.Nombre,
 		CheckIn: sol.CheckIn, CheckOut: sol.CheckOut, Noches: est.Noches(), Huespedes: sol.Huespedes,
-		PrecioNocheCent: tipo.PrecioNocheCent, SubtotalCent: sub,
-		Descuento: d, TotalCent: sub - d.TotalCent,
+		Moneda: imp.moneda, TipoCambioMicro: imp.tipoCambioMicro,
+		PrecioNocheCent: imp.precioNoche, SubtotalCent: imp.subtotal,
+		Descuento: d, TotalCent: imp.total, TotalPenCent: imp.totalPen,
 		Disponibles: libres,
 		Codigo:      codigo, CodigoValido: valido,
 		TipoCliente: tipoCliente,
-	}, d, nil
+	}, nil
 }
 
 // Cotizar es público: un visitante ve el precio de lista y, si ya entró, el que
@@ -278,8 +381,7 @@ func (s *Servicio) Cotizar(ctx context.Context, clienteID int64, sol Solicitud) 
 		}
 		huesped = &c
 	}
-	q, _, err := s.cotizar(ctx, tipo, sede, huesped, sol)
-	return q, err
+	return s.cotizar(ctx, tipo, sede, huesped, sol)
 }
 
 // Reservar guarda la reserva. El precio y el descuento los calcula AQUÍ: nada
@@ -305,7 +407,7 @@ func (s *Servicio) Reservar(ctx context.Context, clienteID int64, sol Solicitud)
 		return Reserva{}, auth.ErrCuentaInactiva
 	}
 
-	q, d, err := s.cotizar(ctx, tipo, sede, &huesped, sol)
+	q, err := s.cotizar(ctx, tipo, sede, &huesped, sol)
 	if err != nil {
 		return Reserva{}, err
 	}
@@ -316,9 +418,11 @@ func (s *Servicio) Reservar(ctx context.Context, clienteID int64, sol Solicitud)
 	n := Nueva{
 		ClienteID: clienteID, SedeID: sede.ID, TipoHabitacionID: tipo.ID,
 		CheckIn: sol.CheckIn, CheckOut: sol.CheckOut, Huespedes: sol.Huespedes, Noches: q.Noches,
+		Moneda: q.Moneda, TipoCambioMicro: q.TipoCambioMicro,
 		PrecioNocheCent: q.PrecioNocheCent, SubtotalCent: q.SubtotalCent,
-		DescuentoCent: d.TotalCent, TotalCent: q.TotalCent,
-		DescuentoOrigen: string(d.Origen), DescuentoNombre: d.Nombre, PromocionID: d.PromocionID,
+		DescuentoCent: q.Descuento.TotalCent, TotalCent: q.TotalCent, TotalPenCent: q.TotalPenCent,
+		PrecioListaPenCent: tipo.PrecioNocheCent,
+		DescuentoOrigen:    string(q.Descuento.Origen), DescuentoNombre: q.Descuento.Nombre, PromocionID: q.Descuento.PromocionID,
 		Notas: notas,
 	}
 

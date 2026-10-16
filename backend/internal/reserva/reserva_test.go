@@ -8,6 +8,7 @@ import (
 	"hotelerias/backend/internal/auth"
 	"hotelerias/backend/internal/cliente"
 	"hotelerias/backend/internal/hotel"
+	"hotelerias/backend/internal/moneda"
 	"hotelerias/backend/internal/platform/fecha"
 	"hotelerias/backend/internal/platform/httpx"
 	"hotelerias/backend/internal/promocion"
@@ -80,6 +81,19 @@ func (c catalogoFalso) Ocupadas(context.Context, int64, fecha.Fecha, fecha.Fecha
 	return c.ocupadas, nil
 }
 
+// cambiosFalsos: solo dólares, con la venta indicada (0 = sin tipo de cambio).
+type cambiosFalsos struct{ venta int64 }
+
+func (c cambiosFalsos) Vigente(_ context.Context, cod string) (moneda.TipoCambio, error) {
+	if cod != "USD" {
+		return moneda.TipoCambio{}, moneda.ErrNoSoportada
+	}
+	if c.venta == 0 {
+		return moneda.TipoCambio{}, moneda.ErrSinTipoCambio
+	}
+	return moneda.TipoCambio{Moneda: cod, CompraMicro: c.venta - 7_000, VentaMicro: c.venta}, nil
+}
+
 type ofertasFalsas []promocion.Promocion
 
 func (o ofertasFalsas) Vigentes(context.Context) ([]promocion.Promocion, error) { return o, nil }
@@ -103,7 +117,7 @@ func armar(t *testing.T) (*Servicio, *repoFalso, *huespedFalso) {
 		ID: 10, SedeID: 1, Nombre: "Deluxe", Capacidad: 2, PrecioNocheCent: 40000, Cantidad: 2, Activo: true,
 	}}
 	h := &huespedFalso{c: cliente.Cliente{ID: 7, Nombre: "Ana", Activo: true, TipoClienteID: ptr(int64(1)), TipoCliente: "Regular"}}
-	s := NewServicio(repo, cat, ofertasFalsas{}, h, func() fecha.Fecha { return f("2026-11-01") })
+	s := NewServicio(repo, cat, ofertasFalsas{}, h, cambiosFalsos{venta: 3_752_000}, func() fecha.Fecha { return f("2026-11-01") })
 	s.codigo = func() string { return "HV-TEST-0001" }
 	return s, repo, h
 }
@@ -360,5 +374,113 @@ func TestNuevoCodigo(t *testing.T) {
 			t.Fatalf("repetido: %s", c)
 		}
 		vistos[c] = true
+	}
+}
+
+// --- dos monedas ---
+
+func solicitudUSD() Solicitud {
+	sol := solicitud()
+	sol.Moneda = "USD"
+	return sol
+}
+
+func TestCotizarEnSolesPorDefectoNoLlevaTipoDeCambio(t *testing.T) {
+	s, _, _ := armar(t)
+	for _, m := range []string{"", "pen", " PEN "} {
+		sol := solicitud()
+		sol.Moneda = m
+		q, err := s.Cotizar(context.Background(), 0, sol)
+		if err != nil {
+			t.Fatalf("moneda %q: %v", m, err)
+		}
+		if q.Moneda != "PEN" || q.TipoCambioMicro != nil || q.TotalCent != 120000 || q.TotalPenCent != 120000 {
+			t.Fatalf("moneda %q: %+v", m, q)
+		}
+	}
+}
+
+func TestCotizarEnDolaresConvierteConLaVentaYLasLineasSuman(t *testing.T) {
+	s, _, h := armar(t)
+	h.c.TipoCliente, h.c.DescuentoPct = "VIP", 10
+
+	q, err := s.Cotizar(context.Background(), 7, solicitudUSD())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// S/ 400 / 3.752 = US$ 106.61 por noche; ×3 = 319.83; 10% (S/ 120) = US$ 31.98.
+	if q.Moneda != "USD" || q.TipoCambioMicro == nil || *q.TipoCambioMicro != 3_752_000 {
+		t.Fatalf("%+v", q)
+	}
+	if q.PrecioNocheCent != 10661 || q.SubtotalCent != 31983 || q.Descuento.TotalCent != 3198 || q.TotalCent != 28785 {
+		t.Fatalf("%+v", q)
+	}
+	if q.SubtotalCent-q.Descuento.TotalCent != q.TotalCent {
+		t.Fatalf("las líneas no suman: %+v", q)
+	}
+	// El equivalente en soles vuelve a casi S/ 1,080 (el redondeo de dos conversiones, ≤ 2 céntimos).
+	if d := q.TotalPenCent - 108000; d < -2 || d > 2 {
+		t.Fatalf("totalPen = %d", q.TotalPenCent)
+	}
+	if q.Descuento.Nombre != "Beneficio VIP" {
+		t.Fatalf("el descuento se decidió en soles y se conserva: %+v", q.Descuento)
+	}
+}
+
+func TestCotizarEnDolaresSinTipoDeCambioNoInventaUno(t *testing.T) {
+	s, _, _ := armar(t)
+	s.cambios = cambiosFalsos{}
+	_, err := s.Cotizar(context.Background(), 0, solicitudUSD())
+	var v httpx.Validacion
+	if !errors.As(err, &v) {
+		t.Fatalf("err = %v; quiero una validación", err)
+	}
+	// En soles sigue funcionando.
+	if _, err := s.Cotizar(context.Background(), 0, solicitud()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCotizarMonedaNoDisponible(t *testing.T) {
+	s, _, _ := armar(t)
+	for _, m := range []string{"EUR", "US", "USD1", "U$D", "'; --"} {
+		sol := solicitud()
+		sol.Moneda = m
+		_, err := s.Cotizar(context.Background(), 0, sol)
+		var v httpx.Validacion
+		if !errors.As(err, &v) {
+			t.Errorf("moneda %q: err = %v; quiero una validación", m, err)
+		}
+	}
+}
+
+func TestReservarEnDolaresCopiaElTipoDeCambio(t *testing.T) {
+	s, repo, h := armar(t)
+	h.c.TipoCliente, h.c.DescuentoPct = "VIP", 10
+
+	if _, err := s.Reservar(context.Background(), 7, solicitudUSD()); err != nil {
+		t.Fatal(err)
+	}
+	n := repo.creadas[0]
+	if n.Moneda != "USD" || n.TipoCambioMicro == nil || *n.TipoCambioMicro != 3_752_000 {
+		t.Fatalf("%+v", n)
+	}
+	if n.TotalCent != 28785 || n.TotalPenCent < 107998 || n.TotalPenCent > 108002 {
+		t.Fatalf("%+v", n)
+	}
+	// La verificación de precio vigente va contra la lista en SOLES, no la moneda del huésped.
+	if n.PrecioListaPenCent != 40000 {
+		t.Fatalf("precio de lista = %d", n.PrecioListaPenCent)
+	}
+}
+
+func TestReservarEnSolesNoGuardaTipoDeCambio(t *testing.T) {
+	s, repo, _ := armar(t)
+	if _, err := s.Reservar(context.Background(), 7, solicitud()); err != nil {
+		t.Fatal(err)
+	}
+	n := repo.creadas[0]
+	if n.Moneda != "PEN" || n.TipoCambioMicro != nil || n.TotalPenCent != n.TotalCent {
+		t.Fatalf("%+v", n)
 	}
 }
