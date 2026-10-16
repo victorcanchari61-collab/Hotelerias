@@ -30,8 +30,12 @@ export interface StandaloneRouteDefinition {
   path: string
   access: Access
   component: RouteComponent
-  /** `shell`: dentro del layout con menú. `bare`: pantalla completa (login). */
-  layout: 'shell' | 'bare'
+  /**
+   * `shell`: dentro del panel con menú (sesión del personal). `bare`: pantalla
+   * completa (login del panel). `portal`: la web pública, con su cabecera y
+   * su propia sesión de huésped.
+   */
+  layout: 'shell' | 'bare' | 'portal'
 }
 
 /** Una ruta ya resuelta, lista para pintarse. */
@@ -40,7 +44,7 @@ export interface ResolvedRoute {
   path: string
   access: Access
   component: RouteComponent
-  layout: 'shell' | 'bare'
+  layout: 'shell' | 'bare' | 'portal'
   /** True si no la declaró ninguna feature: es la pantalla "en construcción". */
   placeholder: boolean
 }

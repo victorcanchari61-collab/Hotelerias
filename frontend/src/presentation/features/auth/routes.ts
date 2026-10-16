@@ -11,7 +11,7 @@ export const authRoutes: RouteModule = {
   routes: [
     standaloneRoute({
       id: 'auth.login',
-      path: PATHS.login,
+      path: PATHS.adminLogin,
       // Solo sin sesión: con sesión, el gate la manda a donde iba.
       access: acceso.invitado(),
       component: LoginPage,

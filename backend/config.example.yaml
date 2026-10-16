@@ -36,3 +36,7 @@ ApisPeru:
 AdminInicial:
   Email: "admin@hotelerias.test"
   Nombre: "Super Admin"
+# Datos de muestra para recorrer el portal (sedes, habitaciones, ofertas).
+# Solo siembra si no hay ninguna sede. Apagado en produccion.
+Demo:
+  Datos: false

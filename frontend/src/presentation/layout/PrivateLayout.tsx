@@ -1,6 +1,6 @@
 import { Suspense, useMemo } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Hotel, Home, UserRound } from 'lucide-react'
+import { Globe, Hotel, Home, UserRound } from 'lucide-react'
 import { AppShell, NotificationsBell, UserMenu } from '@/shared/layout'
 import type { NavGroup } from '@/shared/layout'
 import { nombreCompleto } from '@/domain/entities/Usuario'
@@ -64,13 +64,16 @@ export function PrivateLayout({ pendientes }: Props) {
       }}
       groups={groups}
       active={activeId}
-      onSelect={(id) => navigate(id === '' ? PATHS.home : navPath(id))}
+      onSelect={(id) => navigate(id === '' ? PATHS.admin : navPath(id))}
       topbarRight={
         <>
           <UserMenu
             name={nombreCompleto(usuario)}
             email={usuario.email}
-            links={[{ label: 'Inicio', icon: Home, onSelect: () => navigate(PATHS.home) }]}
+            links={[
+              { label: 'Inicio', icon: Home, onSelect: () => navigate(PATHS.admin) },
+              { label: 'Ver sitio web', icon: Globe, onSelect: () => navigate(PATHS.portal) },
+            ]}
             footerLinks={[{ label: 'Mi perfil', icon: UserRound, onSelect: () => navigate(PATHS.perfil) }]}
             onLogout={() => void logout()}
           />

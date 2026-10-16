@@ -115,7 +115,7 @@ El vhost se probó en una instancia de Apache descartable (puerto 8099) antes de
 
 | Petición | Resultado |
 |---|---|
-| `/`, `/login`, `/config/usuarios` | 200 → `index.html` (el fallback de la SPA funciona al refrescar o abrir directo) |
+| `/`, `/hoteles/2`, `/admin/login`, `/admin/config/usuarios` | 200 → `index.html` (el fallback de la SPA funciona al refrescar o abrir directo) |
 | `/assets/*.js` | 200, `text/javascript` |
 | `/api/...` sin backend | 503 |
 | `/api/...` con un backend simulado | llega al backend (el `POST /api/auth/login` devolvió 200) |

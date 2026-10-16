@@ -22,8 +22,14 @@ type Deps struct {
 	// todavía no entró (el login). Mantenerlo cortito es parte de la seguridad.
 	Public []Module
 
-	// Modules son los módulos que viven detrás de la sesión.
+	// Modules son los módulos que viven detrás de la sesión del PERSONAL.
 	Modules []Module
+
+	// Cliente exige sesión de HUÉSPED (token de tipo cliente) y ClienteModules
+	// son los módulos detrás de ella: lo que obliga a iniciar sesión para reservar.
+	// El token del personal no sirve aquí ni el del huésped en Modules.
+	Cliente        gin.HandlerFunc
+	ClienteModules []Module
 }
 
 func Register(r gin.IRouter, d Deps) {
@@ -45,5 +51,12 @@ func Register(r gin.IRouter, d Deps) {
 	protegido := api.Group("", d.Authenticate)
 	for _, m := range d.Modules {
 		m.Register(protegido)
+	}
+
+	if d.Cliente != nil {
+		deCliente := api.Group("", d.Cliente)
+		for _, m := range d.ClienteModules {
+			m.Register(deCliente)
+		}
 	}
 }

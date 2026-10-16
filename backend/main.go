@@ -13,12 +13,22 @@ import (
 
 	"hotelerias/backend/config"
 	"hotelerias/backend/internal/auth"
+	"hotelerias/backend/internal/cliente"
+	clientepg "hotelerias/backend/internal/cliente/postgres"
 	"hotelerias/backend/internal/db"
+	"hotelerias/backend/internal/demo"
+	"hotelerias/backend/internal/hotel"
+	hotelpg "hotelerias/backend/internal/hotel/postgres"
 	"hotelerias/backend/internal/permiso"
 	permisopg "hotelerias/backend/internal/permiso/postgres"
 	"hotelerias/backend/internal/platform/cache"
 	"hotelerias/backend/internal/platform/httpx"
 	"hotelerias/backend/internal/platform/migrate"
+	"hotelerias/backend/internal/portal"
+	"hotelerias/backend/internal/promocion"
+	promocionpg "hotelerias/backend/internal/promocion/postgres"
+	"hotelerias/backend/internal/reserva"
+	reservapg "hotelerias/backend/internal/reserva/postgres"
 	"hotelerias/backend/internal/routes"
 	"hotelerias/backend/internal/usuario"
 	usuariopg "hotelerias/backend/internal/usuario/postgres"
@@ -104,17 +114,64 @@ func run() error {
 	permisos := permiso.NewService(permiso.Permisos, store, rolesConCache, store)
 	guard := permiso.NewGuard(permiso.Permisos, permisos, permisos)
 
+	// --- Portal de reservas ---
+	if cfg.Demo.Datos {
+		sembrado, err := demo.Sembrar(ctx, dbs.Postgres, hotel.Hoy())
+		if err != nil {
+			return fmt.Errorf("datos de muestra: %w", err)
+		}
+		if sembrado {
+			log.Println("datos de muestra creados (Demo.Datos): sedes, habitaciones, tipos de cliente y ofertas")
+		}
+	}
+
+	hoteles := hotelpg.NewStore(dbs.Postgres)
+	hotelSvc := hotel.NewServicio(hoteles, hotel.Hoy)
+
+	promoSvc := promocion.NewServicio(promocionpg.NewStore(dbs.Postgres), hotel.Hoy)
+
+	clienteSvc, err := cliente.NewServicio(clientepg.NewStore(dbs.Postgres), hasher, tokens,
+		auth.NuevoLimitador(5, 15*time.Minute))
+	if err != nil {
+		return err
+	}
+
+	reservaRepo := reservapg.NewStore(dbs.Postgres)
+	reservaSvc := reserva.NewServicio(reservaRepo, hoteles, promoSvc, clienteSvc, hotel.Hoy)
+
+	portalHandler := portal.NewHandler(hotelSvc, promoSvc, clienteSvc, reservaSvc, hotel.Hoy,
+		auth.ClienteOpcional(tokens))
+
+	// Los permisos del panel por recurso: quien los arma decide qué exige cada uno.
+	guardas := func(submodulo string) httpx.Guardas {
+		return httpx.Guardas{
+			Ver:    guard.Require(submodulo, permiso.Ver),
+			Crear:  guard.Require(submodulo, permiso.Crear),
+			Editar: guard.Require(submodulo, permiso.Editar),
+		}
+	}
+	reservaGuardas := guardas("reservas.reservas")
+	reservaGuardas.Anular = guard.Require("reservas.reservas", permiso.Anular)
+
 	// --- HTTP ---
 	router := httpx.NewRouter(cfg.AllowedOrigins)
 	routes.Register(router, routes.Deps{
 		Authenticate: auth.Authenticate(tokens),
 		Public: []routes.Module{
 			authHandler.Publico(),
+			portalHandler.Publico(),
 		},
 		Modules: []routes.Module{
 			authHandler.Privado(),
 			permiso.NewHandler(permiso.Permisos, permisos),
 			usuario.NewHandler(cuentas, guard.Require("config.usuarios", permiso.Ver)),
+			promocion.NewHandler(promoSvc, guardas("reservas.paquetes")),
+			cliente.NewAdminHandler(clienteSvc, guardas("crm.huespedes"), guardas("crm.fidelizacion")),
+			reserva.NewAdminHandler(reservaSvc, reservaGuardas),
+		},
+		Cliente: auth.AuthenticateCliente(tokens),
+		ClienteModules: []routes.Module{
+			portalHandler.ConSesion(),
 		},
 	})
 

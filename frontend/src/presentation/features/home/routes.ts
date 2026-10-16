@@ -12,7 +12,7 @@ export const homeRoutes: RouteModule = {
   routes: [
     standaloneRoute({
       id: 'home.inicio',
-      path: PATHS.home,
+      path: PATHS.admin,
       // Solo sesión, sin permiso: es donde llega quien aún no tiene ninguno.
       access: acceso.sesion(),
       component: InicioPage,

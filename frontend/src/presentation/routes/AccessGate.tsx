@@ -39,11 +39,11 @@ export function AccessGate({ access, children }: { access: Access; children: Rea
 
     case 'login':
       // Se recuerda a dónde iba para llevarla ahí al entrar.
-      return <Navigate to={PATHS.login} replace state={{ from: location } satisfies FromState} />
+      return <Navigate to={PATHS.adminLogin} replace state={{ from: location } satisfies FromState} />
 
     case 'home': {
       const from = (location.state as FromState | null)?.from
-      return <Navigate to={from ? `${from.pathname}${from.search ?? ''}` : PATHS.home} replace />
+      return <Navigate to={from ? `${from.pathname}${from.search ?? ''}` : PATHS.admin} replace />
     }
 
     case 'denied':

@@ -189,8 +189,40 @@ La respuesta 403 incluye qué faltaba, para que el frontend abra el modal de ped
 | GET | `/api/permiso/mios` | Sesión | `["fact.pedidos:ver", ...]` (nunca `null`) |
 | GET | `/api/usuario` | `config.usuarios:ver` | `[{id, rolId, rolNombre, nombre, apellido, email, telefono, foto, activo, creadoEn}]` |
 
-Toda ruta fuera de `/api/health` y `/api/auth/login` exige `Authorization: Bearer <jwt>`. El
-token solo dice **quién** es (`sub`); no lleva permisos.
+**Web pública (huésped)** — sesión aparte, token de tipo `cliente`:
+
+| Método | Ruta | Acceso | Qué hace |
+|---|---|---|---|
+| GET | `/api/portal/sedes` · `/sedes/:id` | Público | Hoteles y sus habitaciones |
+| GET | `/api/portal/sedes/:id/disponibilidad?entrada=&salida=&huespedes=` | Público | Habitaciones con cuántas quedan para esas fechas |
+| GET | `/api/portal/promociones` | Público (opcional: sesión) | Ofertas sin código; con sesión, también las de su tipo |
+| POST | `/api/portal/cotizar` | Público (opcional: sesión) | Precio con el mejor descuento; con sesión, el de su tipo de cliente |
+| POST | `/api/portal/registro` · `/login` | Público | `{token, cliente}` |
+| GET | `/api/portal/me` | **Huésped** | Su perfil y tipo |
+| POST | `/api/portal/reservas` | **Huésped** | Reservar (`409` si ya no hay cupo o cambió el precio) |
+| GET | `/api/portal/reservas` | **Huésped** | Sus reservas |
+| POST | `/api/portal/reservas/:codigo/cancelar` | **Huésped** | Cancelar la suya (hasta el día anterior a la entrada) |
+
+**Panel (personal)**:
+
+| Método | Ruta | Permiso | Qué hace |
+|---|---|---|---|
+| GET · POST · PUT | `/api/promocion` · `/:id` | `reservas.paquetes` ver · crear · editar | Ofertas |
+| GET · POST · PUT | `/api/tipo-cliente` · `/:id` | `crm.fidelizacion` ver · crear · editar | Tipos de huésped |
+| GET | `/api/cliente` | `crm.huespedes:ver` | Huéspedes registrados |
+| PUT | `/api/cliente/:id/tipo` | `crm.huespedes:editar` | `{tipoClienteId}`; `null` = volver a la regla automática |
+| GET | `/api/reserva?estado=` | `reservas.reservas:ver` | Reservas de la cadena |
+| POST | `/api/reserva/:id/cancelar` | `reservas.reservas:anular` | Cancelar (sin la restricción de fechas) |
+
+Toda ruta fuera de `/api/health`, `/api/auth/login` y las `/api/portal/*` públicas exige
+`Authorization: Bearer <jwt>`. El token solo dice **quién** es (`sub`) y **de qué tipo** de cuenta
+(`typ`); no lleva permisos. Un token de huésped no sirve en el panel ni al revés.
+
+### Datos de muestra
+
+`Demo.Datos: true` (o `DEMO_DATOS=true` en `.env`) siembra sedes, habitaciones, tipos de cliente y
+ofertas **solo si todavía no hay ninguna sede**; nunca pisa datos reales. Para producción,
+déjalo apagado.
 
 ---
 

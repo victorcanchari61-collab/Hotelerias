@@ -16,6 +16,36 @@ export const ApiPaths = {
     mios: '/permiso/mios',
     catalogo: '/permiso/catalogo',
   },
+  // Lo que ve y usa el huésped en la web pública.
+  portal: {
+    sedes: '/portal/sedes',
+    sede: (id: number) => `/portal/sedes/${id}`,
+    disponibilidad: (id: number) => `/portal/sedes/${id}/disponibilidad`,
+    promociones: '/portal/promociones',
+    cotizar: '/portal/cotizar',
+    registro: '/portal/registro',
+    login: '/portal/login',
+    me: '/portal/me',
+    reservas: '/portal/reservas',
+    cancelar: (codigo: string) => `/portal/reservas/${encodeURIComponent(codigo)}/cancelar`,
+  },
+  // Lo que administra el personal desde el panel.
+  promocion: {
+    base: '/promocion',
+    porId: (id: number) => `/promocion/${id}`,
+  },
+  tipoCliente: {
+    base: '/tipo-cliente',
+    porId: (id: number) => `/tipo-cliente/${id}`,
+  },
+  cliente: {
+    base: '/cliente',
+    tipo: (id: number) => `/cliente/${id}/tipo`,
+  },
+  reserva: {
+    base: '/reserva',
+    cancelar: (id: number) => `/reserva/${id}/cancelar`,
+  },
   usuario: {
     base: '/usuario',
     porId: (id: number) => `/usuario/${id}`,

@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom'
 import { Card } from '@/shared/ui'
 import { PATHS } from '../routes/paths'
 
-export function NoEncontrada() {
+/** `volverA`: a dónde lleva el enlace (el panel por defecto; la web pública pasa la raíz). */
+export function NoEncontrada({ volverA = PATHS.admin }: { volverA?: string }) {
   return (
     <div className="mx-auto max-w-md pt-10">
       <Card className="text-center">
@@ -12,7 +13,7 @@ export function NoEncontrada() {
           Puede que el enlace esté mal escrito o que la pantalla ya no esté disponible.
         </p>
         <Link
-          to={PATHS.home}
+          to={volverA}
           className="mt-5 inline-block text-sm font-semibold text-accent-ink hover:underline"
         >
           Volver al inicio

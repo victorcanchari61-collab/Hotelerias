@@ -130,8 +130,22 @@ export const usuariosRoutes: RouteModule = {
 }
 ```
 
-`config.usuarios` → URL `/config/usuarios` y exige `config.usuarios:ver`. Se derivan del id del
-menú (`presentation/layout/navigation.ts`), así que **no pueden desincronizarse del sidebar**.
+`config.usuarios` → URL `/admin/config/usuarios` y exige `config.usuarios:ver`. Se derivan del id
+del menú (`presentation/layout/navigation.ts`), así que **no pueden desincronizarse del sidebar**.
+
+### Dos mitades, dos sesiones
+
+| | Web pública | Panel |
+|---|---|---|
+| URL | `/`, `/hoteles/:id`, `/ofertas`, `/ingresar`, `/registro`, `/reservar`, `/mis-reservas` | `/admin/**` |
+| Quién | el huésped (tabla `cliente`) | el personal (tabla `usuario`) |
+| `layout` | `portal` → `PortalLayout` + `ClienteGate` | `shell` / `bare` → `PrivateLayout` + `AccessGate` |
+| Token | `hotelerias.cliente.token` | `hotelerias.token` |
+
+Mirar hoteles y precios es público; `reservar` y `mis-reservas` son `authenticated`: sin sesión
+mandan a `/ingresar` y, al entrar, **vuelven a lo que se estaba haciendo** (la reserva viaja en la
+URL, no en el estado del router). Las dos sesiones no se mezclan: cada una tiene su cliente HTTP,
+su almacenamiento y su aviso de "sesión vencida".
 
 ### Políticas de acceso
 
@@ -245,8 +259,8 @@ npx vitest run
 
 ## Pendiente
 
-- **Backend:** `/api/auth/login`, `/auth/me` y `/usuario` aún no existen en el backend actual
-  (ver `docs/CAMBIOS.md`). Las pantallas se verificaron contra un backend simulado.
+- **Portal:** sin pasarela de pago (la reserva se confirma sin cobro), sin recuperar contraseña
+  del huésped y sin administración de sedes/habitaciones desde el panel (se siembran).
 - **Features:** Roles, Empresa y el formulario de crear/editar usuario. Los casos de uso de
   crear/actualizar ya existen y están probados; falta la pantalla.
 - **Alertas:** la campana está montada pero sin datos (el backend no expone alertas).

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"hotelerias/backend/internal/usuario"
 )
@@ -42,70 +41,49 @@ type Sesion struct {
 	Usuario usuario.Perfil `json:"usuario"`
 }
 
-// Servicio autentica personas. No sabe de HTTP ni de SQL.
+// Servicio autentica al PERSONAL del hotel. No sabe de HTTP ni de SQL.
+//
+// La parte delicada (tiempos, enumeración, fuerza bruta) la hace el Verificador,
+// que comparte con el login de huéspedes.
 type Servicio struct {
-	cuentas   Cuentas
-	hasher    Hasher
-	emisor    Emisor
-	limitador *Limitador
-
-	// hashFalso se compara cuando el correo NO existe, para que responder
-	// "no existe" tarde lo mismo que responder "clave incorrecta". Sin esto el
-	// tiempo de respuesta delata qué correos están registrados.
-	hashFalso string
+	cuentas Cuentas
+	emisor  Emisor
+	verif   *Verificador
 }
 
 func NewServicio(cuentas Cuentas, hasher Hasher, emisor Emisor, limitador *Limitador) (*Servicio, error) {
-	falso, err := hasher.Hash("hotelerias-clave-que-no-pertenece-a-nadie")
+	v, err := NewVerificador(hasher, limitador, "staff")
 	if err != nil {
-		return nil, fmt.Errorf("auth: preparando el hash de relleno: %w", err)
+		return nil, err
 	}
-	return &Servicio{cuentas: cuentas, hasher: hasher, emisor: emisor, limitador: limitador, hashFalso: falso}, nil
+	return &Servicio{cuentas: cuentas, emisor: emisor, verif: v}, nil
 }
 
 // Login valida las credenciales y emite el token. `origen` (la IP) entra en la
 // clave del limitador junto con el correo.
 func (s *Servicio) Login(ctx context.Context, origen, email, password string) (Sesion, error) {
-	email = strings.TrimSpace(email)
+	var cuenta usuario.Cuenta
 
-	// Vacío o más largo de lo que bcrypt procesa: no puede ser una clave válida.
-	// Mismo error que cualquier otra credencial mala.
-	if email == "" || password == "" || len(password) > MaxPasswordBytes {
-		return Sesion{}, ErrCredenciales
+	id, err := s.verif.Verificar(ctx, origen, email, password,
+		func(ctx context.Context, email string) (Credencial, error) {
+			c, err := s.cuentas.PorEmail(ctx, email)
+			if errors.Is(err, usuario.ErrNoEncontrada) {
+				return Credencial{}, ErrCuentaInexistente
+			}
+			if err != nil {
+				return Credencial{}, err
+			}
+			cuenta = c
+			return Credencial{ID: c.ID, PasswordHash: c.PasswordHash, Activo: c.Activo}, nil
+		})
+	if err != nil {
+		return Sesion{}, err
 	}
 
-	clave := origen + "|" + strings.ToLower(email)
-	if !s.limitador.Permitir(clave) {
-		return Sesion{}, ErrDemasiadosIntentos
-	}
-
-	cuenta, err := s.cuentas.PorEmail(ctx, email)
-	switch {
-	case errors.Is(err, usuario.ErrNoEncontrada):
-		_ = s.hasher.Comparar(s.hashFalso, password) // gastar el mismo tiempo
-		s.limitador.Fallo(clave)
-		return Sesion{}, ErrCredenciales
-	case err != nil:
-		return Sesion{}, fmt.Errorf("auth: buscando la cuenta: %w", err)
-	}
-
-	if err := s.hasher.Comparar(cuenta.PasswordHash, password); err != nil {
-		s.limitador.Fallo(clave)
-		return Sesion{}, ErrCredenciales
-	}
-
-	// Recién con la clave correcta se dice que la cuenta está desactivada: así
-	// quien ataca no puede usar este mensaje para saber qué cuentas existen.
-	if !cuenta.Activo {
-		return Sesion{}, ErrCuentaInactiva
-	}
-
-	token, err := s.emisor.Emitir(cuenta.ID)
+	token, err := s.emisor.Emitir(id)
 	if err != nil {
 		return Sesion{}, fmt.Errorf("auth: emitiendo el token: %w", err)
 	}
-
-	s.limitador.Exito(clave)
 	return Sesion{Token: token, Usuario: cuenta.Perfil()}, nil
 }
 

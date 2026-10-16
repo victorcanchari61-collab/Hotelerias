@@ -19,6 +19,13 @@ type Config struct {
 	JwtSettings       JwtSettings       `mapstructure:"JwtSettings"`
 	ApisPeru          ApisPeru          `mapstructure:"ApisPeru"`
 	AdminInicial      AdminInicial      `mapstructure:"AdminInicial"`
+	Demo              Demo              `mapstructure:"Demo"`
+}
+
+// Demo activa datos de muestra para recorrer el portal sin cargar nada a mano.
+// Solo siembra si todavía no hay ninguna sede. No es para producción.
+type Demo struct {
+	Datos bool `mapstructure:"Datos"`
 }
 
 // AdminInicial es la cuenta de super administrador que se crea al arrancar si
@@ -93,6 +100,7 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("AdminInicial.Email", "")
 	v.SetDefault("AdminInicial.Nombre", "Super Admin")
 	v.SetDefault("AdminInicial.Password", "")
+	v.SetDefault("Demo.Datos", false)
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 

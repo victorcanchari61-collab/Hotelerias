@@ -5,6 +5,83 @@ Cómo usar lo que se describe aquí: [`backend/README.md`](../backend/README.md)
 
 ---
 
+## 2026-10-15 — Portal de reservas (demo): web pública, promociones y tipos de cliente
+
+Antes el sitio era solo el panel. Ahora hay una **web pública** donde el huésped mira los hoteles
+y reserva, y el panel pasó a vivir bajo `/admin`.
+
+### Lo que se pidió → cómo quedó
+
+| Pedido | Resultado |
+|---|---|
+| Página donde el cliente entra y reserva, como demo | Portada con búsqueda, página de cada hotel con habitaciones y precio, confirmación y "Mis reservas". `Demo.Datos` siembra 4 sedes, 12 habitaciones, 4 tipos de cliente y 6 ofertas. |
+| El cliente **sí o sí** se loguea para reservar | Mirar y cotizar es público; **reservar exige sesión de huésped**. Quien llega sin ella va a `/ingresar` y, al entrar, **vuelve a la reserva a medias**. Se exige en el servidor (`401`), no solo en la pantalla. |
+| Los hoteles crean promociones y ofertas | CRUD en el panel (*Paquetes y promociones*): porcentaje o monto fijo por noche, por hotel o todos, por tipo de huésped, con vigencia, mínimo de noches y código opcional. Se desactivan, no se borran. |
+| Califican tipos de clientes | *Fidelización y VIP*: tipos con descuento y regla automática por reservas (Regular 0 % → Frecuente 5 % ≥3 → VIP 10 % ≥6; Corporativo, solo a mano). *Huéspedes*: fijar el tipo a mano o devolverlo a automático. |
+
+### Decisiones que conviene conocer
+
+- **Dos sesiones, dos tokens.** Huésped y personal son tablas distintas y sus ids pueden coincidir:
+  el JWT lleva `typ` (`staff` | `cliente`) y cada middleware exige el suyo. Un token de huésped no
+  abre el panel ni al revés (probado). Un token anterior sin `typ` vale solo como personal.
+- **El servidor calcula el precio.** El navegador solo manda habitación, fechas y huéspedes; los
+  importes que mande se ignoran. Dinero en **céntimos enteros**, nunca decimales.
+- **Los descuentos NO se acumulan**: gana el mayor entre las ofertas aplicables y el beneficio del
+  tipo del huésped (empate: gana la oferta). Acumular es una decisión de negocio, no un detalle:
+  un VIP con 10 % más una oferta de 20 % pagaría 30 % menos sin que nadie lo decidiera.
+- **No se vende la misma habitación dos veces.** Reservar bloquea el tipo de habitación
+  (`SELECT … FOR UPDATE`) y cuenta las reservas que se cruzan **dentro de la misma transacción**.
+  Probado con 8 peticiones simultáneas por 2 habitaciones: 2 entran, 6 reciben `409`. El día de
+  salida de una estadía y el de entrada de otra **no** se cruzan.
+- **La reserva copia lo aplicado** (nombre y monto del descuento): si la oferta cambia o se apaga,
+  la reserva ya hecha conserva lo que se le ofreció.
+- **"Hoy" es el del hotel (Lima)**, no el del servidor ni el del dispositivo.
+- **Los códigos promocionales nunca salen** hacia el visitante: la web lista solo ofertas sin
+  código. Cancelar exige ser el dueño y, por la web, hasta el día anterior a la entrada.
+- **El tipo de cliente sube al reservar** (y baja si cancela), salvo que el personal lo haya fijado
+  a mano.
+- **Registro**: tope por IP (10/hora) porque cada alta cuesta un bcrypt; el login comparte el
+  `Verificador` del personal (mismos tiempos, mismo límite de intentos), con ámbito propio.
+
+### Backend
+
+`internal/{hotel,promocion,cliente,reserva,portal,demo}`, `platform/fecha` (fecha sin zona
+horaria) y la migración `0004_portal_reservas.sql`. `routes.Deps` suma `Cliente` y
+`ClienteModules` (rutas detrás de la sesión del huésped). Endpoints en
+[`backend/README.md`](../backend/README.md#endpoints).
+
+### Frontend
+
+- El panel se movió a **`/admin`** (`/admin/login`, `/admin/config/usuarios`…). La web pública
+  vive en la raíz. Un huésped abre `/admin` y cae en el login del personal.
+- Mismas capas: entidades, repositorios y casos de uso en `domain/`; datasources, DTO y repos
+  en `data/`; un **segundo cliente HTTP** con el token del huésped en `di/`. La búsqueda
+  (`BuscarEstadia`) junta disponibilidad y cotización en un solo caso de uso.
+- Rutas con `layout: 'portal'` y `ClienteGate`: la **misma** política de acceso
+  (`evaluateAccess`) sobre la sesión del huésped.
+- Las "fotos" de la demo son composiciones de la escala del color de marca (`Visual.tsx`); cuando
+  haya fotos reales ese es el único componente que cambia.
+
+### Verificación
+
+- Backend: `go vet` y `go test ./...` en verde, incluida la prueba de punta a punta contra
+  PostgreSQL real (sobreventa, tokens cruzados, cancelación, subida de tipo, precios del servidor).
+- Frontend: `tsc` sin errores, **259 pruebas** (incluye el flujo "reservar sin sesión → ingresar →
+  volver → confirmar") y build de producción.
+- Probado a mano contra el backend real: portada, hotel con la oferta de Cusco aplicada
+  (S/ 880 − S/ 160 = S/ 720), registro, vuelta a la reserva y confirmación. Los datos de esa
+  prueba se borraron.
+
+### Pendiente
+
+- Pago: la reserva se confirma sin cobro (es una demo). Falta pasarela y estados de pago.
+- Administración de sedes y habitaciones desde el panel (hoy se siembran).
+- Recuperar contraseña del huésped y verificación del correo.
+- Las pantallas nuevas del panel se otorgan con la matriz de permisos existente
+  (`reservas.paquetes`, `crm.fidelizacion`, `crm.huespedes`, `reservas.reservas`).
+
+---
+
 ## 2026-10-15 — Módulos de una cadena hotelera (corrección)
 
 **El error.** Al portar los permisos de `distributor` copié también su **catálogo de módulos** (56 submódulos de una

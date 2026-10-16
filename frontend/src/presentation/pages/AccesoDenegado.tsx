@@ -27,7 +27,7 @@ export function AccesoDenegado({ requeridos }: { requeridos: readonly PermisoReq
           el permiso.
         </p>
         <Link
-          to={PATHS.home}
+          to={PATHS.admin}
           className="mt-5 inline-block text-sm font-semibold text-accent-ink hover:underline"
         >
           Volver al inicio

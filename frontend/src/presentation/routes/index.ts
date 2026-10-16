@@ -1,6 +1,10 @@
 import { NAV_GROUPS } from '@/presentation/layout/navigation'
 import { authRoutes } from '../features/auth/routes'
+import { fidelizacionRoutes } from '../features/fidelizacion/routes'
 import { homeRoutes } from '../features/home/routes'
+import { portalRoutes } from '../features/portal/routes'
+import { promocionesRoutes } from '../features/promociones/routes'
+import { reservasRoutes } from '../features/reservas/routes'
 import { usuariosRoutes } from '../features/usuarios/routes'
 import { EnConstruccion } from '../pages/EnConstruccion'
 import { buildRouteTable } from './registry'
@@ -11,7 +15,15 @@ import type { ResolvedRoute, RouteModule } from './types'
  * `routes.ts` de su feature y se suma UNA línea aquí; el router, los guards
  * y el menú no se tocan.
  */
-export const ROUTE_MODULES: readonly RouteModule[] = [authRoutes, homeRoutes, usuariosRoutes]
+export const ROUTE_MODULES: readonly RouteModule[] = [
+  authRoutes,
+  homeRoutes,
+  usuariosRoutes,
+  promocionesRoutes,
+  fidelizacionRoutes,
+  reservasRoutes,
+  portalRoutes,
+]
 
 export function createRouteTable(): ResolvedRoute[] {
   return buildRouteTable(

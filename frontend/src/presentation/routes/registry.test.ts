@@ -26,7 +26,7 @@ describe('buildRouteTable', () => {
     const t = construir([navRoute('crm.huespedes', Pantalla)])
     const r = t.find((x) => x.id === 'crm.huespedes')!
 
-    expect(r.path).toBe('/crm/huespedes')
+    expect(r.path).toBe('/admin/crm/huespedes')
     expect(r.access).toEqual({ kind: 'permiso', submodulo: 'crm.huespedes', accion: 'ver' })
     expect(r.component).toBe(Pantalla)
     expect(r.placeholder).toBe(false)
@@ -103,7 +103,7 @@ describe('buildRouteTable', () => {
     it('una URL standalone que choca con la de una entrada del menú', () => {
       expect(() =>
         construir([
-          standaloneRoute({ id: 'otra', path: '/inventario/stock', access: acceso.sesion(), component: Pantalla, layout: 'shell' }),
+          standaloneRoute({ id: 'otra', path: '/admin/inventario/stock', access: acceso.sesion(), component: Pantalla, layout: 'shell' }),
         ]),
       ).toThrow(/repetida/)
     })
@@ -125,13 +125,54 @@ describe('la tabla real de la app', () => {
     expect(table.length).toBeGreaterThan(30)
   })
 
-  it('tiene login (sin menú, solo invitados) e inicio (solo sesión)', () => {
-    expect(table.find((r) => r.path === '/login')).toMatchObject({ layout: 'bare', access: { kind: 'guest' } })
-    expect(table.find((r) => r.path === '/')).toMatchObject({ layout: 'shell', access: { kind: 'authenticated' } })
+  it('el panel vive bajo /admin: login (sin menú, solo invitados) e inicio (solo sesión)', () => {
+    expect(table.find((r) => r.path === '/admin/login')).toMatchObject({ layout: 'bare', access: { kind: 'guest' } })
+    expect(table.find((r) => r.path === '/admin')).toMatchObject({ layout: 'shell', access: { kind: 'authenticated' } })
   })
 
-  it('/config/usuarios es la pantalla real, no la de "en construcción"', () => {
-    const r = table.find((x) => x.path === '/config/usuarios')!
+  it('toda ruta del panel cuelga de /admin y ninguna de la web pública', () => {
+    for (const r of table.filter((x) => x.layout === 'shell' || x.layout === 'bare')) {
+      expect(r.path, r.id).toMatch(/^\/admin(\/|$)/)
+    }
+    for (const r of table.filter((x) => x.layout === 'portal')) {
+      expect(r.path, r.id).not.toMatch(/^\/admin/)
+    }
+  })
+
+  describe('la web pública', () => {
+    const portal = (id: string) => table.find((r) => r.id === id)!
+
+    it('mirar hoteles, precios y ofertas no pide cuenta', () => {
+      for (const id of ['portal.inicio', 'portal.ofertas', 'portal.hotel']) {
+        expect(portal(id).access, id).toEqual({ kind: 'public' })
+      }
+    })
+
+    it('RESERVAR y ver mis reservas exigen sesión de huésped', () => {
+      expect(portal('portal.reservar').access).toEqual({ kind: 'authenticated' })
+      expect(portal('portal.misReservas').access).toEqual({ kind: 'authenticated' })
+    })
+
+    it('ingresar y registrarse son solo para quien no tiene sesión', () => {
+      expect(portal('portal.ingresar').access).toEqual({ kind: 'guest' })
+      expect(portal('portal.registro').access).toEqual({ kind: 'guest' })
+    })
+
+    it('la página de un hotel recibe el id por la URL', () => {
+      expect(portal('portal.hotel').path).toBe('/hoteles/:id')
+    })
+
+    it('las pantallas de oferta, fidelización y reservas del panel están construidas', () => {
+      for (const id of ['reservas.paquetes', 'crm.fidelizacion', 'crm.huespedes', 'reservas.reservas']) {
+        const r = table.find((x) => x.id === id)!
+        expect(r.placeholder, id).toBe(false)
+        expect(r.access).toMatchObject({ kind: 'permiso', submodulo: id, accion: 'ver' })
+      }
+    })
+  })
+
+  it('/admin/config/usuarios es la pantalla real, no la de "en construcción"', () => {
+    const r = table.find((x) => x.path === '/admin/config/usuarios')!
     expect(r.placeholder).toBe(false)
     expect(r.access).toEqual({ kind: 'permiso', submodulo: 'config.usuarios', accion: 'ver' })
   })

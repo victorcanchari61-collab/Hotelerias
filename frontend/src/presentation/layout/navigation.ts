@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import { PANEL_BASE } from '../routes/paths'
 import {
   Armchair,
   BedDouble,
@@ -312,13 +313,16 @@ export const NAV_DEFAULT = NAV_GROUPS[0].items[0].id
 
 /**
  * Ruta de una entrada del menu. El id ya tiene la forma modulo.vista, asi que
- * 'config.usuarios' se convierte en '/config/usuarios' sin declarar nada mas.
+ * 'config.usuarios' se convierte en '/admin/config/usuarios' sin declarar nada mas.
  */
 export function navPath(itemId: string) {
-  return `/${itemId.split('.').join('/')}`
+  return `${PANEL_BASE}/${itemId.split('.').join('/')}`
 }
 
-/** Id del menu a partir de la ruta del navegador. */
+/** Id del menu a partir de la ruta del navegador (la raíz del panel es ''). */
 export function navIdFromPath(pathname: string) {
-  return pathname.replace(/^\/+|\/+$/g, '').split('/').join('.')
+  const dentro = pathname.startsWith(`${PANEL_BASE}/`) || pathname === PANEL_BASE
+    ? pathname.slice(PANEL_BASE.length)
+    : pathname
+  return dentro.replace(/^\/+|\/+$/g, '').split('/').join('.')
 }
