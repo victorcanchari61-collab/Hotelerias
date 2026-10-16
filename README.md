@@ -120,4 +120,5 @@ El repositorio es un **esqueleto funcional**:
 | --- | --- |
 | [`backend/README.md`](backend/README.md) | Cómo arrancar, configuración y secretos, arquitectura, sistema de permisos, endpoints, migraciones y pruebas |
 | [`frontend/README.md`](frontend/README.md) | Arquitectura por capas, rutas y políticas de acceso, kit de UI de un solo color, pruebas |
+| [`deploy/laragon/README.md`](deploy/laragon/README.md) | Abrir el proyecto en `http://hotelerias.test/` con Laragon (vhost, hosts, backend) |
 | [`docs/CAMBIOS.md`](docs/CAMBIOS.md) | Registro de cambios con sus decisiones y los pendientes |

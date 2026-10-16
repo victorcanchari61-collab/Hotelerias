@@ -5,6 +5,15 @@ Cómo usar lo que se describe aquí: [`backend/README.md`](../backend/README.md)
 
 ---
 
+## 2026-10-15 — Abrir el proyecto en Laragon (`hotelerias.test`)
+
+- Nuevo vhost `00-hotelerias.test.conf` (versionado en `deploy/laragon/` e instalado en `C:\laragon\etc\apache2\sites-enabled\`), con el mismo patrón que `Ecommerce.test` y `Minimarket.test`: sirve `frontend/dist` con fallback de la SPA y manda `/api` y `/uploads` al backend en el puerto **5220**.
+- Probado en una instancia de Apache descartable antes de instalarlo, y la config real de Laragon valida con `httpd -t`. No se reinició tu Apache.
+- `frontend/index.html`: título "Hotel Velothr" (decía "frontend") e idioma `es`.
+- **Falta de tu lado**: recargar Apache desde Laragon (agrega la línea del `hosts`) y compilar el frontend. Pasos y diagnóstico en [`deploy/laragon/README.md`](../deploy/laragon/README.md).
+
+---
+
 ## 2026-10-15 — Frontend: arquitectura por capas, rutas y kit de Ecommerce
 
 ### Resumen
