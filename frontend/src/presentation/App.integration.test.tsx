@@ -243,7 +243,8 @@ describe('la app, de punta a punta (DI con repositorios falsos)', () => {
       // Se reemplaza el resultado a mitad de camino y se navega a la pantalla.
       app.usuarios.listar = async () =>
         left(new (await import('@/core/errors/failures')).ServerFailure('pq: boom'))
-      fireEvent.click(screen.getByText('Configuración'))
+      // El menú se pinta cuando llegan los permisos: se espera, no se asume.
+      fireEvent.click(await screen.findByText('Configuración'))
       fireEvent.click(await screen.findByText('Usuarios'))
 
       expect(await screen.findByText(/El servidor tuvo un problema/)).toBeTruthy()

@@ -199,3 +199,28 @@ func TestParseClave(t *testing.T) {
 		}
 	}
 }
+
+// Una excepción de un solo uso sobre "ver" tiene que gastarse: si el "ver"
+// implícito la tapara, valdría para siempre.
+func TestExcepcionDeUnaVezSobreVerSeGasta(t *testing.T) {
+	ahora := time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC)
+	ver := Clave{Submodulo: "config.roles", Accion: Ver}
+	a := Acceso{Excepciones: []Excepcion{{ID: 7, Clave: ver, Vigencia: UnaVez}}}
+
+	v := a.Resolver(ver, ahora)
+	if !v.Permitido || v.GastarID != 7 {
+		t.Fatalf("debía permitir gastando la excepción 7: %+v", v)
+	}
+
+	// Gastada, ya no sirve.
+	a.Excepciones[0].Usos = 1
+	if v := a.Resolver(ver, ahora); v.Permitido {
+		t.Fatalf("gastada y aún permite: %+v", v)
+	}
+
+	// Pero una excepción de OTRA acción del submódulo sí deja ver sin gastar nada.
+	b := Acceso{Excepciones: []Excepcion{{ID: 8, Clave: Clave{Submodulo: "config.roles", Accion: Editar}, Vigencia: UnaVez}}}
+	if v := b.Resolver(ver, ahora); !v.Permitido || v.GastarID != 0 {
+		t.Fatalf("ver implícito no debe gastar: %+v", v)
+	}
+}

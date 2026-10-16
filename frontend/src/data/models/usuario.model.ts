@@ -17,6 +17,8 @@ export interface UsuarioDto {
   foto?: string
   activo: boolean
   creadoEn?: string
+  rolIds?: number[] | null
+  sedeIds?: number[] | null
 }
 
 export interface LoginResponseDto {
@@ -26,12 +28,13 @@ export interface LoginResponseDto {
 
 /** Lo que se envía al crear o editar. */
 export interface UsuarioInputDto {
-  rolId: number | null
   nombre: string
   apellido: string
   email: string
   telefono: string
-  foto: string
+  rolIds: number[]
+  sedeIds: number[]
+  activo: boolean
   password?: string
 }
 
@@ -53,6 +56,8 @@ export function usuarioFromDto(dto: UsuarioDto): Usuario {
     foto: dto.foto ?? '',
     activo: dto.activo,
     creadoEn: fecha(dto.creadoEn),
+    rolIds: dto.rolIds ?? (dto.rolId === null ? [] : [dto.rolId]),
+    sedeIds: dto.sedeIds ?? [],
   }
 }
 
@@ -62,12 +67,13 @@ export function sesionFromDto(dto: LoginResponseDto): Sesion {
 
 export function usuarioInputToDto(input: UsuarioInput): UsuarioInputDto {
   const dto: UsuarioInputDto = {
-    rolId: input.rolId,
     nombre: input.nombre,
     apellido: input.apellido,
     email: input.email,
     telefono: input.telefono,
-    foto: input.foto,
+    rolIds: input.rolIds,
+    sedeIds: input.sedeIds,
+    activo: input.activo,
   }
   // La contraseña solo viaja si hay una: vacía significaría "bórrala".
   if (input.password) dto.password = input.password

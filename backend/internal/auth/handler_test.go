@@ -74,7 +74,7 @@ func TestHandlerLoginOK(t *testing.T) {
 	}
 
 	// La forma que lee frontend/src/data/models/usuario.model.ts, y NADA más.
-	quiero := []string{"id", "rolId", "rolNombre", "nombre", "apellido", "email", "telefono", "foto", "activo", "creadoEn"}
+	quiero := []string{"id", "rolId", "rolNombre", "nombre", "apellido", "email", "telefono", "foto", "activo", "creadoEn", "rolIds", "sedeIds"}
 	if len(cuerpo.Usuario) != len(quiero) {
 		t.Fatalf("el usuario tiene %d campos, esperaba %d: %v", len(cuerpo.Usuario), len(quiero), cuerpo.Usuario)
 	}

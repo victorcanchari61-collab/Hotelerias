@@ -13,6 +13,13 @@ import type {
   ReservaAdminRepository,
 } from '@/domain/repositories/GestionRepository'
 import type { PortalRepository } from '@/domain/repositories/PortalRepository'
+import type {
+  AccesosRepository,
+  AuditoriaRepository,
+  EmpresaRepository,
+  RolRepository,
+  SedeAdminRepository,
+} from '@/domain/repositories/ConfiguracionRepository'
 
 /**
  * Reemplazos de repositorios. Sirven para probar la UI contra datos en
@@ -31,6 +38,12 @@ export interface RepositoryOverrides {
   promocion?: PromocionRepository
   fidelizacion?: FidelizacionRepository
   reservaAdmin?: ReservaAdminRepository
+  // Configuración: roles, accesos, empresa, sedes y auditoría.
+  rol?: RolRepository
+  empresa?: EmpresaRepository
+  sedeAdmin?: SedeAdminRepository
+  accesos?: AccesosRepository
+  auditoria?: AuditoriaRepository
 }
 
 /** Lo que el contenedor le da a cada módulo para que arme sus piezas. */

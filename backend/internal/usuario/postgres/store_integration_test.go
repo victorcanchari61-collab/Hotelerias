@@ -21,11 +21,23 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 	"hotelerias/backend/config"
+	"hotelerias/backend/internal/auditoria"
+	auditoriapg "hotelerias/backend/internal/auditoria/postgres"
 	"hotelerias/backend/internal/auth"
+	"hotelerias/backend/internal/cliente"
+	"hotelerias/backend/internal/empresa"
+	empresapg "hotelerias/backend/internal/empresa/postgres"
+	"hotelerias/backend/internal/hotel"
+	hotelpg "hotelerias/backend/internal/hotel/postgres"
 	"hotelerias/backend/internal/permiso"
 	permisopg "hotelerias/backend/internal/permiso/postgres"
+	"hotelerias/backend/internal/platform/fecha"
 	"hotelerias/backend/internal/platform/httpx"
 	"hotelerias/backend/internal/platform/migrate"
+	"hotelerias/backend/internal/reserva"
+	reservapg "hotelerias/backend/internal/reserva/postgres"
+	"hotelerias/backend/internal/rol"
+	rolpg "hotelerias/backend/internal/rol/postgres"
 	"hotelerias/backend/internal/routes"
 	"hotelerias/backend/internal/usuario"
 	"hotelerias/backend/internal/usuario/postgres"
@@ -202,12 +214,39 @@ func montarAPI(t *testing.T, pool *pgxpool.Pool) (*httptest.Server, *auth.Tokens
 	pstore := permisopg.NewStore(pool)
 	permisos := permiso.NewService(permiso.Permisos, pstore, pstore, pstore)
 	guard := permiso.NewGuard(permiso.Permisos, permisos, permisos)
+	bitacora := auditoria.NewServicio(auditoriapg.NewStore(pool))
+	gestionPermisos := permiso.NewGestion(pstore, permiso.Permisos, pstore, bitacora)
 
 	svc, err := auth.NewServicio(cuentas, barato, tokens, auth.NuevoLimitador(5, 15*time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
 	h := auth.NewHandler(svc)
+
+	// Igual que main: solo se arma el guard de lo que el submódulo admite; lo
+	// demás queda cerrado.
+	cerrado := func(c *gin.Context) { httpx.Abort(c, http.StatusForbidden, "cerrado") }
+	guardas := func(sub string) httpx.Guardas {
+		s, _ := permiso.Permisos.Submodulo(sub)
+		para := func(a permiso.Accion) gin.HandlerFunc {
+			if !s.Admite(a) {
+				return cerrado
+			}
+			return guard.Require(sub, a)
+		}
+		return httpx.Guardas{
+			Ver: para(permiso.Ver), Crear: para(permiso.Crear), Editar: para(permiso.Editar),
+			Eliminar: para(permiso.Eliminar), Anular: para(permiso.Anular),
+		}
+	}
+
+	hoy := func() fecha.Fecha { return fecha.Hoy(time.UTC) }
+	rolSvc := rol.NewServicio(rolpg.NewStore(pool), permiso.Permisos, nil, bitacora)
+	usuariosSvc := usuario.NewGestion(cuentas, barato, bitacora)
+	empresaSvc := empresa.NewServicio(empresapg.NewStore(pool), bitacora)
+	sedesSvc := hotel.NewAdmin(hotelpg.NewStore(pool), hoy, bitacora)
+	reservasSvc := reserva.NewServicio(reservapg.NewStore(pool), nil, nil, sinHuespedes{}, hoy)
+	alcance := alcanceDe{g: gestionPermisos, sub: "reservas.reservas"}
 
 	r := httpx.NewRouter(nil)
 	routes.Register(r, routes.Deps{
@@ -216,7 +255,13 @@ func montarAPI(t *testing.T, pool *pgxpool.Pool) (*httptest.Server, *auth.Tokens
 		Modules: []routes.Module{
 			h.Privado(),
 			permiso.NewHandler(permiso.Permisos, permisos),
-			usuario.NewHandler(cuentas, guard.Require("config.usuarios", permiso.Ver)),
+			permiso.NewGestionHandler(gestionPermisos, guardas("config.accesos")),
+			usuario.NewHandler(usuariosSvc, guardas("config.usuarios"), auth.UsuarioID),
+			rol.NewHandler(rolSvc, guardas("config.roles"), guardas("config.accesos")),
+			empresa.NewHandler(empresaSvc, guardas("config.empresa")),
+			hotel.NewAdminHandler(sedesSvc, guardas("config.sedes")),
+			auditoria.NewHandler(bitacora, guardas("config.auditoria"), auth.UsuarioID),
+			reserva.NewAdminHandler(reservasSvc, guardas("reservas.reservas"), alcance, bitacora),
 		},
 	})
 	srv := httptest.NewServer(r)
@@ -338,3 +383,28 @@ func TestUnaCuentaDesactivadaNoEntraNiConTokenVigente(t *testing.T) {
 }
 
 var _ = httpx.Problem{} // el paquete se usa vía httpx.NewRouter
+
+// sinHuespedes satisface lo que reserva pide del huésped: aquí no se usa.
+type sinHuespedes struct{}
+
+func (sinHuespedes) Perfil(context.Context, int64) (cliente.Cliente, error) {
+	return cliente.Cliente{}, nil
+}
+func (sinHuespedes) Reclasificar(context.Context, int64) error { return nil }
+
+// alcanceDe adapta la gestión de permisos al Alcance de reservas (como en main).
+type alcanceDe struct {
+	g   *permiso.Gestion
+	sub string
+}
+
+func (a alcanceDe) SedesVisibles(ctx context.Context, id int64) ([]int64, error) {
+	f, err := a.g.Sedes(ctx, id, a.sub)
+	if err != nil || f.Todas {
+		return nil, err
+	}
+	if f.SedeIDs == nil {
+		return []int64{}, nil
+	}
+	return f.SedeIDs, nil
+}

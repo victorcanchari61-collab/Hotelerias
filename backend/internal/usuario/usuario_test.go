@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"hotelerias/backend/internal/platform/httpx"
 )
 
 func init() { gin.SetMode(gin.TestMode) }
@@ -151,7 +152,9 @@ func TestPerfilNoTieneElHash(t *testing.T) {
 
 // --- listado ---
 
+// lectorFake implementa solo Listar; el resto de Gestor (nil) no se usa aquí.
 type lectorFake struct {
+	Gestor
 	cuentas []Cuenta
 	err     error
 }
@@ -160,7 +163,7 @@ func (l lectorFake) Listar(context.Context) ([]Cuenta, error) { return l.cuentas
 
 func llamarListado(l lectorFake, guard gin.HandlerFunc) *httptest.ResponseRecorder {
 	r := gin.New()
-	NewHandler(l, guard).Register(r)
+	NewHandler(l, httpx.Guardas{Ver: guard}, func(*gin.Context) int64 { return 1 }).Register(r)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/usuario", nil))
 	return w

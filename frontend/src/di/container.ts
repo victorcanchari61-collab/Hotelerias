@@ -14,6 +14,8 @@ import { authModule } from './modules/auth.module'
 import type { AuthUseCases } from './modules/auth.module'
 import { permisoModule } from './modules/permiso.module'
 import type { PermisoUseCases } from './modules/permiso.module'
+import { configuracionModule } from './modules/configuracion.module'
+import type { ConfiguracionUseCases } from './modules/configuracion.module'
 import { gestionModule, portalModule } from './modules/portal.module'
 import type { GestionUseCases, PortalUseCases } from './modules/portal.module'
 import type { RepositoryOverrides } from './modules/types'
@@ -25,7 +27,8 @@ export type UseCases = AuthUseCases &
   PermisoUseCases &
   UsuarioUseCases &
   PortalUseCases &
-  GestionUseCases
+  GestionUseCases &
+  ConfiguracionUseCases
 
 /** Avisos que el cliente HTTP emite y que la UI escucha. */
 export interface AppEvents {
@@ -123,6 +126,7 @@ export function createContainer(options: ContainerOptions = {}): Container {
       ...usuarioModule(context),
       ...portalModule(context),
       ...gestionModule(context),
+      ...configuracionModule(context),
     },
   }
 }

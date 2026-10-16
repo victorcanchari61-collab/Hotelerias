@@ -241,6 +241,7 @@ var Permisos = nuevoCatalogo([]Submodulo{
 	sub("config.usuarios", catalogo),
 	sub("config.roles", catalogo),
 	sub("config.accesos", []Accion{Ver, Editar}),
-	sub("config.auditoria", []Accion{Ver, Exportar}),
+	// Eliminar = depurar los registros viejos (nunca los de los últimos 30 días).
+	sub("config.auditoria", []Accion{Ver, Exportar, Eliminar}),
 	sub("config.parametros", []Accion{Ver, Editar}),
 })

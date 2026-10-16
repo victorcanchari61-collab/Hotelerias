@@ -28,6 +28,8 @@ export function usuarioDe(parcial: Partial<Usuario> = {}): Usuario {
     foto: '',
     activo: true,
     creadoEn: null,
+    rolIds: [1],
+    sedeIds: [],
     ...parcial,
   }
 }
@@ -38,12 +40,13 @@ export function sesionDe(parcial: Partial<Sesion> = {}): Sesion {
 
 export function inputDe(parcial: Partial<UsuarioInput> = {}): UsuarioInput {
   return {
-    rolId: 2,
     nombre: 'Luis',
     apellido: 'Rojas',
     email: 'luis@hotel.pe',
     telefono: '',
-    foto: '',
+    rolIds: [2],
+    sedeIds: [],
+    activo: true,
     password: 'secreta123',
     ...parcial,
   }

@@ -7,7 +7,7 @@ import "github.com/gin-gonic/gin"
 // protege el listado" o "el que protege la edición". Quien los arma (main)
 // decide qué permiso exige cada uno. Un nil se trata como "sin filtro extra".
 type Guardas struct {
-	Ver, Crear, Editar, Anular gin.HandlerFunc
+	Ver, Crear, Editar, Eliminar, Anular gin.HandlerFunc
 }
 
 // Cadena devuelve los handlers con el guard (si hay) delante.
@@ -17,9 +17,3 @@ func Cadena(guard gin.HandlerFunc, h gin.HandlerFunc) []gin.HandlerFunc {
 	}
 	return []gin.HandlerFunc{guard, h}
 }
-
-// Validacion es un error de datos que el usuario puede corregir: el mensaje es
-// para mostrárselo tal cual. Se traduce a 400.
-type Validacion string
-
-func (v Validacion) Error() string { return string(v) }

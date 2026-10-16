@@ -214,6 +214,27 @@ La respuesta 403 incluye qué faltaba, para que el frontend abra el modal de ped
 | GET | `/api/reserva?estado=` | `reservas.reservas:ver` | Reservas de la cadena |
 | POST | `/api/reserva/:id/cancelar` | `reservas.reservas:anular` | Cancelar (sin la restricción de fechas) |
 
+**Configuración (personal)**:
+
+| Método | Ruta | Permiso |
+|---|---|---|
+| GET · POST · PUT · PATCH · DELETE | `/api/usuario` · `/:id` · `/:id/estado` | `config.usuarios` ver · crear · editar · eliminar |
+| GET · POST · PUT · DELETE | `/api/rol` · `/:id` | `config.roles` |
+| PUT | `/api/rol/:id/permisos` | `config.accesos:editar` (la matriz completa; **reemplaza**) |
+| GET · PUT | `/api/empresa` | `config.empresa` |
+| GET · POST · PUT | `/api/sede` · `/:id` | `config.sedes` (se desactivan, no se borran) |
+| GET | `/api/permiso/usuario/:id` | `config.accesos:ver` (excepciones de una persona) |
+| POST · PATCH | `/api/permiso/conceder` · `/excepcion/:id/revocar` | `config.accesos:editar` |
+| POST · GET | `/api/permiso/solicitar` · `/solicitudes/mias` | cualquier sesión (pedir no exige permiso) |
+| GET · POST | `/api/permiso/solicitudes` · `/:id/aprobar` · `/:id/rechazar` | `config.accesos` ver · editar |
+| GET · PUT | `/api/permiso/alcances/rol/:id` · `/usuario/:id` | `config.accesos` ver · editar |
+| GET | `/api/permiso/alcances/catalogo` · `/mios` | cualquier sesión |
+| GET | `/api/auditoria?entidad=&accion=&desde=&hasta=&buscar=&pagina=&porPagina=` · `/:id` · `/resumen` · `/entidades` | `config.auditoria:ver` |
+| POST | `/api/auditoria/depurar` `{hasta}` | `config.auditoria:eliminar` (nunca lo de los últimos 30 días) |
+
+Los errores de negocio salen como `400` (datos que se pueden corregir) o `409` (choca con el estado:
+nombre repetido, último administrador, rol en uso, solicitud ya resuelta).
+
 Toda ruta fuera de `/api/health`, `/api/auth/login` y las `/api/portal/*` públicas exige
 `Authorization: Bearer <jwt>`. El token solo dice **quién** es (`sub`) y **de qué tipo** de cuenta
 (`typ`); no lleva permisos. Un token de huésped no sirve en el panel ni al revés.

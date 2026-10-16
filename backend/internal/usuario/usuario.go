@@ -31,6 +31,11 @@ type Cuenta struct {
 	RolID     *int64
 	RolNombre string
 
+	// RolIDs son TODOS sus roles y SedeIDs las sedes que atiende (lo que limita
+	// el alcance "mis sedes").
+	RolIDs  []int64
+	SedeIDs []int64
+
 	PasswordHash string
 }
 
@@ -47,13 +52,24 @@ type Perfil struct {
 	Foto      string    `json:"foto"`
 	Activo    bool      `json:"activo"`
 	CreadoEn  time.Time `json:"creadoEn"`
+	RolIDs    []int64   `json:"rolIds"`
+	SedeIDs   []int64   `json:"sedeIds"`
 }
 
 func (c Cuenta) Perfil() Perfil {
+	// [] y no null: el frontend hace .map() y .includes() sobre estas listas.
+	roles, sedes := c.RolIDs, c.SedeIDs
+	if roles == nil {
+		roles = []int64{}
+	}
+	if sedes == nil {
+		sedes = []int64{}
+	}
 	return Perfil{
 		ID: c.ID, RolID: c.RolID, RolNombre: c.RolNombre,
 		Nombre: c.Nombre, Apellido: c.Apellido, Email: c.Email,
 		Telefono: c.Telefono, Foto: c.Foto, Activo: c.Activo, CreadoEn: c.CreadoEn,
+		RolIDs: roles, SedeIDs: sedes,
 	}
 }
 

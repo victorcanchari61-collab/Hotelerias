@@ -9,6 +9,7 @@ import { useAuth } from '../providers/AuthProvider'
 import { usePermisos } from '../providers/PermisosProvider'
 import { PATHS } from '../routes/paths'
 import { NAV_GROUPS, navIdFromPath, navPath, puedeAbrir, resolveNav } from './navigation'
+import { SolicitarPermisoDialog } from './SolicitarPermisoDialog'
 
 interface Props {
   /** Ids del menú cuya pantalla todavía no existe: se marcan con un punto tenue. */
@@ -88,6 +89,8 @@ export function PrivateLayout({ pendientes }: Props) {
           <Outlet />
         </Suspense>
       </div>
+      {/* Un 403 de una acción pulsada ofrece pedir ese permiso al administrador. */}
+      <SolicitarPermisoDialog />
     </AppShell>
   )
 }

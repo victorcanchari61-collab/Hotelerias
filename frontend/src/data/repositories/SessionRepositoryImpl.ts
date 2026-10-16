@@ -21,6 +21,8 @@ function toDto(usuario: Usuario): UsuarioDto {
     telefono: usuario.telefono,
     foto: usuario.foto,
     activo: usuario.activo,
+    rolIds: usuario.rolIds,
+    sedeIds: usuario.sedeIds,
     creadoEn: usuario.creadoEn?.toISOString(),
   }
 }

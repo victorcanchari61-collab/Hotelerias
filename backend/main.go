@@ -11,12 +11,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"hotelerias/backend/config"
+	"hotelerias/backend/internal/auditoria"
+	auditoriapg "hotelerias/backend/internal/auditoria/postgres"
 	"hotelerias/backend/internal/auth"
 	"hotelerias/backend/internal/cliente"
 	clientepg "hotelerias/backend/internal/cliente/postgres"
 	"hotelerias/backend/internal/db"
 	"hotelerias/backend/internal/demo"
+	"hotelerias/backend/internal/empresa"
+	empresapg "hotelerias/backend/internal/empresa/postgres"
 	"hotelerias/backend/internal/hotel"
 	hotelpg "hotelerias/backend/internal/hotel/postgres"
 	"hotelerias/backend/internal/permiso"
@@ -29,6 +34,8 @@ import (
 	promocionpg "hotelerias/backend/internal/promocion/postgres"
 	"hotelerias/backend/internal/reserva"
 	reservapg "hotelerias/backend/internal/reserva/postgres"
+	"hotelerias/backend/internal/rol"
+	rolpg "hotelerias/backend/internal/rol/postgres"
 	"hotelerias/backend/internal/routes"
 	"hotelerias/backend/internal/usuario"
 	usuariopg "hotelerias/backend/internal/usuario/postgres"
@@ -79,6 +86,9 @@ func run() error {
 		return err
 	}
 
+	// --- Bitácora: la usan los módulos de configuración para dejar constancia ---
+	bitacora := auditoria.NewServicio(auditoriapg.NewStore(dbs.Postgres))
+
 	// --- Módulo usuario y auth ---
 	cuentas := usuariopg.NewStore(dbs.Postgres)
 	hasher := auth.NewBcrypt()
@@ -113,6 +123,7 @@ func run() error {
 	rolesConCache := permiso.NewCachedRoles(store, permisosCache)
 	permisos := permiso.NewService(permiso.Permisos, store, rolesConCache, store)
 	guard := permiso.NewGuard(permiso.Permisos, permisos, permisos)
+	gestionPermisos := permiso.NewGestion(store, permiso.Permisos, store, bitacora)
 
 	// --- Portal de reservas ---
 	if cfg.Demo.Datos {
@@ -142,16 +153,36 @@ func run() error {
 	portalHandler := portal.NewHandler(hotelSvc, promoSvc, clienteSvc, reservaSvc, hotel.Hoy,
 		auth.ClienteOpcional(tokens))
 
-	// Los permisos del panel por recurso: quien los arma decide qué exige cada uno.
+	// Los permisos del panel por recurso: quien los arma decide qué exige cada
+	// uno. Solo se arma el guard de las acciones que ese submódulo admite; las
+	// demás quedan CERRADAS (nunca "sin filtro"): una ruta que pida una acción que
+	// el catálogo no tiene debe negar, no dejar pasar.
+	cerrado := func(c *gin.Context) { httpx.Abort(c, http.StatusForbidden, "Acción no disponible.") }
 	guardas := func(submodulo string) httpx.Guardas {
+		sub, ok := permiso.Permisos.Submodulo(submodulo)
+		if !ok {
+			panic("main: submódulo desconocido en guardas: " + submodulo)
+		}
+		para := func(a permiso.Accion) gin.HandlerFunc {
+			if !sub.Admite(a) {
+				return cerrado
+			}
+			return guard.Require(submodulo, a)
+		}
 		return httpx.Guardas{
-			Ver:    guard.Require(submodulo, permiso.Ver),
-			Crear:  guard.Require(submodulo, permiso.Crear),
-			Editar: guard.Require(submodulo, permiso.Editar),
+			Ver: para(permiso.Ver), Crear: para(permiso.Crear), Editar: para(permiso.Editar),
+			Eliminar: para(permiso.Eliminar), Anular: para(permiso.Anular),
 		}
 	}
-	reservaGuardas := guardas("reservas.reservas")
-	reservaGuardas.Anular = guard.Require("reservas.reservas", permiso.Anular)
+
+	// --- Configuración: empresa, sedes, roles, accesos y auditoría ---
+	adminSedes := hotel.NewAdmin(hoteles, hotel.Hoy, bitacora)
+	empresaSvc := empresa.NewServicio(empresapg.NewStore(dbs.Postgres), bitacora)
+	rolSvc := rol.NewServicio(rolpg.NewStore(dbs.Postgres), permiso.Permisos, rolesConCache, bitacora)
+	gestionUsuarios := usuario.NewGestion(cuentas, hasher, bitacora)
+
+	// --- Reservas del panel, acotadas por las sedes de quien mira ---
+	alcanceReservas := alcanceSedes{g: gestionPermisos, submodulo: "reservas.reservas"}
 
 	// --- HTTP ---
 	router := httpx.NewRouter(cfg.AllowedOrigins)
@@ -164,10 +195,15 @@ func run() error {
 		Modules: []routes.Module{
 			authHandler.Privado(),
 			permiso.NewHandler(permiso.Permisos, permisos),
-			usuario.NewHandler(cuentas, guard.Require("config.usuarios", permiso.Ver)),
+			permiso.NewGestionHandler(gestionPermisos, guardas("config.accesos")),
+			usuario.NewHandler(gestionUsuarios, guardas("config.usuarios"), auth.UsuarioID),
+			rol.NewHandler(rolSvc, guardas("config.roles"), guardas("config.accesos")),
+			empresa.NewHandler(empresaSvc, guardas("config.empresa")),
+			hotel.NewAdminHandler(adminSedes, guardas("config.sedes")),
+			auditoria.NewHandler(bitacora, guardas("config.auditoria"), auth.UsuarioID),
 			promocion.NewHandler(promoSvc, guardas("reservas.paquetes")),
 			cliente.NewAdminHandler(clienteSvc, guardas("crm.huespedes"), guardas("crm.fidelizacion")),
-			reserva.NewAdminHandler(reservaSvc, reservaGuardas),
+			reserva.NewAdminHandler(reservaSvc, guardas("reservas.reservas"), alcanceReservas, bitacora),
 		},
 		Cliente: auth.AuthenticateCliente(tokens),
 		ClienteModules: []routes.Module{
@@ -198,4 +234,25 @@ func run() error {
 		defer cancel()
 		return srv.Shutdown(shutdownCtx)
 	}
+}
+
+// alcanceSedes adapta la gestión de permisos a lo que el módulo de reservas
+// pregunta: "¿qué sedes alcanza a ver esta persona?". nil = todas.
+type alcanceSedes struct {
+	g         *permiso.Gestion
+	submodulo string
+}
+
+func (a alcanceSedes) SedesVisibles(ctx context.Context, usuarioID int64) ([]int64, error) {
+	f, err := a.g.Sedes(ctx, usuarioID, a.submodulo)
+	if err != nil {
+		return nil, err
+	}
+	if f.Todas {
+		return nil, nil
+	}
+	if f.SedeIDs == nil {
+		return []int64{}, nil // "mis sedes" sin ninguna asignada: no ve nada
+	}
+	return f.SedeIDs, nil
 }

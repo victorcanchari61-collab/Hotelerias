@@ -49,7 +49,10 @@ func (a Acceso) Resolver(c Clave, ahora time.Time) Veredicto {
 		if !e.Vigente(ahora) {
 			continue
 		}
-		if e.Clave.Submodulo == c.Submodulo {
+		// Otra excepción del submódulo hace implícito el "ver"; la del propio
+		// "ver" NO: si lo hiciera, una excepción de un solo uso sobre "ver"
+		// nunca se gastaría y valdría para siempre.
+		if e.Clave.Submodulo == c.Submodulo && e.Clave != c {
 			verImplicito = true
 		}
 		if e.Clave != c {

@@ -5,6 +5,84 @@ Cómo usar lo que se describe aquí: [`backend/README.md`](../backend/README.md)
 
 ---
 
+## 2026-10-15 — Configuración completa: Empresa, Sedes, Usuarios, Roles, Accesos y Auditoría
+
+Se terminó el grupo **Configuración** del menú, portando la **lógica** del proyecto `distributor`
+(no su dominio): roles con matriz, excepciones por persona, solicitudes de permiso, alcance de datos
+y bitácora. Migración `0005_configuracion.sql`.
+
+### Qué hay en cada pantalla
+
+| Pantalla | Qué hace | Permiso |
+|---|---|---|
+| **Empresa** | Los datos de la empresa (una sola, con varias sedes): razón social, RUC (11 dígitos), contacto | `config.empresa` |
+| **Sedes** | Alta y edición de hoteles; se desactivan, no se borran | `config.sedes` |
+| **Usuarios** | Alta/edición/baja con **varios roles** y **sedes que atiende**; antes los botones daban 404 | `config.usuarios` |
+| **Roles** | Crear y nombrar roles; el de acceso total está protegido | `config.roles` |
+| **Accesos** | *Por rol*: matriz completa + alcance por sede · *Por persona*: excepciones (una vez / hasta fecha / permanente) y alcance propio · *Solicitudes*: bandeja del administrador | `config.accesos` |
+| **Auditoría** | Quién cambió qué y cuándo, con filtros, "Ver cambios" (antes → después) y depuración | `config.auditoria` |
+
+Además, cuando el servidor niega algo que la persona pulsó (403), aparece **«Pedir acceso»**: la
+solicitud lleva exactamente qué permiso faltaba y llega a la bandeja de Accesos.
+
+### Reglas portadas (y por qué)
+
+- **Roles y matriz separados a propósito**: crear/nombrar roles exige `config.roles`; decidir qué puede
+  cada rol exige `config.accesos`. Con "editar roles" solo nadie puede autoconcederse permisos.
+- **Cualquier acción implica "ver"**, y quitar "ver" quita lo demás de esa pantalla (la pantalla lo
+  refleja igual que el servidor: sin esto el permiso quedaría concedido pero inalcanzable).
+- **El rol de acceso total no se configura, desactiva ni elimina**; un rol con personas no se elimina;
+  los roles del sistema tampoco.
+- **Nadie deja el sistema sin administrador**: no se puede desactivar, eliminar ni quitar el acceso
+  total al último administrador activo; y nadie desactiva ni elimina su propia cuenta.
+- **Las excepciones solo suman** y su fila no se borra nunca (se revoca o se gasta): queda quién tuvo qué.
+- **Aprobar una solicitud es una transacción** (bloquea la fila): dos administradores con la bandeja
+  abierta no conceden dos veces; el segundo recibe un conflicto. Pedir dos veces lo mismo devuelve la
+  solicitud ya abierta.
+- **Alcance por sede**: `todas` o `mis_sedes`. Lo de la persona manda sobre lo del rol; con varios roles
+  gana el más amplio; sin fila no restringe. Con `mis_sedes` y **ninguna sede asignada no ve nada**
+  (nunca "todas" por descuido). Hoy aplica a **Reservas** del panel (listar y cancelar); solo se
+  ofrece en la configuración lo que el backend de verdad aplica.
+- **Auditoría sin secretos**: quien registra arma el mapa a mano (jamás un hash ni una clave; al
+  cambiar una contraseña solo queda "cambiada"); en una edición se guarda **solo lo que cambió**. No
+  se depura lo de los últimos 30 días, y la depuración deja un registro de qué se borró (escrito
+  después del borrado, para que no se lo lleve).
+
+### Un error encontrado y corregido
+
+Una excepción de **un solo uso sobre "ver"** nunca se gastaba: el "ver implícito" que otorga cualquier
+excepción del submódulo la tapaba y valía para siempre. Ahora la excepción sobre el propio "ver" no
+cuenta como implícita (test de regresión en `permiso/acceso_test.go`).
+
+### Otros cambios
+
+- `config.auditoria` ahora admite **Eliminar** (depurar) en el catálogo.
+- Los guards del panel se arman solo con las acciones que el submódulo admite; las demás quedan
+  **cerradas** (403), nunca "sin filtro": una ruta que pida una acción inexistente niega en vez de
+  dejar pasar.
+- `httpx.Validacion` y `httpx.Conflicto` + `httpx.Traducir`: los módulos de negocio no conocen códigos HTTP.
+- Perfil de usuario: `rolIds` y `sedeIds`.
+- `usuario` y `auditoria` reciben quién actúa como función (no importan `auth`: evita un ciclo).
+
+### Verificación
+
+- Backend: `go vet` y `go test ./...` en verde, con pruebas de punta a punta contra PostgreSQL real
+  (roles y matriz con efecto inmediato, protecciones, último administrador, excepciones de un solo uso,
+  solicitudes y doble resolución, alcance por sede, empresa/sedes, auditoría sin secretos).
+- Frontend: `tsc` sin errores y **296 pruebas**; build de producción.
+- Probado a mano contra el backend real con una cuenta de prueba (ya borrada junto con lo que creó):
+  matriz de accesos, guardado con "ver" implícito, auditoría y alta de usuario con roles y sedes.
+
+### Pendiente
+
+- Foto y logo de la empresa; perfil de usuario (`/admin/perfil` sigue "en construcción").
+- Notificar en vivo (hoy se refresca al volver a consultar); el aviso de solicitud resuelta al solicitante.
+- Auditoría de ofertas, tipos de cliente y huéspedes (hoy registran: roles, usuarios, accesos, empresa,
+  sedes y cancelaciones del personal).
+- Alcance por sede en más pantallas, a medida que existan.
+
+---
+
 ## 2026-10-15 — Portal de reservas (demo): web pública, promociones y tipos de cliente
 
 Antes el sitio era solo el panel. Ahora hay una **web pública** donde el huésped mira los hoteles

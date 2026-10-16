@@ -20,7 +20,9 @@ func NewStore(pool *pgxpool.Pool) *Store { return &Store{pool: pool} }
 // una persona con dos roles aparezca duplicada en el listado.
 const seleccion = `
 	SELECT u.id, u.nombre, u.apellido, COALESCE(u.email, ''), u.telefono, u.foto,
-	       u.activo, u.fecha_creacion, u.password_hash, r.id, COALESCE(r.nombre, '')
+	       u.activo, u.fecha_creacion, u.password_hash, r.id, COALESCE(r.nombre, ''),
+	       COALESCE(ARRAY(SELECT ur.rol_id FROM usuario_rol ur WHERE ur.usuario_id = u.id ORDER BY ur.rol_id), '{}'),
+	       COALESCE(ARRAY(SELECT us.sede_id FROM usuario_sede us WHERE us.usuario_id = u.id ORDER BY us.sede_id), '{}')
 	FROM usuario u
 	LEFT JOIN LATERAL (
 		SELECT ro.id, ro.nombre
@@ -33,7 +35,7 @@ const seleccion = `
 func escanear(row pgx.Row) (usuario.Cuenta, error) {
 	var c usuario.Cuenta
 	err := row.Scan(&c.ID, &c.Nombre, &c.Apellido, &c.Email, &c.Telefono, &c.Foto,
-		&c.Activo, &c.CreadoEn, &c.PasswordHash, &c.RolID, &c.RolNombre)
+		&c.Activo, &c.CreadoEn, &c.PasswordHash, &c.RolID, &c.RolNombre, &c.RolIDs, &c.SedeIDs)
 	return c, err
 }
 

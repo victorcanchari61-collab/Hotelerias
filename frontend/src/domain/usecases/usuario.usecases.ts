@@ -23,6 +23,7 @@ function validarBase(input: UsuarioInput): ValidationFailure | null {
   if (input.nombre === '') return new ValidationFailure('El nombre es obligatorio.')
   if (input.email === '') return new ValidationFailure('El correo es obligatorio.')
   if (!esEmail(input.email)) return new ValidationFailure('El correo no tiene un formato válido.')
+  if (input.rolIds.length === 0) return new ValidationFailure('Elige al menos un rol.')
   return null
 }
 

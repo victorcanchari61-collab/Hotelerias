@@ -15,6 +15,34 @@ export const ApiPaths = {
   permiso: {
     mios: '/permiso/mios',
     catalogo: '/permiso/catalogo',
+    de: (usuarioId: number) => `/permiso/usuario/${usuarioId}`,
+    conceder: '/permiso/conceder',
+    revocar: (id: number) => `/permiso/excepcion/${id}/revocar`,
+    solicitar: '/permiso/solicitar',
+    solicitudes: '/permiso/solicitudes',
+    solicitudesMias: '/permiso/solicitudes/mias',
+    aprobar: (id: number) => `/permiso/solicitudes/${id}/aprobar`,
+    rechazar: (id: number) => `/permiso/solicitudes/${id}/rechazar`,
+    alcancesCatalogo: '/permiso/alcances/catalogo',
+    alcancesRol: (rolId: number) => `/permiso/alcances/rol/${rolId}`,
+    alcancesUsuario: (usuarioId: number) => `/permiso/alcances/usuario/${usuarioId}`,
+  },
+  rol: {
+    base: '/rol',
+    porId: (id: number) => `/rol/${id}`,
+    permisos: (id: number) => `/rol/${id}/permisos`,
+  },
+  empresa: { base: '/empresa' },
+  sede: {
+    base: '/sede',
+    porId: (id: number) => `/sede/${id}`,
+  },
+  auditoria: {
+    base: '/auditoria',
+    porId: (id: number) => `/auditoria/${id}`,
+    resumen: '/auditoria/resumen',
+    entidades: '/auditoria/entidades',
+    depurar: '/auditoria/depurar',
   },
   // Lo que ve y usa el huésped en la web pública.
   portal: {

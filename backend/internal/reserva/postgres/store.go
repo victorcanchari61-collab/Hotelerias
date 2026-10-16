@@ -4,6 +4,8 @@ package postgres
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -84,11 +86,21 @@ func (s *Store) DeCliente(ctx context.Context, clienteID int64) ([]reserva.Reser
 	return s.lista(ctx, ` WHERE r.cliente_id = $1`, clienteID)
 }
 
-func (s *Store) Listar(ctx context.Context, estado reserva.Estado) ([]reserva.Reserva, error) {
-	if estado == "" {
+func (s *Store) Listar(ctx context.Context, estado reserva.Estado, sedeIDs []int64) ([]reserva.Reserva, error) {
+	var cond []string
+	var args []any
+	if estado != "" {
+		args = append(args, string(estado))
+		cond = append(cond, fmt.Sprintf("r.estado = $%d", len(args)))
+	}
+	if sedeIDs != nil {
+		args = append(args, sedeIDs)
+		cond = append(cond, fmt.Sprintf("r.sede_id = ANY($%d)", len(args)))
+	}
+	if len(cond) == 0 {
 		return s.lista(ctx, ``)
 	}
-	return s.lista(ctx, ` WHERE r.estado = $1`, string(estado))
+	return s.lista(ctx, ` WHERE `+strings.Join(cond, " AND "), args...)
 }
 
 func (s *Store) Cancelar(ctx context.Context, id int64) (bool, error) {

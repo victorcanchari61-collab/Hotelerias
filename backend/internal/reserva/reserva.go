@@ -143,8 +143,9 @@ type Repositorio interface {
 	PorCodigo(ctx context.Context, codigo string) (Reserva, error)
 	PorID(ctx context.Context, id int64) (Reserva, error)
 	DeCliente(ctx context.Context, clienteID int64) ([]Reserva, error)
-	// Listar es para el personal. estado "" = todas.
-	Listar(ctx context.Context, estado Estado) ([]Reserva, error)
+	// Listar es para el personal. estado "" = todas. sedeIDs nil = de todas las
+	// sedes; una lista (aunque vacía) limita a esas: la vacía no devuelve nada.
+	Listar(ctx context.Context, estado Estado, sedeIDs []int64) ([]Reserva, error)
 	// Cancelar pasa una reserva CONFIRMADA a cancelada. false si ya no lo estaba.
 	Cancelar(ctx context.Context, id int64) (bool, error)
 }
@@ -367,11 +368,16 @@ func (s *Servicio) Cancelar(ctx context.Context, clienteID int64, codigo string)
 }
 
 // CancelarPorPersonal anula sin la restricción de fechas: el personal puede
-// cancelar una reserva aunque la estadía ya haya empezado.
-func (s *Servicio) CancelarPorPersonal(ctx context.Context, id int64) (Reserva, error) {
+// cancelar una reserva aunque la estadía ya haya empezado. sedeIDs es lo que la
+// persona alcanza a ver (nil = todas): una reserva de otra sede responde como
+// si no existiera.
+func (s *Servicio) CancelarPorPersonal(ctx context.Context, id int64, sedeIDs []int64) (Reserva, error) {
 	r, err := s.repo.PorID(ctx, id)
 	if err != nil {
 		return Reserva{}, err
+	}
+	if !enAlcance(sedeIDs, r.SedeID) {
+		return Reserva{}, ErrNoEncontrada
 	}
 	if r.Estado != Confirmada {
 		return Reserva{}, ErrNoCancelable
@@ -394,13 +400,26 @@ func (s *Servicio) anular(ctx context.Context, r Reserva) (Reserva, error) {
 	return r, nil
 }
 
-// Listar es para el personal.
-func (s *Servicio) Listar(ctx context.Context, estado Estado) ([]Reserva, error) {
+// Listar es para el personal. sedeIDs es lo que la persona alcanza a ver (nil = todas).
+func (s *Servicio) Listar(ctx context.Context, estado Estado, sedeIDs []int64) ([]Reserva, error) {
 	switch estado {
 	case "", Confirmada, Cancelada, Completada:
-		return s.repo.Listar(ctx, estado)
+		return s.repo.Listar(ctx, estado, sedeIDs)
 	}
 	return nil, httpx.Validacion("Estado no válido")
+}
+
+// enAlcance dice si una sede está dentro de lo que la persona alcanza a ver.
+func enAlcance(sedeIDs []int64, sedeID int64) bool {
+	if sedeIDs == nil {
+		return true
+	}
+	for _, id := range sedeIDs {
+		if id == sedeID {
+			return true
+		}
+	}
+	return false
 }
 
 // alfabeto sin 0/O, 1/I/L: el código se lee por teléfono.

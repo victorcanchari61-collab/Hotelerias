@@ -55,8 +55,8 @@ func (r *repoFalso) PorID(_ context.Context, id int64) (Reserva, error) {
 	}
 	return Reserva{}, ErrNoEncontrada
 }
-func (r *repoFalso) DeCliente(context.Context, int64) ([]Reserva, error) { return nil, nil }
-func (r *repoFalso) Listar(context.Context, Estado) ([]Reserva, error)   { return nil, nil }
+func (r *repoFalso) DeCliente(context.Context, int64) ([]Reserva, error)        { return nil, nil }
+func (r *repoFalso) Listar(context.Context, Estado, []int64) ([]Reserva, error) { return nil, nil }
 func (r *repoFalso) Cancelar(_ context.Context, id int64) (bool, error) {
 	r.cancelado = append(r.cancelado, id)
 	return true, nil
@@ -338,7 +338,7 @@ func TestCancelarPorPersonalIgnoraLaFecha(t *testing.T) {
 	r := Reserva{ID: 5, Codigo: "HV-AAAA-BBBB", ClienteID: 7, Estado: Confirmada, CheckIn: f("2026-10-30")} // ya empezó
 	repo.porCodigo[r.Codigo] = r
 
-	out, err := s.CancelarPorPersonal(context.Background(), 5)
+	out, err := s.CancelarPorPersonal(context.Background(), 5, nil)
 	if err != nil || out.Estado != Cancelada {
 		t.Fatalf("out=%+v err=%v", out, err)
 	}

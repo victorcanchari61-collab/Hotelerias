@@ -24,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 	"hotelerias/backend/config"
+	"hotelerias/backend/internal/auditoria"
 	"hotelerias/backend/internal/auth"
 	"hotelerias/backend/internal/cliente"
 	clientepg "hotelerias/backend/internal/cliente/postgres"
@@ -123,7 +124,7 @@ func armar(t *testing.T) *entorno {
 		Modules: []routes.Module{
 			// Sin guard de permiso: aquí solo importa que exija sesión de PERSONAL.
 			promocion.NewHandler(promoSvc, httpx.Guardas{}),
-			reserva.NewAdminHandler(reservaSvc, httpx.Guardas{}),
+			reserva.NewAdminHandler(reservaSvc, httpx.Guardas{}, reserva.SinRestriccion{}, auditoria.Nop{}),
 		},
 		Cliente:        auth.AuthenticateCliente(tokens),
 		ClienteModules: []routes.Module{h.ConSesion()},
