@@ -20,6 +20,8 @@ import (
 	"hotelerias/backend/internal/platform/httpx"
 	"hotelerias/backend/internal/platform/migrate"
 	"hotelerias/backend/internal/routes"
+	"hotelerias/backend/internal/usuario"
+	usuariopg "hotelerias/backend/internal/usuario/postgres"
 	"hotelerias/backend/migrations"
 )
 
@@ -67,19 +69,52 @@ func run() error {
 		return err
 	}
 
+	// --- Módulo usuario y auth ---
+	cuentas := usuariopg.NewStore(dbs.Postgres)
+	hasher := auth.NewBcrypt()
+
+	// El administrador inicial sale de la config; sin contraseña no se crea y
+	// no hay ninguna por defecto en el código.
+	creado, err := usuario.AsegurarAdministrador(ctx, cuentas, hasher, usuario.Inicial{
+		Email:    cfg.AdminInicial.Email,
+		Nombre:   cfg.AdminInicial.Nombre,
+		Password: cfg.AdminInicial.Password,
+	})
+	if err != nil {
+		return err
+	}
+	switch {
+	case creado:
+		log.Printf("administrador inicial creado: %s", cfg.AdminInicial.Email)
+	case cfg.AdminInicial.Password == "":
+		log.Println("aviso: AdminInicial.Password vacío; si no hay usuarios, nadie podrá entrar " +
+			"(defínelo en .env como ADMININICIAL_PASSWORD)")
+	}
+
+	// 5 fallos seguidos por origen+correo bloquean 15 minutos.
+	authSvc, err := auth.NewServicio(cuentas, hasher, tokens, auth.NuevoLimitador(5, 15*time.Minute))
+	if err != nil {
+		return err
+	}
+	authHandler := auth.NewHandler(authSvc)
+
 	// --- Módulo permiso ---
 	store := permisopg.NewStore(dbs.Postgres)
 	rolesConCache := permiso.NewCachedRoles(store, permisosCache)
 	permisos := permiso.NewService(permiso.Permisos, store, rolesConCache, store)
 	guard := permiso.NewGuard(permiso.Permisos, permisos, permisos)
-	_ = guard // lo usarán los módulos de negocio: guard.Require("fact.notaventa", permiso.Anular)
 
 	// --- HTTP ---
 	router := httpx.NewRouter(cfg.AllowedOrigins)
 	routes.Register(router, routes.Deps{
 		Authenticate: auth.Authenticate(tokens),
+		Public: []routes.Module{
+			authHandler.Publico(),
+		},
 		Modules: []routes.Module{
+			authHandler.Privado(),
 			permiso.NewHandler(permiso.Permisos, permisos),
+			usuario.NewHandler(cuentas, guard.Require("config.usuarios", permiso.Ver)),
 		},
 	})
 

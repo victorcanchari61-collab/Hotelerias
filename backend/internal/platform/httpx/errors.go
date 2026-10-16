@@ -32,8 +32,12 @@ func BadRequest(msg string, errs ...string) *Error {
 	return &Error{Status: http.StatusBadRequest, Message: msg, Errors: errs}
 }
 func Unauthorized(msg string) *Error { return &Error{Status: http.StatusUnauthorized, Message: msg} }
+func Forbidden(msg string) *Error    { return &Error{Status: http.StatusForbidden, Message: msg} }
 func NotFound(msg string) *Error     { return &Error{Status: http.StatusNotFound, Message: msg} }
 func Conflict(msg string) *Error     { return &Error{Status: http.StatusConflict, Message: msg} }
+func TooManyRequests(msg string) *Error {
+	return &Error{Status: http.StatusTooManyRequests, Message: msg}
+}
 
 // Abort corta la petición con un Problem. Para los middlewares, que no pueden
 // "devolver" un error.

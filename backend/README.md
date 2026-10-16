@@ -182,11 +182,62 @@ La respuesta 403 incluye qué faltaba, para que el frontend abra el modal de ped
 | Método | Ruta | Acceso | Respuesta |
 |---|---|---|---|
 | GET | `/api/health` | Público | `{status, message}` |
+| POST | `/api/auth/login` | Público | `{token, usuario}` — ver [Autenticación](#autenticación-y-usuarios) |
+| GET | `/api/auth/me` | Sesión | El usuario del token (`401` si la cuenta ya no existe o está desactivada) |
 | GET | `/api/permiso/catalogo` | Sesión | `[{submodulo, modulo, acciones[]}]` en orden de menú |
 | GET | `/api/permiso/mios` | Sesión | `["fact.pedidos:ver", ...]` (nunca `null`) |
+| GET | `/api/usuario` | `config.usuarios:ver` | `[{id, rolId, rolNombre, nombre, apellido, email, telefono, foto, activo, creadoEn}]` |
 
-Toda ruta fuera de `/api/health` exige `Authorization: Bearer <jwt>`. El token solo dice
-**quién** es (`sub`); no lleva permisos.
+Toda ruta fuera de `/api/health` y `/api/auth/login` exige `Authorization: Bearer <jwt>`. El
+token solo dice **quién** es (`sub`); no lleva permisos.
+
+---
+
+## Autenticación y usuarios
+
+### Super administrador inicial
+
+Al arrancar, si el correo configurado no existe, se crea una cuenta con el rol de **acceso
+total** (el rol `Administrador`, `rol.acceso_total`): puede todo y su matriz no se configura.
+
+| Dato | Dónde | Se versiona |
+|---|---|---|
+| `AdminInicial.Email`, `AdminInicial.Nombre` | `config.yaml` o `ADMININICIAL_EMAIL` | No (config.yaml está ignorado) |
+| **Contraseña** | **solo** `.env` → `ADMININICIAL_PASSWORD` (mínimo 10 caracteres) | **No, nunca** |
+
+- **No hay contraseña por defecto en el código.** Sin `ADMININICIAL_PASSWORD` no se crea ningún usuario
+  y el arranque lo avisa en el log.
+- **Se crea una sola vez.** Si la cuenta ya existe no se toca: cambiar la variable después **no** cambia la
+  contraseña (ni pisa la que alguien eligió).
+- La contraseña **nunca** se registra en el log.
+
+### Login
+
+`POST /api/auth/login` con `{ "email", "password" }` → `{ "token", "usuario" }`.
+
+| Situación | Respuesta |
+|---|---|
+| Correcto | `200` con el token (JWT HS256, `sub` = id) y el perfil |
+| Correo inexistente **o** clave incorrecta | `401 "Email o contraseña incorrectos"` — **el mismo mensaje y el mismo tiempo** para no revelar qué correos existen |
+| Cuenta desactivada, con la clave correcta | `403 "Tu cuenta está desactivada…"` (con la clave mala sale el `401` genérico) |
+| 5 fallos seguidos del mismo origen + correo | `429` durante 15 minutos, **incluso con la clave correcta** |
+
+Detalles de seguridad:
+
+- Las claves se guardan con **bcrypt** (costo 12). Nunca la clave: si la base se filtra, no se filtran las claves.
+- Se comparan contra un hash de relleno cuando el correo no existe, para igualar el tiempo de respuesta.
+- Más de 72 bytes se rechaza (bcrypt ignora el resto en silencio).
+- El perfil que sale (`Perfil`) **no tiene el hash**, y una prueba lo verifica sobre la respuesta real.
+- Un token todavía vigente deja de servir si la cuenta se desactiva o se elimina (`/auth/me` y los permisos lo comprueban).
+- **El limitador es en memoria**: se pierde al reiniciar y no se comparte entre instancias. Con más de una
+  instancia debe moverse a Redis.
+- **Rota la clave JWT**: `JwtSettings.SecretKey` del `config.yaml` de ejemplo es pública. Pon una propia en
+  `.env` como `JWTSETTINGS_SECRETKEY` (el entorno pisa al YAML).
+
+### Usuarios
+
+`GET /api/usuario` lista las cuentas (con el rol principal: el de acceso total si lo tiene, y si no el de menor
+id; la persona puede tener varios). Crear, editar, activar/desactivar y eliminar **aún no existen**.
 
 ---
 
@@ -259,10 +310,12 @@ que el paquete compile. **Es una pieza a portar sobre `permiso`, no a cablear ta
 
 Por orden de dependencia:
 
-1. **Login y usuarios** sobre `permiso` (hoy `/api/auth/login` **no existe**; usa `auth.Tokens.Emitir`).
+1. **Usuarios: crear, editar, activar/desactivar y eliminar** (`POST/PUT/PATCH/DELETE /api/usuario`), con asignación
+   de roles y cambio de contraseña. El login, `/auth/me` y el listado ya existen.
 2. **Roles**: CRUD y matriz (invalidar con `CachedRoles.Olvidar` y agregar `ver` al guardar).
 3. **Excepciones**: conceder y revocar; **solicitudes** con aprobación en una sola transacción y deduplicación con índice único parcial.
 4. **Alcance de datos** (`todos | misclientes | propios`): qué filas ve, separado del permiso.
 5. **Empresa** (datos y logo), reusando `Server.UploadsDir`.
 6. **Tiempo real**: el frontend usa SignalR (`/hubs/cambios`) y Go no lo habla; la opción recomendada es SSE.
-7. Administrador inicial sembrado desde configuración, **sin** contraseña fija ni log de credenciales.
+7. Mover el limitador de intentos de login a Redis (hoy es en memoria, por instancia).
+8. Cerrar sesión que invalide el token (hoy es solo del lado del cliente; el token vence a las 8 h).

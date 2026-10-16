@@ -5,12 +5,51 @@ Cómo usar lo que se describe aquí: [`backend/README.md`](../backend/README.md)
 
 ---
 
+## 2026-10-15 — Login y super administrador
+
+**Qué cambió**
+
+- **`POST /api/auth/login`, `GET /api/auth/me` y `GET /api/usuario`** en el backend (módulos `auth` y `usuario`). Es el contrato que el frontend ya esperaba.
+- **Migración `0002`**: `usuario` gana correo (único sin distinguir mayúsculas), apellido, teléfono, foto y `password_hash`.
+- **Super administrador inicial**, sembrado al arrancar desde la config: `admin@hotelerias.test`, rol de acceso total (199 de 199 permisos).
+- **Contraseña solo en `.env`** (`ADMININICIAL_PASSWORD`, ignorado por git). No hay contraseña por defecto en el código ni se registra en el log. Se crea una sola vez.
+- **Clave JWT propia** en `.env` (`JWTSETTINGS_SECRETKEY`): la del `config.yaml` era el texto de ejemplo, público y presente en el historial de git, con el que cualquiera habría podido fabricar un token de super admin.
+- **Rutas públicas** en `routes.Deps.Public`: solo el login queda fuera de la sesión.
+
+**Seguridad del login**
+
+| | |
+|---|---|
+| Claves | bcrypt costo 12; el perfil que sale no tiene el hash |
+| Enumeración | Mismo mensaje **y mismo tiempo** para "no existe" y "clave mala" (compara contra un hash de relleno) |
+| Fuerza bruta | 5 fallos seguidos por origen + correo → `429` 15 min, incluso con la clave correcta |
+| Cuenta desactivada | Solo se revela con la clave correcta; su token vigente deja de servir |
+| Límites | Más de 72 bytes se rechaza (bcrypt trunca en silencio) |
+
+**Verificación**
+
+- Pruebas unitarias del servicio, limitador, handler, siembra y config; **7 de integración contra PostgreSQL real**, incluida una de punta a punta (sembrar → login → token → los 199 permisos → listar usuarios; sin permiso → `403` que dice qué faltaba).
+- En el entorno real, por `http://hotelerias.test/api/...`: login `200` con rol Administrador y sin hash en la respuesta, `/auth/me` y `/usuario` `200`, clave mala `401`, sin token `401`, y 199 permisos.
+- **No verificado**: el flujo en la interfaz con el backend real (la contraseña no se tecleó en un navegador desde aquí).
+
+**Pendiente**
+
+- Crear, editar, activar/desactivar y eliminar usuarios: la pantalla de usuarios muestra esos botones al super admin, pero sus endpoints **aún no existen** (darán 404).
+- El limitador de intentos es en memoria (se pierde al reiniciar, no se comparte entre instancias).
+- Cerrar sesión no invalida el token en el servidor (vence a las 8 h).
+
+---
+
 ## 2026-10-15 — Abrir el proyecto en Laragon (`hotelerias.test`)
 
 - Nuevo vhost `00-hotelerias.test.conf` (versionado en `deploy/laragon/` e instalado en `C:\laragon\etc\apache2\sites-enabled\`), con el mismo patrón que `Ecommerce.test` y `Minimarket.test`: sirve `frontend/dist` con fallback de la SPA y manda `/api` y `/uploads` al backend en el puerto **5220**.
 - Probado en una instancia de Apache descartable antes de instalarlo, y la config real de Laragon valida con `httpd -t`. No se reinició tu Apache.
 - `frontend/index.html`: título "Hotel Velothr" (decía "frontend") e idioma `es`.
-- **Falta de tu lado**: recargar Apache desde Laragon (agrega la línea del `hosts`) y compilar el frontend. Pasos y diagnóstico en [`deploy/laragon/README.md`](../deploy/laragon/README.md).
+- **Hallazgo**: en esta máquina Apache corre como **servicio de Windows** (`Apache2.4`), no bajo Laragon; los botones Stop/Start/Reload de Laragon no lo reinician. Hace falta `Restart-Service Apache2.4` como administrador, y la línea del `hosts` se agrega a mano.
+- **Backend en segundo plano**: nuevo `deploy/laragon/backend-ctl.ps1` (`install | status | restart | stop | start | logs | uninstall`). Registra la tarea `Hotelerias-Backend` (al iniciar sesión, usuario actual, sin administrador) que corre un vigilante oculto sobre `backend.exe`; log en `backend/logs/backend.log`.
+- **Corregido durante la prueba**: la primera versión confiaba en la opción "reiniciar si falla" del Programador de tareas y **no funcionaba** (el backend quedó apagado 4 minutos tras morir con código 1). La vigilancia ahora la hace el propio script, con pausas crecientes (2…60 s) y sin reiniciar un cierre ordenado. También se corrigió que Windows PowerShell 5.1 mataba el backend en su primer mensaje de log (stderr convertido en excepción).
+- **Verificado**: arranque como tarea, respuesta por `hotelerias.test/api/health`, `restart`, y el vigilante con un ejecutable de mentira que se cae siempre / que termina bien. **No verificado**: arranque tras cerrar e iniciar sesión, y matar el backend real a la fuerza.
+- Pasos y diagnóstico en [`deploy/laragon/README.md`](../deploy/laragon/README.md).
 
 ---
 

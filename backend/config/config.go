@@ -18,6 +18,20 @@ type Config struct {
 	MongoDBSettings   MongoDBSettings   `mapstructure:"MongoDBSettings"`
 	JwtSettings       JwtSettings       `mapstructure:"JwtSettings"`
 	ApisPeru          ApisPeru          `mapstructure:"ApisPeru"`
+	AdminInicial      AdminInicial      `mapstructure:"AdminInicial"`
+}
+
+// AdminInicial es la cuenta de super administrador que se crea al arrancar si
+// todavía no existe. El correo y el nombre pueden vivir en config.yaml; la
+// CONTRASEÑA va solo en el entorno o en .env (ADMININICIAL_PASSWORD), nunca en
+// un archivo versionado ni escrita en el código.
+//
+// Se crea una sola vez: si la cuenta ya existe no se toca, así que cambiar la
+// contraseña aquí después NO la cambia (ni pisa la que alguien eligió).
+type AdminInicial struct {
+	Email    string `mapstructure:"Email"`
+	Nombre   string `mapstructure:"Nombre"`
+	Password string `mapstructure:"Password"`
 }
 
 type ServerConfig struct {
@@ -55,6 +69,9 @@ type ApisPeru struct {
 // fuerza por diccionario sin mucho esfuerzo.
 const minSecretBytes = 32
 
+// MinAdminPassword es el largo mínimo de la contraseña del administrador inicial.
+const MinAdminPassword = 10
+
 // LoadConfig lee el YAML y deja que las variables de entorno lo pisen:
 // JWTSETTINGS_SECRETKEY, CONNECTIONSTRINGS_POSTGRESQL, SERVER_PORT...
 // Así los secretos no tienen que vivir en el archivo.
@@ -72,6 +89,10 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("Server.Port", 8080)
 	v.SetDefault("Server.UploadsDir", "uploads")
 	v.SetDefault("JwtSettings.ExpirationHours", 8)
+	// Sin default, viper ignora ADMININICIAL_* si la clave no está en el YAML.
+	v.SetDefault("AdminInicial.Email", "")
+	v.SetDefault("AdminInicial.Nombre", "Super Admin")
+	v.SetDefault("AdminInicial.Password", "")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
@@ -108,6 +129,14 @@ func (c *Config) Validate() error {
 	}
 	if c.Server.Port <= 0 {
 		errs = append(errs, errors.New("Server.Port debe ser mayor que 0"))
+	}
+	// Una contraseña corta para el administrador se rechaza al arrancar, no
+	// después de haberla guardado. (Vacía es válido: simplemente no se crea.)
+	if p := c.AdminInicial.Password; p != "" && len(p) < MinAdminPassword {
+		errs = append(errs, fmt.Errorf("AdminInicial.Password necesita al menos %d caracteres", MinAdminPassword))
+	}
+	if c.AdminInicial.Password != "" && c.AdminInicial.Email == "" {
+		errs = append(errs, errors.New("AdminInicial.Email es obligatorio si hay AdminInicial.Password"))
 	}
 	return errors.Join(errs...)
 }

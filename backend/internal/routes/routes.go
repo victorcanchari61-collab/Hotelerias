@@ -18,6 +18,10 @@ type Deps struct {
 	// Authenticate exige sesión válida. Corre antes que cualquier módulo.
 	Authenticate gin.HandlerFunc
 
+	// Public son los módulos SIN sesión: solo lo que tiene que poder usar quien
+	// todavía no entró (el login). Mantenerlo cortito es parte de la seguridad.
+	Public []Module
+
 	// Modules son los módulos que viven detrás de la sesión.
 	Modules []Module
 }
@@ -32,6 +36,10 @@ func Register(r gin.IRouter, d Deps) {
 			"message": "Hoteleria API is running",
 		})
 	})
+
+	for _, m := range d.Public {
+		m.Register(api)
+	}
 
 	// Todo lo demás exige sesión; el permiso concreto lo declara cada ruta.
 	protegido := api.Group("", d.Authenticate)

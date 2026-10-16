@@ -29,3 +29,10 @@ JwtSettings:
 ApisPeru:
   Url: "https://dniruc.apisperu.com/api/v1"
   Token: "CAMBIAR"
+# Super administrador: se crea UNA vez al arrancar si no existe (acceso a todo).
+# El correo y el nombre pueden ir aqui; la CONTRASENA va solo en .env como
+# ADMININICIAL_PASSWORD (minimo 10 caracteres). Sin contrasena no se crea y no
+# hay ninguna por defecto. Si la cuenta ya existe, cambiarla aqui no la modifica.
+AdminInicial:
+  Email: "admin@hotelerias.test"
+  Nombre: "Super Admin"
