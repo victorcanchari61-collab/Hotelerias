@@ -3,7 +3,7 @@ import { describeFailure } from '@/core/errors/failures'
 import { nombreCompletoCliente } from '@/domain/entities/Cliente'
 import type { Cliente, TipoCliente } from '@/domain/entities/Cliente'
 import { ACCION } from '@/domain/entities/Permiso'
-import { Alert, Badge, ListPage, Select, StatCard, useToast } from '@/shared/ui'
+import { Alert, Badge, Desplegable, ListPage, StatCard, useToast } from '@/shared/ui'
 import type { DataTableColumn } from '@/shared/ui'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
@@ -74,21 +74,18 @@ export function HuespedesPage() {
       render: (c) =>
         puedeAsignar ? (
           <div className="w-56">
-            <Select
+            <Desplegable
               size="sm"
-              aria-label={`Categoría de ${nombreCompletoCliente(c)}`}
-              value={c.tipoManual ? String(c.tipoClienteId ?? '') : AUTOMATICO}
-              onChange={(e) => void asignar(c, e.target.value)}
-            >
-              <option value={AUTOMATICO}>Automática{!c.tipoManual && c.tipoCliente ? ` (${c.tipoCliente})` : ''}</option>
-              {tipos.datos
-                .filter((t) => t.activo)
-                .map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nombre} · {t.descuentoPct}%
-                  </option>
-                ))}
-            </Select>
+              ariaLabel={`Categoría de ${nombreCompletoCliente(c)}`}
+              value={c.tipoManual ? (c.tipoClienteId ?? AUTOMATICO) : AUTOMATICO}
+              onChange={(v) => void asignar(c, String(v))}
+              options={[
+                { value: AUTOMATICO, label: `Automática${!c.tipoManual && c.tipoCliente ? ` (${c.tipoCliente})` : ''}` },
+                ...tipos.datos
+                  .filter((t) => t.activo)
+                  .map((t) => ({ value: t.id, label: t.nombre, detalle: `${t.descuentoPct}%` })),
+              ]}
+            />
           </div>
         ) : (
           <Badge tone={c.descuentoPct > 0 ? 'sys' : 'neutral'}>{c.tipoCliente || '—'}</Badge>

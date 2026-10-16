@@ -3,7 +3,7 @@ import { Inbox } from 'lucide-react'
 import { FaBan, FaCircleCheck } from 'react-icons/fa6'
 import { describeFailure } from '@/core/errors/failures'
 import type { SolicitudPermiso, Vigencia } from '@/domain/entities/Configuracion'
-import { Alert, Badge, Button, Checkbox, Input, Modal, Select, SysDataTable, useToast } from '@/shared/ui'
+import { Alert, Badge, Button, Checkbox, Desplegable, Input, Modal, SysDataTable, useToast } from '@/shared/ui'
 import type { DataTableColumn } from '@/shared/ui'
 import { BotonFila, FilaAcciones } from '../../components/BotonesFila'
 import { useCarga } from '../../hooks/useCarga'
@@ -220,11 +220,16 @@ export function Bandeja({ puedeResolver }: { puedeResolver: boolean }) {
 
             {decision.tipo === 'aprobar' && (
               <>
-                <Select label="Vigencia" value={vigencia} onChange={(e) => setVigencia(e.target.value as Vigencia)}>
-                  <option value="una_vez">Una sola vez</option>
-                  <option value="temporal">Hasta una fecha</option>
-                  <option value="permanente">Permanente</option>
-                </Select>
+                <Desplegable
+                  label="Vigencia"
+                  value={vigencia}
+                  onChange={(v) => setVigencia(v as Vigencia)}
+                  options={[
+                    { value: 'una_vez', label: 'Una sola vez' },
+                    { value: 'temporal', label: 'Hasta una fecha' },
+                    { value: 'permanente', label: 'Permanente' },
+                  ]}
+                />
                 {vigencia === 'temporal' && (
                   <Input label="Vence" type="datetime-local" value={expira} onChange={(e) => setExpira(e.target.value)} />
                 )}

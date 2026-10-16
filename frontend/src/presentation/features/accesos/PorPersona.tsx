@@ -14,7 +14,7 @@ import type { SubmoduloCatalogo } from '@/domain/entities/Permiso'
 import type { Usuario } from '@/domain/entities/Usuario'
 import { nombreCompleto } from '@/domain/entities/Usuario'
 import { FaBan } from 'react-icons/fa6'
-import { Alert, Badge, Button, Card, Input, Select, SysDataTable, useConfirmacion, useToast } from '@/shared/ui'
+import { Alert, Badge, Button, Card, Desplegable, Input, SysDataTable, useConfirmacion, useToast } from '@/shared/ui'
 import type { DataTableColumn } from '@/shared/ui'
 import { BotonFila, FilaAcciones } from '../../components/BotonesFila'
 import { useCarga } from '../../hooks/useCarga'
@@ -196,18 +196,13 @@ export function PorPersona({ roles }: { roles: Rol[] }) {
   return (
     <div className="space-y-4">
       <Card>
-        <Select
+        <Desplegable
           label="Persona"
-          value={usuarioId === null ? '' : String(usuarioId)}
-          onChange={(e) => setUsuarioId(e.target.value === '' ? null : Number(e.target.value))}
-        >
-          <option value="">Elige una persona…</option>
-          {usuarios.datos.map((u) => (
-            <option key={u.id} value={u.id}>
-              {nombreCompleto(u)} — {u.email}
-            </option>
-          ))}
-        </Select>
+          placeholder="Elige una persona…"
+          value={usuarioId ?? ''}
+          onChange={(v) => setUsuarioId(v === '' ? null : Number(v))}
+          options={usuarios.datos.map((u) => ({ value: u.id, label: nombreCompleto(u), detalle: u.email }))}
+        />
         {usuarios.error && <div className="mt-3"><Alert>{usuarios.error}</Alert></div>}
         {persona && (
           <p className="mt-3 text-sm text-ink-muted">
@@ -223,36 +218,32 @@ export function PorPersona({ roles }: { roles: Rol[] }) {
             <h3 className="font-bold text-ink">Conceder un permiso</h3>
             {error && <Alert>{error}</Alert>}
             <div className="grid gap-4 sm:grid-cols-2">
-              <Select
+              <Desplegable
                 label="Pantalla"
+                placeholder="Elige…"
                 value={submodulo}
-                onChange={(e) => {
-                  setSubmodulo(e.target.value)
+                onChange={(v) => {
+                  setSubmodulo(String(v))
                   setAccion('')
                 }}
-              >
-                <option value="">Elige…</option>
-                {grupos.map((g) => (
-                  <optgroup key={g.modulo} label={g.etiqueta}>
-                    {g.filas.map((f) => (
-                      <option key={f.submodulo} value={f.submodulo}>
-                        {etiquetaSubmodulo(f.submodulo)}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </Select>
-              <Select label="Acción" value={accion} onChange={(e) => setAccion(e.target.value)} disabled={!submodulo}>
-                <option value="">Elige…</option>
-                {accionesDe.map((a) => (
-                  <option key={a} value={a}>{ETIQUETA_ACCION[a]}</option>
-                ))}
-              </Select>
-              <Select label="Vigencia" value={vigencia} onChange={(e) => setVigencia(e.target.value as Vigencia)}>
-                {(Object.keys(VIGENCIA) as Vigencia[]).map((v) => (
-                  <option key={v} value={v}>{VIGENCIA[v]}</option>
-                ))}
-              </Select>
+                options={grupos.flatMap((g) =>
+                  g.filas.map((f) => ({ value: f.submodulo, label: etiquetaSubmodulo(f.submodulo), nota: g.etiqueta })),
+                )}
+              />
+              <Desplegable
+                label="Acción"
+                placeholder="Elige…"
+                value={accion}
+                disabled={!submodulo}
+                onChange={(v) => setAccion(String(v))}
+                options={accionesDe.map((a) => ({ value: a, label: ETIQUETA_ACCION[a] }))}
+              />
+              <Desplegable
+                label="Vigencia"
+                value={vigencia}
+                onChange={(v) => setVigencia(v as Vigencia)}
+                options={(Object.keys(VIGENCIA) as Vigencia[]).map((v) => ({ value: v, label: VIGENCIA[v] }))}
+              />
               {vigencia === 'temporal' && (
                 <Input label="Vence" type="datetime-local" value={expira} onChange={(e) => setExpira(e.target.value)} />
               )}
@@ -302,12 +293,11 @@ export function PorPersona({ roles }: { roles: Rol[] }) {
               {catAlcances.datos.submodulos.map((sub) => (
                 <div key={sub} className="grid items-center gap-2 sm:grid-cols-[1fr_16rem]">
                   <span className="text-sm text-ink">{etiquetaSubmodulo(sub)}</span>
-                  <Select
+                  <Desplegable
                     size="sm"
-                    aria-label={`Alcance propio de ${etiquetaSubmodulo(sub)}`}
+                    ariaLabel={`Alcance propio de ${etiquetaSubmodulo(sub)}`}
                     value={alcances[sub] ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value
+                    onChange={(v) => {
                       setAlcances((a) => {
                         const next = { ...a }
                         if (v === '') delete next[sub]
@@ -315,11 +305,12 @@ export function PorPersona({ roles }: { roles: Rol[] }) {
                         return next
                       })
                     }}
-                  >
-                    <option value="">Según su rol</option>
-                    <option value="todas">Todas las sedes</option>
-                    <option value="mis_sedes">Solo sus sedes</option>
-                  </Select>
+                    options={[
+                      { value: '', label: 'Según su rol' },
+                      { value: 'todas', label: 'Todas las sedes' },
+                      { value: 'mis_sedes', label: 'Solo sus sedes' },
+                    ]}
+                  />
                 </div>
               ))}
               <div className="flex justify-end">

@@ -102,7 +102,7 @@ describe('la web pública', () => {
     it('ve los hoteles y las ofertas sin tener cuenta', async () => {
       const app = montar({ ruta: '/' })
 
-      expect(await screen.findByText('Velothr Miraflores — Lima')).toBeTruthy() // en el buscador
+      expect((await screen.findAllByText('Velothr Miraflores')).length).toBeGreaterThan(0) // en la lista de hoteles
       expect(await screen.findByText('Escapada de 3 noches')).toBeTruthy()
       expect(screen.getByRole('link', { name: 'Ingresar' })).toBeTruthy()
       expect(app.ubicacion()).toBe('/')

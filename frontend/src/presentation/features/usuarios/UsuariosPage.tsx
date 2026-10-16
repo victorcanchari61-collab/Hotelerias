@@ -129,7 +129,7 @@ export function UsuariosPage() {
       rows={usuarios}
       rowKey="id"
       cardIcon={UserCog}
-      actionsWidth={hayAcciones ? 170 : 0}
+      actionsWidth={hayAcciones ? 200 : 0}
       searchPlaceholder="Buscar por nombre, correo o rol..."
       empty={cargando ? 'Cargando usuarios...' : 'Todavía no hay usuarios registrados.'}
       rowActions={

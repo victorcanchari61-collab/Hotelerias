@@ -13,7 +13,7 @@ import {
   Wine,
 } from 'lucide-react'
 import { sumarDias } from '@/domain/fechas'
-import { Alert, Button, Card, Input, Select, buttonClasses } from '@/shared/ui'
+import { Alert, Button, buttonClasses, Card, Desplegable, Input } from '@/shared/ui'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { useClienteAuth } from '../../providers/ClienteAuthProvider'
@@ -78,14 +78,13 @@ export function PortalHomePage() {
       <div className="mx-auto -mt-12 max-w-6xl px-4">
         <Card className="p-4 sm:p-5">
           <form onSubmit={buscar} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_.7fr_auto] lg:items-end">
-            <Select label="Hotel" value={sedeId} onChange={(e) => setSedeId(e.target.value)}>
-              <option value="">{sedes.cargando ? 'Cargando…' : 'Elige un hotel'}</option>
-              {sedes.datos.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nombre} — {s.ciudad}
-                </option>
-              ))}
-            </Select>
+            <Desplegable
+              label="Hotel"
+              placeholder={sedes.cargando ? 'Cargando…' : 'Elige un hotel'}
+              value={sedeId}
+              onChange={(v) => setSedeId(String(v))}
+              options={sedes.datos.map((s) => ({ value: String(s.id), label: s.nombre, detalle: s.ciudad }))}
+            />
             <Input label="Entrada" type="date" min={hoy} value={entrada} onChange={(e) => setEntrada(e.target.value)} />
             <Input label="Salida" type="date" min={entrada} value={salida} onChange={(e) => setSalida(e.target.value)} />
             <Input

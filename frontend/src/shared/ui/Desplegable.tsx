@@ -28,6 +28,8 @@ export interface DesplegableProps {
   disabled?: boolean
   /** Alto del campo, igual que en un Input. En una celda de tabla, 'sm'. */
   size?: FieldSize
+  /** Nombre accesible cuando no hay etiqueta visible (una celda de tabla). */
+  ariaLabel?: string
   className?: string
 }
 
@@ -50,6 +52,7 @@ export function Desplegable({
   error,
   disabled,
   size = 'md',
+  ariaLabel,
   className,
 }: DesplegableProps) {
   const elegida = options.find((o) => o.value === value)
@@ -73,6 +76,7 @@ export function Desplegable({
       <ListaDesplegable
         variante="campo"
         size={size}
+        ariaLabel={ariaLabel}
         resumen={elegida?.label ?? placeholder}
         seleccionado={value}
         deshabilitado={disabled}

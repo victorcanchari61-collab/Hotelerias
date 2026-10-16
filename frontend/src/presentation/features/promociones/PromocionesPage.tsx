@@ -5,7 +5,7 @@ import { describeFailure } from '@/core/errors/failures'
 import { ACCION } from '@/domain/entities/Permiso'
 import type { Promocion, PromocionInput, TipoPromocion } from '@/domain/entities/Portal'
 import { sumarDias } from '@/domain/fechas'
-import { Alert, Badge, Button, Checkbox, Input, ListPage, Modal, Select, StatCard, useToast } from '@/shared/ui'
+import { Alert, Badge, Button, Checkbox, Desplegable, Input, ListPage, Modal, StatCard, useToast } from '@/shared/ui'
 import type { DataTableColumn } from '@/shared/ui'
 import { BotonFila, FilaAcciones } from '../../components/BotonesFila'
 import { useCarga } from '../../hooks/useCarga'
@@ -300,10 +300,15 @@ export function PromocionesPage() {
             <Input label="Descripción" optional value={editando.form.descripcion} onChange={(e) => set('descripcion', e.target.value)} />
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Select label="Tipo de descuento" value={editando.form.tipo} onChange={(e) => set('tipo', e.target.value as TipoPromocion)}>
-                <option value="porcentaje">Porcentaje del total</option>
-                <option value="monto_noche">Monto fijo por noche</option>
-              </Select>
+              <Desplegable
+                label="Tipo de descuento"
+                value={editando.form.tipo}
+                onChange={(v) => set('tipo', v as TipoPromocion)}
+                options={[
+                  { value: 'porcentaje', label: 'Porcentaje del total' },
+                  { value: 'monto_noche', label: 'Monto fijo por noche' },
+                ]}
+              />
               {editando.form.tipo === 'porcentaje' ? (
                 <Input
                   label="Porcentaje (1–100)"
@@ -325,14 +330,24 @@ export function PromocionesPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Select label="Hotel" value={editando.form.sedeId} onChange={(e) => set('sedeId', e.target.value)}>
-                <option value="">Todos los hoteles</option>
-                {sedes.datos.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-              </Select>
-              <Select label="Tipo de huésped" value={editando.form.tipoClienteId} onChange={(e) => set('tipoClienteId', e.target.value)}>
-                <option value="">Todos los huéspedes</option>
-                {tipos.datos.map((t) => <option key={t.id} value={t.id}>Solo {t.nombre}</option>)}
-              </Select>
+              <Desplegable
+                label="Hotel"
+                value={editando.form.sedeId}
+                onChange={(v) => set('sedeId', String(v))}
+                options={[
+                  { value: '', label: 'Todos los hoteles' },
+                  ...sedes.datos.map((s) => ({ value: String(s.id), label: s.nombre, detalle: s.ciudad })),
+                ]}
+              />
+              <Desplegable
+                label="Tipo de huésped"
+                value={editando.form.tipoClienteId}
+                onChange={(v) => set('tipoClienteId', String(v))}
+                options={[
+                  { value: '', label: 'Todos los huéspedes' },
+                  ...tipos.datos.map((t) => ({ value: String(t.id), label: `Solo ${t.nombre}` })),
+                ]}
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">

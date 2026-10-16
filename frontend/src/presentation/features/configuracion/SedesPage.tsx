@@ -5,7 +5,7 @@ import { describeFailure } from '@/core/errors/failures'
 import { IMAGENES_SEDE } from '@/domain/entities/Configuracion'
 import type { SedeAdmin, SedeInput } from '@/domain/entities/Configuracion'
 import { ACCION } from '@/domain/entities/Permiso'
-import { Alert, Badge, Button, Checkbox, Input, ListPage, Modal, Select, StatCard, useToast } from '@/shared/ui'
+import { Alert, Badge, Button, Checkbox, Desplegable, Input, ListPage, Modal, StatCard, useToast } from '@/shared/ui'
 import type { DataTableColumn } from '@/shared/ui'
 import { BotonFila, FilaAcciones } from '../../components/BotonesFila'
 import { useCarga } from '../../hooks/useCarga'
@@ -267,11 +267,12 @@ export function SedesPage() {
                 value={editando.form.estrellas}
                 onChange={(e) => set('estrellas', e.target.value)}
               />
-              <Select label="Ilustración en la web" value={editando.form.imagen} onChange={(e) => set('imagen', e.target.value)}>
-                {IMAGENES_SEDE.map((i) => (
-                  <option key={i} value={i}>{i}</option>
-                ))}
-              </Select>
+              <Desplegable
+                label="Ilustración en la web"
+                value={editando.form.imagen}
+                onChange={(v) => set('imagen', String(v))}
+                options={IMAGENES_SEDE.map((i) => ({ value: i, label: i }))}
+              />
             </div>
 
             <label className="block">

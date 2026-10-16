@@ -28,3 +28,8 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'undefined') {
       dispatchEvent: () => false,
     }) as MediaQueryList
 }
+
+// El panel de los desplegables hace scrollIntoView sobre la opción elegida; jsdom no lo implementa.
+if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {}
+}

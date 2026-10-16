@@ -48,6 +48,24 @@ solicitud lleva exactamente qué permiso faltaba y llega a la bandeja de Accesos
   se depura lo de los últimos 30 días, y la depuración deja un registro de qué se borró (escrito
   después del borrado, para que no se lo lleve).
 
+### Corrección de diseño: los listados usan el kit de referencia
+
+La primera versión de estas pantallas (y de las del portal en el panel) tenía `<table>` escritas a
+mano. Se rehicieron con **`ListPage` + `StatCard` + `SysDataTable` + botonera `ButtonBase`** (íconos de
+`react-icons/fa6`), igual que `UsersPage`/`RolesPage` del proyecto de referencia: buscador, filtros por
+columna, columnas visibles, paginación y tarjetas en móvil salen del kit. Alcanza a Usuarios, Roles,
+Sedes, Paquetes y promociones, Fidelización, Huéspedes, Reservas, Auditoría y las tablas de Accesos
+(excepciones y solicitudes). La matriz de accesos sigue el estilo de la referencia (una sección por
+módulo, una fila por pantalla, casillas del kit). Empresa usa `PageSection`.
+
+- Nueva dependencia: **`react-icons`** (la que usa la referencia). Se instaló con `npm`; el
+  `pnpm-lock.yaml` quedó sin actualizar (conviven dos lockfiles: conviene elegir uno).
+- **Auditoría en modo servidor**: `POST /api/auditoria/listar` recibe la misma consulta que emite la
+  tabla (`pagina, porPagina, buscar, orden, sentido, filtros[]`), con columnas y orden de **lista
+  cerrada** (nada del cliente llega al SQL como texto). `POST /api/auditoria/depurar` recibe esa misma
+  consulta y borra **exactamente lo que se está viendo** (como en `distributor`), pero nunca lo de los
+  últimos 30 días.
+
 ### Un error encontrado y corregido
 
 Una excepción de **un solo uso sobre "ver"** nunca se gastaba: el "ver implícito" que otorga cualquier

@@ -190,7 +190,7 @@ export function RolesPage() {
       rows={roles.datos}
       rowKey="id"
       cardIcon={IdCard}
-      actionsWidth={puedeEditar || puedeEliminar ? 170 : 0}
+      actionsWidth={puedeEditar || puedeEliminar ? 200 : 0}
       searchPlaceholder="Buscar por nombre..."
       empty={roles.cargando ? 'Cargando roles...' : 'Todavía no hay roles.'}
       rowActions={

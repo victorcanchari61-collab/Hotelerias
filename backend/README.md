@@ -229,8 +229,8 @@ La respuesta 403 incluye qué faltaba, para que el frontend abra el modal de ped
 | GET · POST | `/api/permiso/solicitudes` · `/:id/aprobar` · `/:id/rechazar` | `config.accesos` ver · editar |
 | GET · PUT | `/api/permiso/alcances/rol/:id` · `/usuario/:id` | `config.accesos` ver · editar |
 | GET | `/api/permiso/alcances/catalogo` · `/mios` | cualquier sesión |
-| GET | `/api/auditoria?entidad=&accion=&desde=&hasta=&buscar=&pagina=&porPagina=` · `/:id` · `/resumen` · `/entidades` | `config.auditoria:ver` |
-| POST | `/api/auditoria/depurar` `{hasta}` | `config.auditoria:eliminar` (nunca lo de los últimos 30 días) |
+| POST · GET | `/api/auditoria/listar` (consulta de la tabla: `pagina, porPagina, buscar, orden, sentido, filtros[]`) · `/:id` · `/resumen` · `/entidades` | `config.auditoria:ver` |
+| POST | `/api/auditoria/depurar` (la misma consulta: borra lo que se ve) | `config.auditoria:eliminar` (nunca lo de los últimos 30 días) |
 
 Los errores de negocio salen como `400` (datos que se pueden corregir) o `409` (choca con el estado:
 nombre repetido, último administrador, rol en uso, solicitud ya resuelta).

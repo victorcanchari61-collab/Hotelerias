@@ -133,6 +133,22 @@ export const usuariosRoutes: RouteModule = {
 `config.usuarios` → URL `/admin/config/usuarios` y exige `config.usuarios:ver`. Se derivan del id
 del menú (`presentation/layout/navigation.ts`), así que **no pueden desincronizarse del sidebar**.
 
+### Cómo se arma una pantalla de listado (regla)
+
+Todo listado usa los componentes del kit de Ecommerce; **no se escriben `<table>` a mano**:
+
+| Pieza | Para qué |
+|---|---|
+| `ListPage` | cabecera + tarjetas de indicadores + tabla, con el mismo armado en todas las pantallas |
+| `DataTableColumn[]` | las columnas (`filterType: 'select' \| 'date'`, `value` para buscar/ordenar, `render`) |
+| `StatCard` | los indicadores de arriba (3–4 por pantalla) |
+| `FilaAcciones` + `BotonFila` | la columna Acciones (`ButtonBase` con íconos de `react-icons/fa6`: lápiz = cian, desactivar = ámbar, eliminar = rojo) |
+| `Modal` + `Input`/`Select`/`Checkbox` | formularios de alta y edición |
+| `SysDataTable` en **modo servidor** (`servidor={{ total, onConsulta }}`) | listados que crecen sin tope (Auditoría): el servidor recibe el mismo `ConsultaTabla` que emite la tabla |
+
+La tabla pinta cada fila dos veces (tabla y tarjeta de móvil): en las pruebas, `findAllByText` y botones
+buscados por su nombre accesible (`Editar Ana Pérez`).
+
 ### Dos mitades, dos sesiones
 
 | | Web pública | Panel |

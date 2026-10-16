@@ -4,7 +4,7 @@ import { describeFailure } from '@/core/errors/failures'
 import type { Alcance, Alcances, CatalogoAlcances, Rol } from '@/domain/entities/Configuracion'
 import { clavePermiso } from '@/domain/entities/Permiso'
 import type { SubmoduloCatalogo } from '@/domain/entities/Permiso'
-import { Alert, Button, Card, Checkbox, Select, useToast } from '@/shared/ui'
+import { Alert, Button, Card, Checkbox, Desplegable, useToast } from '@/shared/ui'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { usePermisos } from '../../providers/PermisosProvider'
@@ -114,19 +114,17 @@ export function MatrizRol({ roles, onCambioRoles }: { roles: Rol[]; onCambioRole
     <div className="space-y-4">
       <Card className="flex flex-wrap items-end gap-4">
         <div className="min-w-60 flex-1">
-          <Select
+          <Desplegable
             label="Rol"
-            value={rolId === null ? '' : String(rolId)}
-            onChange={(e) => setRolId(e.target.value === '' ? null : Number(e.target.value))}
-          >
-            <option value="">Elige un rol…</option>
-            {roles.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.nombre}
-                {r.usuarios > 0 ? ` · ${r.usuarios} persona(s)` : ''}
-              </option>
-            ))}
-          </Select>
+            placeholder="Elige un rol…"
+            value={rolId ?? ''}
+            onChange={(v) => setRolId(v === '' ? null : Number(v))}
+            options={roles.map((r) => ({
+              value: r.id,
+              label: r.nombre,
+              detalle: r.usuarios > 0 ? `${r.usuarios} persona(s)` : undefined,
+            }))}
+          />
         </div>
         {rol && !rol.accesoTotal && (
           <Button loading={guardando} disabled={sinCambios && alcanceSinCambios} onClick={() => void guardar()}>
@@ -199,12 +197,12 @@ export function MatrizRol({ roles, onCambioRoles }: { roles: Rol[]; onCambioRole
               {catAlcances.datos.submodulos.map((sub) => (
                 <div key={sub} className="grid items-center gap-2 sm:grid-cols-[1fr_16rem]">
                   <span className="text-sm text-ink">{etiquetaSubmodulo(sub)}</span>
-                  <Select
+                  <Desplegable
                     size="sm"
-                    aria-label={`Alcance de ${etiquetaSubmodulo(sub)}`}
+                    ariaLabel={`Alcance de ${etiquetaSubmodulo(sub)}`}
                     value={alcances[sub] ?? 'todas'}
-                    onChange={(e) => {
-                      const nivel = e.target.value as Alcance
+                    onChange={(v) => {
+                      const nivel = v as Alcance
                       setAlcances((a) => {
                         const next = { ...a }
                         if (nivel === 'todas') delete next[sub]
@@ -212,11 +210,8 @@ export function MatrizRol({ roles, onCambioRoles }: { roles: Rol[]; onCambioRole
                         return next
                       })
                     }}
-                  >
-                    {catAlcances.datos.niveles.map((n) => (
-                      <option key={n} value={n}>{ETIQUETA_ALCANCE[n]}</option>
-                    ))}
-                  </Select>
+                    options={catAlcances.datos.niveles.map((n) => ({ value: n, label: ETIQUETA_ALCANCE[n] }))}
+                  />
                 </div>
               ))}
             </Card>

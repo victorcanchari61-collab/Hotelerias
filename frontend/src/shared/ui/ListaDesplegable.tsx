@@ -49,6 +49,9 @@ export interface ListaDesplegableProps {
   deshabilitado?: boolean
   error?: boolean
 
+  /** Nombre accesible del botón cuando no hay una etiqueta visible (una celda de tabla). */
+  ariaLabel?: string
+
   /**
    * Buscador dentro del panel. Por defecto aparece solo cuando hay muchas
    * opciones: con cinco estorba, con veintisiete es la unica forma de llegar.
@@ -84,6 +87,7 @@ export function ListaDesplegable({
   seleccionados,
   deshabilitado,
   error,
+  ariaLabel,
   buscable,
   className,
 }: ListaDesplegableProps) {
@@ -203,6 +207,7 @@ export function ListaDesplegable({
         ref={botonRef}
         type="button"
         disabled={deshabilitado}
+        aria-label={ariaLabel}
         aria-expanded={abierto}
         aria-haspopup="listbox"
         onClick={(e) => {

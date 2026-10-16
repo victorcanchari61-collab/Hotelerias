@@ -119,10 +119,13 @@ describe('Roles', () => {
   })
 })
 
-/** Elige un rol en el selector, esperando a que la lista haya llegado (carga asíncrona). */
-async function elegirRol(id: string, nombre: RegExp) {
-  await screen.findByRole('option', { name: nombre })
-  fireEvent.change(screen.getByLabelText('Rol'), { target: { value: id } })
+/**
+ * Elige un rol en el desplegable del kit: se abre el campo y se pulsa la opción.
+ * Espera a que la lista haya llegado (carga asíncrona).
+ */
+async function elegirRol(_id: string, nombre: RegExp) {
+  fireEvent.click(await screen.findByRole('button', { name: 'Elige un rol…' }))
+  fireEvent.click(await screen.findByRole('option', { name: nombre }))
 }
 
 describe('Accesos', () => {
@@ -171,7 +174,8 @@ describe('Accesos', () => {
     const app = montar('/admin/config/accesos', PERMISOS)
 
     await elegirRol('2', /Recepcionista/)
-    fireEvent.change(await screen.findByLabelText('Alcance de Reservas'), { target: { value: 'mis_sedes' } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Alcance de Reservas' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Solo sus sedes' }))
     fireEvent.click(screen.getByRole('button', { name: 'Guardar accesos' }))
 
     await waitFor(() => expect(app.accesos.alcancesGuardadosRol).toHaveLength(1))
