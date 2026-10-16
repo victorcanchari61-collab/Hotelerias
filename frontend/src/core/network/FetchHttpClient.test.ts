@@ -156,26 +156,26 @@ describe('FetchHttpClient', () => {
       const onPermissionDenied = vi.fn()
       const m = montar({ token: 't', events: { onPermissionDenied } })
 
-      m.responder(() => json({ message: 'no', submodulo: 'fact.notaventa', accion: 'anular' }, 403))
+      m.responder(() => json({ message: 'no', submodulo: 'reservas.reservas', accion: 'anular' }, 403))
       await m.client.post('/x').catch(() => undefined)
       expect(onPermissionDenied).toHaveBeenCalledWith({
-        submodulo: 'fact.notaventa',
+        submodulo: 'reservas.reservas',
         accion: 'anular',
       })
 
       // Un "ver" negado casi nunca lo pidió la persona: las pantallas cargan
       // catálogos de otros módulos de paso, y un modal por cada uno es ruido.
       onPermissionDenied.mockClear()
-      m.responder(() => json({ message: 'no', submodulo: 'finanzas.metodospago', accion: 'ver' }, 403))
+      m.responder(() => json({ message: 'no', submodulo: 'finanzas.cobrar', accion: 'ver' }, 403))
       await m.client.get('/x').catch(() => undefined)
       expect(onPermissionDenied).not.toHaveBeenCalled()
     })
 
     it('el error 403 lleva el permiso aunque sea "ver" (la pantalla lo usa)', async () => {
       const m = montar({ token: 't' })
-      m.responder(() => json({ message: 'no', submodulo: 'inv.stock', accion: 'ver' }, 403))
+      m.responder(() => json({ message: 'no', submodulo: 'inventario.stock', accion: 'ver' }, 403))
       const error = (await m.client.get('/x').catch((e: unknown) => e)) as ApiError
-      expect(error.permiso).toEqual({ submodulo: 'inv.stock', accion: 'ver' })
+      expect(error.permiso).toEqual({ submodulo: 'inventario.stock', accion: 'ver' })
     })
   })
 
@@ -204,7 +204,7 @@ describe('FetchHttpClient', () => {
     it('download propaga el 403 con el permiso, como cualquier llamada', async () => {
       const onPermissionDenied = vi.fn()
       const m = montar({ token: 't', events: { onPermissionDenied } })
-      m.responder(() => json({ message: 'no', submodulo: 'fact.notaventa', accion: 'exportar' }, 403))
+      m.responder(() => json({ message: 'no', submodulo: 'reservas.reservas', accion: 'exportar' }, 403))
 
       await expect(m.client.download('/pdf/1', 'x.pdf')).rejects.toMatchObject({ statusCode: 403 })
       expect(onPermissionDenied).toHaveBeenCalledTimes(1)

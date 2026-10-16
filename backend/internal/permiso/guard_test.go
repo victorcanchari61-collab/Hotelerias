@@ -83,12 +83,12 @@ func mal(c *gin.Context) { c.JSON(http.StatusBadRequest, gin.H{"message": "valid
 // --- Require ---
 
 func TestRequirePermiteYNiega(t *testing.T) {
-	anular := k("fact.notaventa", Anular)
+	anular := k("reservas.reservas", Anular)
 	aut := &fakeAut{acceso: Acceso{DeRoles: rol(anular)}}
 	g := NewGuard(Permisos, aut, nuevoUso())
 
 	r := montar(t, 5, func(r *gin.Engine) {
-		r.POST("/x", g.Require("fact.notaventa", Anular), ok)
+		r.POST("/x", g.Require("reservas.reservas", Anular), ok)
 	})
 	if w := llamar(r); w.Code != http.StatusNoContent {
 		t.Fatalf("con permiso: %d", w.Code)
@@ -105,14 +105,14 @@ func TestRequirePermiteYNiega(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body.StatusCode != 403 || body.Submodulo != "fact.notaventa" || body.Accion != "anular" || body.Message == "" {
+	if body.StatusCode != 403 || body.Submodulo != "reservas.reservas" || body.Accion != "anular" || body.Message == "" {
 		t.Fatalf("cuerpo del 403 incorrecto: %+v", body)
 	}
 }
 
 func TestRequireSinSesionEs401(t *testing.T) {
 	g := NewGuard(Permisos, &fakeAut{}, nuevoUso())
-	r := montar(t, 0, func(r *gin.Engine) { r.POST("/x", g.Require("fact.notaventa", Ver), ok) })
+	r := montar(t, 0, func(r *gin.Engine) { r.POST("/x", g.Require("reservas.reservas", Ver), ok) })
 	if w := llamar(r); w.Code != http.StatusUnauthorized {
 		t.Fatalf("esperaba 401, fue %d", w.Code)
 	}
@@ -124,7 +124,7 @@ func TestRequireErrorDeInfraEs500NoFailOpen(t *testing.T) {
 	g := NewGuard(Permisos, aut, nuevoUso())
 	llegó := false
 	r := montar(t, 5, func(r *gin.Engine) {
-		r.POST("/x", g.Require("fact.notaventa", Ver), func(c *gin.Context) { llegó = true; ok(c) })
+		r.POST("/x", g.Require("reservas.reservas", Ver), func(c *gin.Context) { llegó = true; ok(c) })
 	})
 	w := llamar(r)
 	if w.Code != http.StatusInternalServerError || llegó {
@@ -136,10 +136,10 @@ func TestRequirePanicSiElPermisoNoExiste(t *testing.T) {
 	g := NewGuard(Permisos, &fakeAut{}, nuevoUso())
 	casos := map[string]func(){
 		"submódulo inexistente": func() { g.Require("no.existe", Ver) },
-		"acción no admitida":    func() { g.Require("inv.kardex", Anular) },
+		"acción no admitida":    func() { g.Require("inventario.kardex", Anular) },
 		"any vacío":             func() { g.RequireAny() },
 		"any mal formado":       func() { g.RequireAny("sin-dos-puntos") },
-		"any inexistente":       func() { g.RequireAny("inv.stock:ver", "no.existe:ver") },
+		"any inexistente":       func() { g.RequireAny("inventario.stock:ver", "no.existe:ver") },
 	}
 	for nombre, f := range casos {
 		t.Run(nombre, func(t *testing.T) {
@@ -156,7 +156,7 @@ func TestRequirePanicSiElPermisoNoExiste(t *testing.T) {
 // --- permiso de un solo uso ---
 
 func TestUnaVezSeGastaSoloSiSaleBien(t *testing.T) {
-	anular := k("fact.notaventa", Anular)
+	anular := k("reservas.reservas", Anular)
 	acceso := Acceso{Excepciones: []Excepcion{{ID: 7, Clave: anular, Vigencia: UnaVez}}}
 
 	casos := []struct {
@@ -174,7 +174,7 @@ func TestUnaVezSeGastaSoloSiSaleBien(t *testing.T) {
 		t.Run(tc.nombre, func(t *testing.T) {
 			uso := nuevoUso()
 			g := NewGuard(Permisos, &fakeAut{acceso: acceso}, uso)
-			r := montar(t, 5, func(r *gin.Engine) { r.POST("/x", g.Require("fact.notaventa", Anular), tc.handler) })
+			r := montar(t, 5, func(r *gin.Engine) { r.POST("/x", g.Require("reservas.reservas", Anular), tc.handler) })
 			llamar(r)
 
 			if got := uso.gastada[7]; got != tc.gastado {
@@ -191,14 +191,14 @@ func TestUnaVezSeGastaSoloSiSaleBien(t *testing.T) {
 }
 
 func TestUnaVezCarreraLaSegundaPeticionPierde(t *testing.T) {
-	anular := k("fact.notaventa", Anular)
+	anular := k("reservas.reservas", Anular)
 	acceso := Acceso{Excepciones: []Excepcion{{ID: 7, Clave: anular, Vigencia: UnaVez}}}
 	uso := nuevoUso()
 	g := NewGuard(Permisos, &fakeAut{acceso: acceso}, uso)
 
 	ejecuciones := 0
 	r := montar(t, 5, func(r *gin.Engine) {
-		r.POST("/x", g.Require("fact.notaventa", Anular), func(c *gin.Context) { ejecuciones++; ok(c) })
+		r.POST("/x", g.Require("reservas.reservas", Anular), func(c *gin.Context) { ejecuciones++; ok(c) })
 	})
 
 	// Las dos peticiones resolvieron "permitido" con la misma excepción sin
@@ -216,15 +216,15 @@ func TestUnaVezCarreraLaSegundaPeticionPierde(t *testing.T) {
 }
 
 func TestUnaVezDosGuardsEnLaMismaPeticionNoLaGastaDosVeces(t *testing.T) {
-	anular := k("fact.notaventa", Anular)
+	anular := k("reservas.reservas", Anular)
 	acceso := Acceso{Excepciones: []Excepcion{{ID: 7, Clave: anular, Vigencia: UnaVez}}}
 	uso := nuevoUso()
 	aut := &fakeAut{acceso: acceso}
 	g := NewGuard(Permisos, aut, uso)
 
 	r := montar(t, 5, func(r *gin.Engine) {
-		grupo := r.Group("", g.Require("fact.notaventa", Anular)) // guard de grupo
-		grupo.POST("/x", g.Require("fact.notaventa", Anular), ok) // y el del endpoint
+		grupo := r.Group("", g.Require("reservas.reservas", Anular)) // guard de grupo
+		grupo.POST("/x", g.Require("reservas.reservas", Anular), ok) // y el del endpoint
 	})
 	if w := llamar(r); w.Code != http.StatusNoContent {
 		t.Fatalf("code=%d", w.Code)
@@ -238,13 +238,13 @@ func TestUnaVezDosGuardsEnLaMismaPeticionNoLaGastaDosVeces(t *testing.T) {
 }
 
 func TestRolCubreNoGastaLaDeUnaVez(t *testing.T) {
-	anular := k("fact.notaventa", Anular)
+	anular := k("reservas.reservas", Anular)
 	uso := nuevoUso()
 	g := NewGuard(Permisos, &fakeAut{acceso: Acceso{
 		DeRoles:     rol(anular),
 		Excepciones: []Excepcion{{ID: 7, Clave: anular, Vigencia: UnaVez}},
 	}}, uso)
-	r := montar(t, 5, func(r *gin.Engine) { r.POST("/x", g.Require("fact.notaventa", Anular), ok) })
+	r := montar(t, 5, func(r *gin.Engine) { r.POST("/x", g.Require("reservas.reservas", Anular), ok) })
 
 	if w := llamar(r); w.Code != http.StatusNoContent {
 		t.Fatalf("code=%d", w.Code)
@@ -255,7 +255,7 @@ func TestRolCubreNoGastaLaDeUnaVez(t *testing.T) {
 }
 
 func TestReservarConErrorDeInfraNoDejaPasar(t *testing.T) {
-	anular := k("fact.notaventa", Anular)
+	anular := k("reservas.reservas", Anular)
 	uso := nuevoUso()
 	uso.errRes = errors.New("postgres caído")
 	g := NewGuard(Permisos, &fakeAut{acceso: Acceso{
@@ -264,7 +264,7 @@ func TestReservarConErrorDeInfraNoDejaPasar(t *testing.T) {
 
 	llegó := false
 	r := montar(t, 5, func(r *gin.Engine) {
-		r.POST("/x", g.Require("fact.notaventa", Anular), func(c *gin.Context) { llegó = true; ok(c) })
+		r.POST("/x", g.Require("reservas.reservas", Anular), func(c *gin.Context) { llegó = true; ok(c) })
 	})
 	if w := llamar(r); w.Code != http.StatusInternalServerError || llegó {
 		t.Fatalf("code=%d handlerEjecutado=%v", w.Code, llegó)
@@ -278,10 +278,10 @@ func TestRequireAny(t *testing.T) {
 	aut := &fakeAut{}
 	g := NewGuard(Permisos, aut, uso)
 	r := montar(t, 5, func(r *gin.Engine) {
-		r.POST("/x", g.RequireAny("inv.stock:ver", "fact.pedidos:ver"), ok)
+		r.POST("/x", g.RequireAny("inventario.stock:ver", "restaurantes.comandas:ver"), ok)
 	})
 
-	aut.acceso = Acceso{DeRoles: rol(k("fact.pedidos", Ver))} // tiene la segunda
+	aut.acceso = Acceso{DeRoles: rol(k("restaurantes.comandas", Ver))} // tiene la segunda
 	if w := llamar(r); w.Code != http.StatusNoContent {
 		t.Fatalf("con la segunda: %d", w.Code)
 	}
@@ -293,7 +293,7 @@ func TestRequireAny(t *testing.T) {
 	}
 	var body denegado
 	_ = json.Unmarshal(w.Body.Bytes(), &body)
-	if body.Submodulo != "inv.stock" || body.Accion != "ver" {
+	if body.Submodulo != "inventario.stock" || body.Accion != "ver" {
 		t.Fatalf("debe pedir la PRIMERA de la lista: %+v", body)
 	}
 }
@@ -301,9 +301,9 @@ func TestRequireAny(t *testing.T) {
 func TestRequireAnyNoGastaExcepcionesDeUnaVez(t *testing.T) {
 	uso := nuevoUso()
 	g := NewGuard(Permisos, &fakeAut{acceso: Acceso{Excepciones: []Excepcion{
-		{ID: 7, Clave: k("inv.stock", Ver), Vigencia: UnaVez},
+		{ID: 7, Clave: k("inventario.stock", Ver), Vigencia: UnaVez},
 	}}}, uso)
-	r := montar(t, 5, func(r *gin.Engine) { r.POST("/x", g.RequireAny("inv.stock:ver"), ok) })
+	r := montar(t, 5, func(r *gin.Engine) { r.POST("/x", g.RequireAny("inventario.stock:ver"), ok) })
 
 	if w := llamar(r); w.Code != http.StatusNoContent {
 		t.Fatalf("code=%d", w.Code)
@@ -316,12 +316,12 @@ func TestRequireAnyNoGastaExcepcionesDeUnaVez(t *testing.T) {
 // El reloj del guard es inyectable: lo vencido se evalúa contra "ahora", no
 // contra cuando se armó el acceso.
 func TestRequireUsaElRelojDelGuard(t *testing.T) {
-	anular := k("fact.notaventa", Anular)
+	anular := k("reservas.reservas", Anular)
 	exp := ahora.Add(time.Hour)
 	g := NewGuard(Permisos, &fakeAut{acceso: Acceso{Excepciones: []Excepcion{
 		{ID: 1, Clave: anular, Vigencia: Temporal, ExpiraEn: &exp},
 	}}}, nuevoUso())
-	r := montar(t, 5, func(r *gin.Engine) { r.POST("/x", g.Require("fact.notaventa", Anular), ok) })
+	r := montar(t, 5, func(r *gin.Engine) { r.POST("/x", g.Require("reservas.reservas", Anular), ok) })
 
 	g.now = func() time.Time { return ahora }
 	if w := llamar(r); w.Code != http.StatusNoContent {

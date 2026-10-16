@@ -32,9 +32,9 @@ describe('toFailure: qué status es qué fallo (un solo sitio)', () => {
   })
 
   it('un 403 conserva qué permiso faltaba', () => {
-    const f = toFailure(new ApiError('no', 403, [], { submodulo: 'fact.notaventa', accion: 'anular' }))
+    const f = toFailure(new ApiError('no', 403, [], { submodulo: 'reservas.reservas', accion: 'anular' }))
     expect(f).toBeInstanceOf(ForbiddenFailure)
-    expect((f as ForbiddenFailure).permiso).toEqual({ submodulo: 'fact.notaventa', accion: 'anular' })
+    expect((f as ForbiddenFailure).permiso).toEqual({ submodulo: 'reservas.reservas', accion: 'anular' })
   })
 
   it('un fallo de validación conserva el detalle del servidor', () => {

@@ -118,12 +118,13 @@ main ──► routes ──► (módulos)
 
 ## Sistema de permisos
 
-Es la lógica del proyecto `distributor`, portada a Go. Un permiso es `submodulo:accion`
+La **lógica** (roles con herencia más excepciones individuales) viene del proyecto `distributor`; el **catálogo de
+módulos** es propio de una cadena hotelera. Un permiso es `submodulo:accion`
 (por ejemplo `fact.notaventa:anular`).
 
 ### Reglas
 
-1. **El catálogo vive en código** ([`permiso/catalogo.go`](internal/permiso/catalogo.go)): 56 submódulos, y cada uno declara **solo** las acciones que le tienen sentido (la auditoría no se crea, el kardex no se anula). El front dibuja su matriz con `GET /api/permiso/catalogo`.
+1. **El catálogo vive en código** ([`permiso/catalogo.go`](internal/permiso/catalogo.go)): 59 submódulos en 14 módulos (recepción, reservas, habitaciones, CRM, restaurantes, servicios exclusivos, productos, inventario, compras, facturación, finanzas, RR. HH., dashboard y configuración), y cada uno declara **solo** las acciones que le tienen sentido (la auditoría no se crea, el kardex no se anula). El front dibuja su matriz con `GET /api/permiso/catalogo`.
 2. **Un usuario hereda los permisos de sus roles.** Con varios roles, sus permisos son la **unión**: tener más roles nunca quita nada.
 3. **Los roles con `acceso_total`** (Administrador) pueden todo y no se configuran. Es un dato del rol, no su nombre.
 4. **Sobre eso, excepciones individuales que solo suman** (no existe la que quita algo):

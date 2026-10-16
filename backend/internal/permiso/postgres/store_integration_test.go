@@ -32,10 +32,10 @@ import (
 )
 
 type fixture struct {
-	pool                                          *pgxpool.Pool
-	store                                         *postgres.Store
-	vendedor, almacenero, admin, inactivo, sinRol int64 // usuarios
-	rolVendedor, rolAlmacenero                    int64
+	pool                                               *pgxpool.Pool
+	store                                              *postgres.Store
+	recepcionista, almacenero, admin, inactivo, sinRol int64 // usuarios
+	rolRecepcion, rolAlmacenero                        int64
 }
 
 func nuevoFixture(t *testing.T) *fixture {
@@ -116,26 +116,26 @@ func (f *fixture) sembrar(t *testing.T) {
 		must(err)
 	}
 
-	f.rolVendedor, f.rolAlmacenero = rolID("Vendedor"), rolID("Almacenero")
-	permiso(f.rolVendedor, "fact.pedidos", "ver")
-	permiso(f.rolVendedor, "fact.pedidos", "crear")
-	permiso(f.rolVendedor, "fact.notaventa", "ver")
-	permiso(f.rolVendedor, "fact.notaventa", "crear")
-	permiso(f.rolAlmacenero, "inv.stock", "ver")
-	permiso(f.rolAlmacenero, "inv.almacenes", "ver")
+	f.rolRecepcion, f.rolAlmacenero = rolID("Recepcionista"), rolID("Almacenero")
+	permiso(f.rolRecepcion, "restaurantes.comandas", "ver")
+	permiso(f.rolRecepcion, "restaurantes.comandas", "crear")
+	permiso(f.rolRecepcion, "reservas.reservas", "ver")
+	permiso(f.rolRecepcion, "reservas.reservas", "crear")
+	permiso(f.rolAlmacenero, "inventario.stock", "ver")
+	permiso(f.rolAlmacenero, "inventario.almacenes", "ver")
 
-	f.vendedor = usuario("Vendedor Uno", true)
-	asignar(f.vendedor, f.rolVendedor)
+	f.recepcionista = usuario("Recepcionista Uno", true)
+	asignar(f.recepcionista, f.rolRecepcion)
 
 	f.almacenero = usuario("Mixto", true) // vende y lleva el almacén
-	asignar(f.almacenero, f.rolVendedor)
+	asignar(f.almacenero, f.rolRecepcion)
 	asignar(f.almacenero, f.rolAlmacenero)
 
 	f.admin = usuario("Admin", true)
 	asignar(f.admin, rolID("Administrador"))
 
 	f.inactivo = usuario("Inactivo", false)
-	asignar(f.inactivo, f.rolVendedor)
+	asignar(f.inactivo, f.rolRecepcion)
 
 	f.sinRol = usuario("Sin rol", true)
 }
@@ -163,7 +163,7 @@ func TestRolesDe(t *testing.T) {
 		roles   int
 		total   bool
 	}{
-		{"un rol", f.vendedor, 1, false},
+		{"un rol", f.recepcionista, 1, false},
 		{"varios roles", f.almacenero, 2, false},
 		{"administrador", f.admin, 1, true},
 		{"inactivo no tiene nada", f.inactivo, 0, false},
@@ -185,7 +185,7 @@ func TestRolesDe(t *testing.T) {
 
 func TestPermisosDeRol(t *testing.T) {
 	f := nuevoFixture(t)
-	claves, err := f.store.PermisosDeRol(context.Background(), f.rolVendedor)
+	claves, err := f.store.PermisosDeRol(context.Background(), f.rolRecepcion)
 	if err != nil || len(claves) != 4 {
 		t.Fatalf("claves=%v err=%v", claves, err)
 	}
@@ -200,15 +200,15 @@ func TestVigentesFiltraLoQueNoSirve(t *testing.T) {
 	ahora := time.Now()
 	futuro, pasado := ahora.Add(time.Hour), ahora.Add(-time.Hour)
 
-	buena := f.excepcion(t, f.vendedor, "fact.notaventa", "anular", "permanente", nil, 0, false)
-	temp := f.excepcion(t, f.vendedor, "fact.notaventa", "editar", "temporal", &futuro, 0, false)
-	unaVez := f.excepcion(t, f.vendedor, "fact.pedidos", "anular", "una_vez", nil, 0, false)
-	f.excepcion(t, f.vendedor, "inv.ajustes", "crear", "permanente", nil, 0, true)     // revocada
-	f.excepcion(t, f.vendedor, "inv.ajustes", "anular", "temporal", &pasado, 0, false) // vencida
-	f.excepcion(t, f.vendedor, "inv.ajustes", "editar", "una_vez", nil, 1, false)      // gastada
-	f.excepcion(t, f.almacenero, "inv.ajustes", "ver", "permanente", nil, 0, false)    // de otro
+	buena := f.excepcion(t, f.recepcionista, "reservas.reservas", "anular", "permanente", nil, 0, false)
+	temp := f.excepcion(t, f.recepcionista, "reservas.reservas", "editar", "temporal", &futuro, 0, false)
+	unaVez := f.excepcion(t, f.recepcionista, "restaurantes.comandas", "anular", "una_vez", nil, 0, false)
+	f.excepcion(t, f.recepcionista, "inventario.ajustes", "crear", "permanente", nil, 0, true)     // revocada
+	f.excepcion(t, f.recepcionista, "inventario.ajustes", "anular", "temporal", &pasado, 0, false) // vencida
+	f.excepcion(t, f.recepcionista, "inventario.ajustes", "editar", "una_vez", nil, 1, false)      // gastada
+	f.excepcion(t, f.almacenero, "inventario.ajustes", "ver", "permanente", nil, 0, false)         // de otro
 
-	got, err := f.store.VigentesDe(ctx, f.vendedor, ahora)
+	got, err := f.store.VigentesDe(ctx, f.recepcionista, ahora)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +227,7 @@ func TestVigentesFiltraLoQueNoSirve(t *testing.T) {
 func TestReservarEsAtomico(t *testing.T) {
 	f := nuevoFixture(t)
 	ctx := context.Background()
-	id := f.excepcion(t, f.vendedor, "fact.notaventa", "anular", "una_vez", nil, 0, false)
+	id := f.excepcion(t, f.recepcionista, "reservas.reservas", "anular", "una_vez", nil, 0, false)
 
 	var ganadores atomic.Int32
 	var wg sync.WaitGroup
@@ -250,7 +250,7 @@ func TestReservarEsAtomico(t *testing.T) {
 	}
 
 	// Gastada: ya no aparece como vigente.
-	got, _ := f.store.VigentesDe(ctx, f.vendedor, time.Now())
+	got, _ := f.store.VigentesDe(ctx, f.recepcionista, time.Now())
 	if len(got) != 0 {
 		t.Fatalf("una gastada no debe ser vigente: %+v", got)
 	}
@@ -267,8 +267,8 @@ func TestReservarEsAtomico(t *testing.T) {
 func TestReservarNoTocaPermanentesNiRevocadas(t *testing.T) {
 	f := nuevoFixture(t)
 	ctx := context.Background()
-	perm := f.excepcion(t, f.vendedor, "fact.notaventa", "anular", "permanente", nil, 0, false)
-	rev := f.excepcion(t, f.vendedor, "fact.notaventa", "editar", "una_vez", nil, 0, true)
+	perm := f.excepcion(t, f.recepcionista, "reservas.reservas", "anular", "permanente", nil, 0, false)
+	rev := f.excepcion(t, f.recepcionista, "reservas.reservas", "editar", "una_vez", nil, 0, true)
 
 	for _, id := range []int64{perm, rev, 99999} {
 		if ok, err := f.store.Reservar(ctx, id); ok || err != nil {
@@ -310,7 +310,7 @@ func (f *fixture) servidor(t *testing.T) (*httptest.Server, *auth.Tokens) {
 type rutasDePrueba struct{ g *permiso.Guard }
 
 func (m rutasDePrueba) Register(r gin.IRouter) {
-	r.POST("/notaventa/anular", m.g.Require("fact.notaventa", permiso.Anular),
+	r.POST("/notaventa/anular", m.g.Require("reservas.reservas", permiso.Anular),
 		func(c *gin.Context) {
 			if c.Query("falla") == "1" {
 				_ = c.Error(httpx.BadRequest("la nota ya estaba anulada"))
@@ -318,7 +318,7 @@ func (m rutasDePrueba) Register(r gin.IRouter) {
 			}
 			c.JSON(http.StatusOK, gin.H{"ok": true})
 		})
-	r.GET("/stock", m.g.RequireAny("inv.stock:ver", "fact.pedidos:ver"),
+	r.GET("/stock", m.g.RequireAny("inventario.stock:ver", "restaurantes.comandas:ver"),
 		func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"ok": true}) })
 }
 
@@ -361,11 +361,11 @@ func TestPuntaAPunta(t *testing.T) {
 		}
 	})
 
-	t.Run("mios del vendedor", func(t *testing.T) {
-		code, body := llamar(t, srv, tok(f.vendedor), "GET", "/api/permiso/mios")
+	t.Run("mios del recepcionista", func(t *testing.T) {
+		code, body := llamar(t, srv, tok(f.recepcionista), "GET", "/api/permiso/mios")
 		var mios []string
 		_ = json.Unmarshal(body, &mios)
-		want := []string{"fact.notaventa:crear", "fact.notaventa:ver", "fact.pedidos:crear", "fact.pedidos:ver"}
+		want := []string{"reservas.reservas:crear", "reservas.reservas:ver", "restaurantes.comandas:crear", "restaurantes.comandas:ver"}
 		if code != 200 || !slices.Equal(mios, want) {
 			t.Fatalf("code=%d mios=%v", code, mios)
 		}
@@ -375,7 +375,7 @@ func TestPuntaAPunta(t *testing.T) {
 		_, body := llamar(t, srv, tok(f.almacenero), "GET", "/api/permiso/mios")
 		var mios []string
 		_ = json.Unmarshal(body, &mios)
-		for _, want := range []string{"fact.pedidos:ver", "inv.stock:ver", "inv.almacenes:ver"} {
+		for _, want := range []string{"restaurantes.comandas:ver", "inventario.stock:ver", "inventario.almacenes:ver"} {
 			if !slices.Contains(mios, want) {
 				t.Errorf("falta %s en %v", want, mios)
 			}
@@ -402,30 +402,30 @@ func TestPuntaAPunta(t *testing.T) {
 	})
 
 	t.Run("catálogo", func(t *testing.T) {
-		code, body := llamar(t, srv, tok(f.vendedor), "GET", "/api/permiso/catalogo")
+		code, body := llamar(t, srv, tok(f.recepcionista), "GET", "/api/permiso/catalogo")
 		var cat []permiso.Submodulo
-		if err := json.Unmarshal(body, &cat); err != nil || code != 200 || len(cat) != 56 {
+		if err := json.Unmarshal(body, &cat); err != nil || code != 200 || len(cat) != 59 {
 			t.Fatalf("code=%d n=%d err=%v", code, len(cat), err)
 		}
-		if cat[0].Clave != "dashboard.ventas" || cat[0].Modulo != "dashboard" {
+		if cat[0].Clave != "dashboard.ocupacion" || cat[0].Modulo != "dashboard" {
 			t.Fatalf("debe conservar el orden del menú: %+v", cat[0])
 		}
 	})
 
 	t.Run("403 trae qué faltaba", func(t *testing.T) {
-		code, body := llamar(t, srv, tok(f.vendedor), "POST", "/api/notaventa/anular")
+		code, body := llamar(t, srv, tok(f.recepcionista), "POST", "/api/notaventa/anular")
 		var p struct {
 			StatusCode        int
 			Submodulo, Accion string
 		}
 		_ = json.Unmarshal(body, &p)
-		if code != 403 || p.Submodulo != "fact.notaventa" || p.Accion != "anular" {
+		if code != 403 || p.Submodulo != "reservas.reservas" || p.Accion != "anular" {
 			t.Fatalf("code=%d %s", code, body)
 		}
 	})
 
 	t.Run("RequireAny deja pasar con cualquiera", func(t *testing.T) {
-		if code, _ := llamar(t, srv, tok(f.vendedor), "GET", "/api/stock"); code != 200 { // por pedidos:ver
+		if code, _ := llamar(t, srv, tok(f.recepcionista), "GET", "/api/stock"); code != 200 { // por pedidos:ver
 			t.Fatalf("code=%d", code)
 		}
 		if code, _ := llamar(t, srv, tok(f.sinRol), "GET", "/api/stock"); code != 403 {
@@ -437,8 +437,8 @@ func TestPuntaAPunta(t *testing.T) {
 func TestPermisoDeUnSoloUsoDePuntaAPunta(t *testing.T) {
 	f := nuevoFixture(t)
 	srv, tokens := f.servidor(t)
-	token, _ := tokens.Emitir(f.vendedor)
-	id := f.excepcion(t, f.vendedor, "fact.notaventa", "anular", "una_vez", nil, 0, false)
+	token, _ := tokens.Emitir(f.recepcionista)
+	id := f.excepcion(t, f.recepcionista, "reservas.reservas", "anular", "una_vez", nil, 0, false)
 
 	usos := func() int {
 		var n int
@@ -448,7 +448,7 @@ func TestPermisoDeUnSoloUsoDePuntaAPunta(t *testing.T) {
 
 	// El permiso aparece en /mios mientras no se gaste.
 	_, body := llamar(t, srv, token, "GET", "/api/permiso/mios")
-	if !slices.Contains(mustStrings(t, body), "fact.notaventa:anular") {
+	if !slices.Contains(mustStrings(t, body), "reservas.reservas:anular") {
 		t.Fatalf("la excepción vigente debe aparecer en mios: %s", body)
 	}
 
@@ -473,7 +473,7 @@ func TestPermisoDeUnSoloUsoDePuntaAPunta(t *testing.T) {
 		t.Fatalf("code=%d", code)
 	}
 	_, body = llamar(t, srv, token, "GET", "/api/permiso/mios")
-	if slices.Contains(mustStrings(t, body), "fact.notaventa:anular") {
+	if slices.Contains(mustStrings(t, body), "reservas.reservas:anular") {
 		t.Fatal("un permiso gastado no debe seguir en mios")
 	}
 }
@@ -481,8 +481,8 @@ func TestPermisoDeUnSoloUsoDePuntaAPunta(t *testing.T) {
 func TestPermisoDeUnSoloUsoEnParalelo(t *testing.T) {
 	f := nuevoFixture(t)
 	srv, tokens := f.servidor(t)
-	token, _ := tokens.Emitir(f.vendedor)
-	f.excepcion(t, f.vendedor, "fact.notaventa", "anular", "una_vez", nil, 0, false)
+	token, _ := tokens.Emitir(f.recepcionista)
+	f.excepcion(t, f.recepcionista, "reservas.reservas", "anular", "una_vez", nil, 0, false)
 
 	var exitos atomic.Int32
 	var wg sync.WaitGroup

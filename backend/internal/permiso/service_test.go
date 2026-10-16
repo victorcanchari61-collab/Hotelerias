@@ -69,11 +69,11 @@ func (c *memCache) Delete(_ context.Context, k string) error {
 
 func TestAccesoUnionDeRolesMasExcepciones(t *testing.T) {
 	roles := nuevoFakeRoles(map[int64][]Clave{
-		1: {k("fact.pedidos", Ver), k("fact.pedidos", Crear)}, // Vendedor
-		2: {k("inv.stock", Ver), k("fact.pedidos", Ver)},      // Almacenero (se solapa)
+		1: {k("restaurantes.comandas", Ver), k("restaurantes.comandas", Crear)}, // Vendedor
+		2: {k("inventario.stock", Ver), k("restaurantes.comandas", Ver)},        // Almacenero (se solapa)
 	})
 	exc := &fakeExcepciones{vigentes: []Excepcion{
-		{ID: 9, Clave: k("fact.notaventa", Anular), Vigencia: Permanente},
+		{ID: 9, Clave: k("reservas.reservas", Anular), Vigencia: Permanente},
 	}}
 	svc := NewService(Permisos, fakeUsuarios{roles: RolesDeUsuario{RolIDs: []int64{1, 2}}}, roles, exc)
 
@@ -82,11 +82,11 @@ func TestAccesoUnionDeRolesMasExcepciones(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{
-		"fact.notaventa:anular",
-		"fact.notaventa:ver", // implícito por la excepción
-		"fact.pedidos:crear",
-		"fact.pedidos:ver",
-		"inv.stock:ver",
+		"inventario.stock:ver",
+		"reservas.reservas:anular",
+		"reservas.reservas:ver", // implícito por la excepción
+		"restaurantes.comandas:crear",
+		"restaurantes.comandas:ver",
 	}
 	if !slices.Equal(mios, want) {
 		t.Fatalf("Mios = %v\nesperaba %v", mios, want)
@@ -115,7 +115,7 @@ func TestAccesoTotalNoConsultaNada(t *testing.T) {
 func TestSinRolesNiSiquieraExcepcionesSirven(t *testing.T) {
 	// Usuario inactivo o inexistente: RolesDe devuelve el valor cero.
 	exc := &fakeExcepciones{vigentes: []Excepcion{
-		{ID: 1, Clave: k("fact.notaventa", Anular), Vigencia: Permanente},
+		{ID: 1, Clave: k("reservas.reservas", Anular), Vigencia: Permanente},
 	}}
 	svc := NewService(Permisos, fakeUsuarios{}, nuevoFakeRoles(nil), exc)
 
@@ -156,14 +156,14 @@ func TestErroresDeInfraSePropagan(t *testing.T) {
 // --- CachedRoles ---
 
 func TestCachedRolesCacheaYOlvida(t *testing.T) {
-	origen := nuevoFakeRoles(map[int64][]Clave{1: {k("fact.pedidos", Ver)}})
+	origen := nuevoFakeRoles(map[int64][]Clave{1: {k("restaurantes.comandas", Ver)}})
 	cache := nuevaMemCache()
 	cr := NewCachedRoles(origen, cache)
 	ctx := context.Background()
 
 	for i := 0; i < 3; i++ {
 		claves, err := cr.PermisosDeRol(ctx, 1)
-		if err != nil || len(claves) != 1 || claves[0] != k("fact.pedidos", Ver) {
+		if err != nil || len(claves) != 1 || claves[0] != k("restaurantes.comandas", Ver) {
 			t.Fatalf("vuelta %d: %v, %v", i, claves, err)
 		}
 	}
@@ -172,7 +172,7 @@ func TestCachedRolesCacheaYOlvida(t *testing.T) {
 	}
 
 	// Cambia la matriz y se invalida: lo siguiente va al origen y trae lo nuevo.
-	origen.porRol[1] = []Clave{k("fact.pedidos", Ver), k("fact.pedidos", Anular)}
+	origen.porRol[1] = []Clave{k("restaurantes.comandas", Ver), k("restaurantes.comandas", Anular)}
 	if err := cr.Olvidar(ctx, 1); err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +198,7 @@ func TestCachedRolesCacheaTambienElRolVacio(t *testing.T) {
 }
 
 func TestCachedRolesEntradaCorruptaSeIgnora(t *testing.T) {
-	origen := nuevoFakeRoles(map[int64][]Clave{1: {k("inv.stock", Ver)}})
+	origen := nuevoFakeRoles(map[int64][]Clave{1: {k("inventario.stock", Ver)}})
 	cache := nuevaMemCache()
 	cache.m[llaveRol(1)] = []byte("esto no es json")
 
@@ -207,7 +207,7 @@ func TestCachedRolesEntradaCorruptaSeIgnora(t *testing.T) {
 		t.Fatalf("claves=%v err=%v", claves, err)
 	}
 	// Y la corrige.
-	if string(cache.m[llaveRol(1)]) != `["inv.stock:ver"]` {
+	if string(cache.m[llaveRol(1)]) != `["inventario.stock:ver"]` {
 		t.Fatalf("no reescribió la entrada: %s", cache.m[llaveRol(1)])
 	}
 }

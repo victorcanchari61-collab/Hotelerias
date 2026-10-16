@@ -21,8 +21,8 @@ func rol(claves ...Clave) map[Clave]struct{} {
 func en(d time.Duration) *time.Time { t := ahora.Add(d); return &t }
 
 func TestResolver(t *testing.T) {
-	anular := k("fact.notaventa", Anular)
-	verNV := k("fact.notaventa", Ver)
+	anular := k("reservas.reservas", Anular)
+	verNV := k("reservas.reservas", Ver)
 
 	tests := []struct {
 		name      string
@@ -34,8 +34,8 @@ func TestResolver(t *testing.T) {
 		{"sin nada niega", Acceso{}, anular, false, 0},
 		{"acceso total puede todo", Acceso{Total: true}, anular, true, 0},
 		{"el rol lo cubre", Acceso{DeRoles: rol(anular)}, anular, true, 0},
-		{"el rol de otro submódulo no sirve", Acceso{DeRoles: rol(k("fact.pedidos", Anular))}, anular, false, 0},
-		{"la misma acción en otro submódulo no sirve", Acceso{DeRoles: rol(k("fact.pedidos", Ver))}, verNV, false, 0},
+		{"el rol de otro submódulo no sirve", Acceso{DeRoles: rol(k("restaurantes.comandas", Anular))}, anular, false, 0},
+		{"la misma acción en otro submódulo no sirve", Acceso{DeRoles: rol(k("restaurantes.comandas", Ver))}, verNV, false, 0},
 
 		{"excepción permanente", Acceso{Excepciones: []Excepcion{
 			{ID: 1, Clave: anular, Vigencia: Permanente},
@@ -94,14 +94,14 @@ func TestResolver(t *testing.T) {
 			{ID: 8, Clave: verNV, Vigencia: UnaVez},
 		}}, verNV, true, 0},
 		{"ver implícito no cruza de submódulo", Acceso{Excepciones: []Excepcion{
-			{ID: 7, Clave: k("fact.pedidos", Anular), Vigencia: Permanente},
+			{ID: 7, Clave: k("restaurantes.comandas", Anular), Vigencia: Permanente},
 		}}, verNV, false, 0},
 		{"ver implícito se va con la excepción", Acceso{Excepciones: []Excepcion{
 			{ID: 7, Clave: anular, Vigencia: Temporal, ExpiraEn: en(-time.Second)},
 		}}, verNV, false, 0},
 		{"ver implícito no regala otras acciones", Acceso{Excepciones: []Excepcion{
 			{ID: 7, Clave: anular, Vigencia: Permanente},
-		}}, k("fact.notaventa", Editar), false, 0},
+		}}, k("reservas.reservas", Editar), false, 0},
 		{"el rol NO da ver implícito (la matriz lo guarda al editarse)", Acceso{
 			DeRoles: rol(anular),
 		}, verNV, false, 0},
@@ -126,16 +126,16 @@ func TestClavesCoincideConResolver(t *testing.T) {
 		"vacío": {},
 		"total": {Total: true},
 		"rol": {DeRoles: rol(
-			k("fact.pedidos", Ver), k("fact.pedidos", Crear), k("inv.stock", Ver),
+			k("restaurantes.comandas", Ver), k("restaurantes.comandas", Crear), k("inventario.stock", Ver),
 			k("no.existe", Ver), // fila vieja de algo que ya no está en el catálogo
 		)},
 		"excepciones": {
-			DeRoles: rol(k("inv.stock", Ver)),
+			DeRoles: rol(k("inventario.stock", Ver)),
 			Excepciones: []Excepcion{
-				{ID: 1, Clave: k("fact.notaventa", Anular), Vigencia: UnaVez},
+				{ID: 1, Clave: k("reservas.reservas", Anular), Vigencia: UnaVez},
 				{ID: 2, Clave: k("finanzas.cierres", Confirmar), Vigencia: Temporal, ExpiraEn: en(time.Hour)},
 				{ID: 3, Clave: k("rrhh.planilla", Anular), Vigencia: Permanente, Revocado: true},
-				{ID: 4, Clave: k("tms.rutas", Editar), Vigencia: UnaVez, Usos: 1},
+				{ID: 4, Clave: k("habitaciones.tipos", Editar), Vigencia: UnaVez, Usos: 1},
 				{ID: 5, Clave: k("config.accesos", Editar), Vigencia: Temporal, ExpiraEn: en(-time.Hour)},
 			},
 		},
@@ -189,11 +189,11 @@ func TestExcepcionVigente(t *testing.T) {
 }
 
 func TestParseClave(t *testing.T) {
-	ok, err := ParseClave("fact.notaventa:anular")
-	if err != nil || ok != k("fact.notaventa", Anular) {
+	ok, err := ParseClave("reservas.reservas:anular")
+	if err != nil || ok != k("reservas.reservas", Anular) {
 		t.Fatalf("ParseClave = %v, %v", ok, err)
 	}
-	for _, mala := range []string{"", "sin-dos-puntos", ":ver", "fact.pedidos:"} {
+	for _, mala := range []string{"", "sin-dos-puntos", ":ver", "restaurantes.comandas:"} {
 		if _, err := ParseClave(mala); err == nil {
 			t.Errorf("ParseClave(%q) debía fallar", mala)
 		}

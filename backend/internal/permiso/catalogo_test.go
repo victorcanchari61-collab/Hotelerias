@@ -6,10 +6,10 @@ import (
 )
 
 func TestCatalogoEsConsistente(t *testing.T) {
-	if len(Permisos.Submodulos()) != 56 {
-		// Port 1:1 del catálogo de distributor. Si cambia a propósito, se
-		// actualiza aquí: que no cambie sin que nadie se entere.
-		t.Errorf("el catálogo tiene %d submódulos, esperaba 56", len(Permisos.Submodulos()))
+	if len(Permisos.Submodulos()) != 59 {
+		// Si el catálogo cambia a propósito, se actualiza aquí: que no cambie sin
+		// que nadie se entere (es la base de los permisos guardados en la base).
+		t.Errorf("el catálogo tiene %d submódulos, esperaba 59", len(Permisos.Submodulos()))
 	}
 
 	for _, s := range Permisos.Submodulos() {
@@ -40,7 +40,7 @@ func TestConNoMutaLaBase(t *testing.T) {
 		t.Fatalf("con() mutó la base: %v -> %v", antes, documento)
 	}
 
-	nv, _ := Permisos.Submodulo("fact.notaventa")
+	nv, _ := Permisos.Submodulo("reservas.reservas")
 	rec, _ := Permisos.Submodulo("compras.recepciones")
 	if !nv.Admite(Cobrar) || rec.Admite(Cobrar) {
 		t.Error("cobrar debe estar en notaventa y no en recepciones")
@@ -48,7 +48,7 @@ func TestConNoMutaLaBase(t *testing.T) {
 }
 
 func TestEsValido(t *testing.T) {
-	validos := []Clave{k("fact.notaventa", Anular), k("config.accesos", Editar), k("inv.stock", Exportar)}
+	validos := []Clave{k("reservas.reservas", Anular), k("config.accesos", Editar), k("inventario.stock", Exportar)}
 	for _, c := range validos {
 		if !Permisos.EsValido(c) {
 			t.Errorf("%s debía ser válido", c)
@@ -56,9 +56,9 @@ func TestEsValido(t *testing.T) {
 	}
 
 	invalidos := []Clave{
-		k("fact.notaventa", Importar), // la acción existe pero ese submódulo no la admite
-		k("inv.kardex", Anular),       // el kardex no se anula
-		k("config.auditoria", Crear),  // la auditoría no se crea
+		k("reservas.reservas", Importar), // la acción existe pero ese submódulo no la admite
+		k("inventario.kardex", Anular),   // el kardex no se anula
+		k("config.auditoria", Crear),     // la auditoría no se crea
 		k("no.existe", Ver),
 		k("", Ver),
 	}
@@ -71,7 +71,7 @@ func TestEsValido(t *testing.T) {
 
 func TestModuloDe(t *testing.T) {
 	for in, want := range map[string]string{
-		"fact.notaventa": "fact", "config.accesos": "config", "solo": "solo", "": "",
+		"reservas.reservas": "reservas", "config.accesos": "config", "solo": "solo", "": "",
 	} {
 		if got := ModuloDe(in); got != want {
 			t.Errorf("ModuloDe(%q) = %q, esperaba %q", in, got, want)

@@ -32,7 +32,7 @@ const (
 )
 
 // Submodulo es una pantalla con permiso propio y las acciones que admite.
-// Su clave es la misma del menú del frontend ("fact.notaventa").
+// Su clave es la misma del menú del frontend ("reservas.reservas").
 type Submodulo struct {
 	Clave    string   `json:"submodulo"`
 	Modulo   string   `json:"modulo"`
@@ -100,13 +100,14 @@ var (
 	consulta = []Accion{Ver, Exportar}
 	// Un catálogo común: se ve, se crea, se edita y se borra.
 	catalogo = []Accion{Ver, Crear, Editar, Eliminar}
-	// Un catálogo que solo se desactiva: tiene historial detrás.
+	// Un catálogo que solo se desactiva: tiene historial detrás (una habitación
+	// con estancias, una tarifa con reservas), borrarlo dejaría huérfanos.
 	catalogoSinBorrado = []Accion{Ver, Crear, Editar}
 	// Un catálogo grande, con carga masiva desde archivo.
 	catalogoImportable = []Accion{Ver, Crear, Editar, Eliminar, Exportar, Importar}
 	// Un documento que se emite, se corrige y se anula.
 	documento = []Accion{Ver, Crear, Editar, Anular, Exportar}
-	// Un documento que además se confirma (se despacha o se recibe).
+	// Un documento que además se confirma (se despacha, se recibe, se hace check-in).
 	documentoConfirmable = []Accion{Ver, Crear, Editar, Anular, Confirmar, Exportar}
 )
 
@@ -121,7 +122,7 @@ func sub(clave string, acciones []Accion) Submodulo {
 
 // ModuloDe devuelve el módulo de un submódulo: el prefijo de su clave. No se
 // guarda como permiso aparte: tenerlo en dos niveles permitiría estados
-// contradictorios ("Facturación denegado" pero "Pedidos permitido").
+// contradictorios ("Reservas denegado" pero "Tarifas permitido").
 func ModuloDe(submodulo string) string {
 	for i := 0; i < len(submodulo); i++ {
 		if submodulo[i] == '.' {
@@ -131,110 +132,115 @@ func ModuloDe(submodulo string) string {
 	return submodulo
 }
 
-// Permisos es el catálogo del sistema.
+// Permisos es el catálogo del sistema: una CADENA HOTELERA (una sola empresa,
+// varias sedes) con alojamiento, restaurantes, servicios exclusivos, productos
+// y su ERP/CRM. El orden es el del menú.
+//
+// La clave es la misma del menú del frontend (presentation/layout/navigation.ts):
+// "modulo.vista" → la URL es /modulo/vista. Agregar o renombrar un submódulo se
+// hace en los DOS archivos.
 var Permisos = nuevoCatalogo([]Submodulo{
-	// --- Dashboard ---
-	// Un tablero por área, cada uno con su propio permiso: quien maneja el
-	// almacén ve Inventario sin que eso le abra las ganancias. Solo lectura.
-	sub("dashboard.ventas", []Accion{Ver}),
-	sub("dashboard.rentabilidad", []Accion{Ver}),
-	sub("dashboard.cobranza", []Accion{Ver}),
-	sub("dashboard.inventario", []Accion{Ver}),
-	sub("dashboard.reparto", []Accion{Ver}),
+	// --- Dashboard: un tablero por área, cada uno con su propio permiso ---
+	sub("dashboard.ocupacion", []Accion{Ver}),
+	sub("dashboard.ingresos", []Accion{Ver}),
+	sub("dashboard.restaurantes", []Accion{Ver}),
 
-	// --- Maestros ---
-	sub("maestros.clientes", catalogoImportable),
-	sub("maestros.proveedores", catalogoImportable),
-	sub("maestros.productos", catalogoImportable),
+	// --- Recepción (PMS / Front Desk) ---
+	// El tablero de habitaciones en vivo; cambiar el estado de una es "editar".
+	sub("recepcion.panel", []Accion{Ver, Editar}),
+	// La estancia: check-in y check-out son "confirmar"; el depósito y el saldo, "cobrar".
+	sub("recepcion.estancias", con(documentoConfirmable, Cobrar)),
+	// Consumos y servicios cargados a la habitación.
+	sub("recepcion.cargos", con(documento, Cobrar)),
+
+	// --- Reservas ---
+	sub("reservas.reservas", con(documentoConfirmable, Cobrar)),
+	sub("reservas.disponibilidad", consulta),
+	// Una tarifa con reservas detrás no se borra: se desactiva.
+	sub("reservas.tarifas", catalogoSinBorrado),
+	sub("reservas.paquetes", catalogoSinBorrado),
+
+	// --- Habitaciones ---
+	sub("habitaciones.habitaciones", catalogoSinBorrado),
+	sub("habitaciones.tipos", catalogoSinBorrado),
+	// Asignar la limpieza y confirmarla (la habitación pasa a disponible).
+	sub("habitaciones.housekeeping", []Accion{Ver, Crear, Editar, Confirmar}),
+	sub("habitaciones.mantenimiento", documentoConfirmable),
+
+	// --- CRM ---
+	sub("crm.huespedes", catalogoImportable),
+	sub("crm.fidelizacion", catalogoSinBorrado),
+	// "Confirmar" es enviar la campaña.
+	sub("crm.campanas", documentoConfirmable),
+	// Se leen, se responden (editar) y se exportan; no se crean a mano.
+	sub("crm.opiniones", []Accion{Ver, Editar, Exportar}),
+
+	// --- Restaurantes (alimentos y bebidas) ---
+	sub("restaurantes.pos", con(documento, Cobrar)),
+	// Lo que sale de la cocina: "confirmar" es marcarla como servida.
+	sub("restaurantes.comandas", []Accion{Ver, Crear, Editar, Anular, Confirmar}),
+	sub("restaurantes.carta", catalogoSinBorrado),
+	sub("restaurantes.mesas", catalogoSinBorrado),
+	// Servicio a la habitación 24/7: se cobra a la habitación o en el momento.
+	sub("restaurantes.roomservice", con(documentoConfirmable, Cobrar)),
+
+	// --- Servicios exclusivos y experiencias ---
+	// Qué se ofrece: mayordomía, concierge, traslados, mascotas, spa...
+	sub("servicios.catalogo", catalogoSinBorrado),
+	// Lo que el huésped pide: confirmar es asignarlo y darlo por atendido.
+	sub("servicios.pedidos", documentoConfirmable),
+	sub("servicios.spa", documentoConfirmable),
+	sub("servicios.transporte", documentoConfirmable),
+	sub("servicios.eventos", con(documentoConfirmable, Cobrar)),
+
+	// --- Productos y amenidades ---
+	sub("productos.catalogo", catalogoImportable),
+	// Los regalos de bienvenida y sus arreglos por tipo de huésped.
+	sub("productos.bienvenida", catalogoSinBorrado),
+	sub("productos.minibar", documento),
+
+	// --- Inventario ---
+	sub("inventario.almacenes", catalogo),
+	sub("inventario.stock", consulta),
+	sub("inventario.kardex", consulta),
+	sub("inventario.ajustes", documento),
+	sub("inventario.transferencias", documentoConfirmable),
 
 	// --- Compras ---
+	sub("compras.proveedores", catalogoImportable),
 	sub("compras.ordenes", documentoConfirmable),
+	// "Cobrar" aquí es registrar el pago al proveedor.
 	sub("compras.compras", con(documento, Cobrar)),
 	sub("compras.recepciones", documento),
 
-	// --- Inventario ---
-	sub("inv.almacenes", catalogo),
-	sub("inv.stock", consulta),
-	sub("inv.kardex", consulta),
-	sub("inv.ajustes", documento),
-	sub("inv.transferencias", documento),
-	sub("inv.prestamos", documentoConfirmable),
-	sub("inv.lotes", consulta),
-	sub("inv.conteos", documento),
-
-	// --- Facturación ---
-	sub("fact.pedidos", documentoConfirmable),
-	sub("fact.notaventa", con(documento, Cobrar)),
-	sub("fact.precios", catalogo),
-	sub("fact.comprobantes", documento),
+	// --- Facturación (comprobantes electrónicos) ---
+	sub("facturacion.comprobantes", documento),
+	sub("facturacion.notas", documento),
 
 	// --- Finanzas ---
-	sub("finanzas.metodospago", catalogo),
+	sub("finanzas.cajas", []Accion{Ver, Crear, Editar}),
+	// Ver los cierres de todos y anular uno mal contado. Confirmar es verificar
+	// en el banco los cobros por transferencia o billetera.
+	sub("finanzas.cierres", []Accion{Ver, Confirmar, Anular}),
+	sub("finanzas.bancos", []Accion{Ver, Crear, Editar}),
 	sub("finanzas.cobrar", []Accion{Ver, Cobrar, Exportar}),
 	sub("finanzas.pagar", []Accion{Ver, Cobrar, Exportar}),
-	// Cuánto se ganó con cada producto: ventas menos lo que costó la
-	// mercadería. Es un dato del negocio, no de cualquiera.
-	sub("finanzas.ganancias", []Accion{Ver}),
-	// Ver el saldo y los movimientos de las cajas. "Mi Caja" (la propia) es
-	// autoservicio y no pasa por este permiso.
-	sub("finanzas.caja", []Accion{Ver}),
-	// Alta de una Caja para un vendedor/repartidor y a quién se le asigna.
-	sub("finanzas.cajas", []Accion{Ver, Crear, Editar}),
-	// Ver los cierres de todos y anular uno mal contado. Confirmar es
-	// verificar en el banco los cobros por Yape, Plin o transferencia.
-	sub("finanzas.cierres", []Accion{Ver, Confirmar, Anular}),
-	// Cuentas bancarias (sin eliminar: con movimientos no se pueden borrar sin
-	// dejar huérfano su historial) más la conciliación contra el extracto.
-	sub("finanzas.bancos", []Accion{Ver, Crear, Editar}),
-	// Ingresos y egresos: categorías y plantillas recurrentes.
-	sub("finanzas.operativos", []Accion{Ver, Crear, Editar, Anular, Eliminar}),
-	// El kardex del dinero. Crear y anular son los registrados a mano.
-	sub("finanzas.movimientos", []Accion{Ver, Crear, Anular, Exportar}),
-	// Préstamos recibidos: registrarlos, pagarlos (crear) y anular.
-	sub("finanzas.financiamiento", []Accion{Ver, Crear, Anular}),
-	// Estado de resultados: si el negocio gana, en un rango de fechas.
 	sub("finanzas.resultados", []Accion{Ver, Exportar}),
-
-	// --- TMS ---
-	// TMS no declara "eliminar" a propósito: detrás de un mercado, una ruta, un
-	// vehículo o un conductor hay clientes, repartos e historial. Se desactivan.
-	sub("tms.mercados", catalogoSinBorrado),
-	sub("tms.rutas", catalogoSinBorrado),
-	sub("tms.flota", catalogoSinBorrado),
-	sub("tms.conductores", catalogoSinBorrado),
-	// Un despacho no se borra: se anula, y sus pedidos vuelven a quedar libres.
-	sub("tms.despachos", documento),
-	// Por qué no se entregó algo. Se desactivan, no se borran.
-	sub("tms.motivos", catalogoSinBorrado),
-	// Lo que no se entregó. "Confirmar" es contar y dar por recibida o faltante.
-	sub("tms.novedades", []Accion{Ver, Confirmar, Exportar}),
-
-	// --- DMS ---
-	// Una lista de trabajo, no un documento: no se crea ni se anula una visita.
-	sub("dms.visitas", consulta),
-	// Sin "crear": una devolución nace de editar una nota de venta. Confirmar
-	// es aprobar o rechazar, separado de ver para que no las apruebe cualquiera.
-	sub("dms.devoluciones", []Accion{Ver, Confirmar, Exportar}),
-	sub("dms.evidencias", consulta),
 
 	// --- RR. HH. ---
 	sub("rrhh.empleados", catalogo),
-	// Un registro por empleado y día. Lleva "eliminar" porque desde la misma
-	// pantalla se administran los feriados, que sí se borran sin más.
-	sub("rrhh.asistencia", con(documento, Eliminar)),
-	// El pago semanal: armarla y pagarla (crear), ajustar (editar), anular.
+	sub("rrhh.asistencia", documento),
+	// Un hotel opera 24/7: los turnos y su rotación son parte del día a día.
+	sub("rrhh.turnos", catalogoSinBorrado),
 	sub("rrhh.planilla", []Accion{Ver, Crear, Editar, Anular, Exportar}),
-	// Plata a cuenta del sueldo: se da (crear), se cambia (editar) o se anula.
-	sub("rrhh.adelantos", []Accion{Ver, Crear, Editar, Anular}),
 
 	// --- Configuración ---
+	sub("config.empresa", catalogo),
+	// Una sola empresa con varias sedes: una sede con historial se desactiva.
+	sub("config.sedes", catalogoSinBorrado),
 	sub("config.usuarios", catalogo),
 	sub("config.roles", catalogo),
 	sub("config.accesos", []Accion{Ver, Editar}),
-	sub("config.empresa", catalogo),
-	// La bitácora crece con cada cambio: eliminar es la depuración masiva por
-	// filtros, no el borrado de un registro.
-	sub("config.auditoria", []Accion{Ver, Exportar, Eliminar}),
-	sub("config.series", catalogo),
+	sub("config.auditoria", []Accion{Ver, Exportar}),
 	sub("config.parametros", []Accion{Ver, Editar}),
 })

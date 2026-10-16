@@ -11,11 +11,11 @@ const Pantalla = () => null
 const Construccion = () => null
 
 const menu: MenuEntry[] = [
-  { id: 'maestros.clientes' },
-  { id: 'inv.stock' },
-  { id: 'finanzas.bancos', incluye: ['finanzas.metodospago'] },
-  { id: 'finanzas.metodospago', hidden: true },
-  { id: 'fact.comprobantes', hidden: true },
+  { id: 'crm.huespedes' },
+  { id: 'inventario.stock' },
+  { id: 'finanzas.bancos', incluye: ['finanzas.cobrar'] },
+  { id: 'finanzas.cobrar', hidden: true },
+  { id: 'facturacion.comprobantes', hidden: true },
 ]
 
 const construir = (defs: Parameters<typeof buildRouteTable>[0]) =>
@@ -23,45 +23,45 @@ const construir = (defs: Parameters<typeof buildRouteTable>[0]) =>
 
 describe('buildRouteTable', () => {
   it('una ruta de menú toma su URL y su permiso del id (no se escriben dos veces)', () => {
-    const t = construir([navRoute('maestros.clientes', Pantalla)])
-    const r = t.find((x) => x.id === 'maestros.clientes')!
+    const t = construir([navRoute('crm.huespedes', Pantalla)])
+    const r = t.find((x) => x.id === 'crm.huespedes')!
 
-    expect(r.path).toBe('/maestros/clientes')
-    expect(r.access).toEqual({ kind: 'permiso', submodulo: 'maestros.clientes', accion: 'ver' })
+    expect(r.path).toBe('/crm/huespedes')
+    expect(r.access).toEqual({ kind: 'permiso', submodulo: 'crm.huespedes', accion: 'ver' })
     expect(r.component).toBe(Pantalla)
     expect(r.placeholder).toBe(false)
     expect(r.layout).toBe('shell')
   })
 
   it('una pantalla con pestañas de otros submódulos se abre con cualquiera de ellos', () => {
-    expect(accessForMenuEntry({ id: 'finanzas.bancos', incluye: ['finanzas.metodospago'] })).toEqual({
+    expect(accessForMenuEntry({ id: 'finanzas.bancos', incluye: ['finanzas.cobrar'] })).toEqual({
       kind: 'permisoAlguno',
       requeridos: [
         { submodulo: 'finanzas.bancos', accion: 'ver' },
-        { submodulo: 'finanzas.metodospago', accion: 'ver' },
+        { submodulo: 'finanzas.cobrar', accion: 'ver' },
       ],
     })
   })
 
   it('las entradas visibles que ninguna feature construyó reciben la pantalla "en construcción"', () => {
-    const t = construir([navRoute('maestros.clientes', Pantalla)])
-    const stock = t.find((x) => x.id === 'inv.stock')!
+    const t = construir([navRoute('crm.huespedes', Pantalla)])
+    const stock = t.find((x) => x.id === 'inventario.stock')!
 
     expect(stock.placeholder).toBe(true)
     expect(stock.component).toBe(Construccion)
     // y con su permiso: la pantalla vacía tampoco es para cualquiera
-    expect(stock.access).toEqual({ kind: 'permiso', submodulo: 'inv.stock', accion: 'ver' })
+    expect(stock.access).toEqual({ kind: 'permiso', submodulo: 'inventario.stock', accion: 'ver' })
   })
 
   it('las entradas ocultas del menú NO generan ruta (son pestañas o están reservadas)', () => {
     const ids = construir([]).map((r) => r.id)
-    expect(ids).not.toContain('finanzas.metodospago')
-    expect(ids).not.toContain('fact.comprobantes')
+    expect(ids).not.toContain('finanzas.cobrar')
+    expect(ids).not.toContain('facturacion.comprobantes')
   })
 
   it('una oculta SÍ puede tener ruta si una feature la declara', () => {
-    const t = construir([navRoute('fact.comprobantes', Pantalla)])
-    expect(t.find((r) => r.id === 'fact.comprobantes')?.component).toBe(Pantalla)
+    const t = construir([navRoute('facturacion.comprobantes', Pantalla)])
+    expect(t.find((r) => r.id === 'facturacion.comprobantes')?.component).toBe(Pantalla)
   })
 
   it('el menú nunca lleva a un 404: toda entrada visible tiene ruta', () => {
@@ -87,7 +87,7 @@ describe('buildRouteTable', () => {
 
     it('un id repetido', () => {
       expect(() =>
-        construir([navRoute('inv.stock', Pantalla), navRoute('inv.stock', Pantalla)]),
+        construir([navRoute('inventario.stock', Pantalla), navRoute('inventario.stock', Pantalla)]),
       ).toThrow(/repetido/)
     })
 
@@ -103,7 +103,7 @@ describe('buildRouteTable', () => {
     it('una URL standalone que choca con la de una entrada del menú', () => {
       expect(() =>
         construir([
-          standaloneRoute({ id: 'otra', path: '/inv/stock', access: acceso.sesion(), component: Pantalla, layout: 'shell' }),
+          standaloneRoute({ id: 'otra', path: '/inventario/stock', access: acceso.sesion(), component: Pantalla, layout: 'shell' }),
         ]),
       ).toThrow(/repetida/)
     })

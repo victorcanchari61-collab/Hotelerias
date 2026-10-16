@@ -5,6 +5,36 @@ Cómo usar lo que se describe aquí: [`backend/README.md`](../backend/README.md)
 
 ---
 
+## 2026-10-15 — Módulos de una cadena hotelera (corrección)
+
+**El error.** Al portar los permisos de `distributor` copié también su **catálogo de módulos** (56 submódulos de una
+distribuidora: facturación de pedidos, TMS, DMS, maestros…) y lo presenté como "port 1:1". Lo que se pidió portar fue
+la *lógica* (roles + excepciones individuales); qué módulos existen es **dominio**, y este sistema es una cadena
+hotelera con restaurantes, servicios exclusivos, productos, CRM y ERP. Debí advertirlo o preguntarlo, no copiarlo.
+
+**Qué cambió**
+
+| | Antes (distribución) | Ahora (hotel) |
+|---|---|---|
+| Módulos | dashboard, maestros, compras, inv, fact, finanzas, tms, dms, rrhh, config | dashboard, **recepcion, reservas, habitaciones, crm, restaurantes, servicios, productos**, inventario, compras, facturacion, finanzas, rrhh, config |
+| Submódulos | 56 | **59** |
+| Roles sembrados | Vendedor, Almacenero | **Recepcionista** (renombrado, conserva id y permisos), Almacenero, Gerente de sede, Housekeeping, Restaurante |
+
+- **Catálogo del backend** (`internal/permiso/catalogo.go`) y **menú del frontend** (`presentation/layout/navigation.ts`) reescritos. Cada submódulo declara solo las acciones que le tienen sentido (p. ej. `recepcion.estancias`: check-in/out = *confirmar*, depósito = *cobrar*; `habitaciones.*` solo se desactiva, no se borra).
+- **Migración `0003`**: roles de hotel. No toca matrices de permisos.
+- **Contrato menú ↔ catálogo**: una prueba (`navigation.contract.test.ts`) lee el catálogo real del backend y exige que coincida con el menú, en ambos sentidos y en orden. Se comprobó que falla si se renombra un id en solo uno de los dos lados.
+- Se quitó del repositorio lo que quedaba de ese dominio en pruebas y comentarios (`fact.*`, `inv.*`, `tms.*`).
+
+**Verificación**: backend completo (unitarias + 7 de integración contra PostgreSQL), frontend 177 + 6 pruebas, `tsc` y `build`. En vivo: 14 módulos y 59 submódulos por la API, y el super admin con los 240 permisos del catálogo nuevo.
+
+**Importante**
+
+- La lista de módulos es una **primera propuesta** a partir de lo que se describió (recepción, restaurantes, servicios exclusivos, productos, CRM, ERP). Es fácil de ajustar: son dos archivos y la prueba avisa si quedan distintos.
+- Los permisos ya guardados con ids viejos **no migran**: no había ninguno (las matrices de los roles estaban vacías).
+- Las pantallas de cada módulo aún no existen (solo Usuarios, Login e Inicio); el menú las muestra como "pendientes".
+
+---
+
 ## 2026-10-15 — Login y super administrador
 
 **Qué cambió**

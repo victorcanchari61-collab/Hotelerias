@@ -74,13 +74,13 @@ describe('PermisoRepositoryImpl', () => {
   })
 
   it('arma un PermisoSet consultable', async () => {
-    const r = await new PermisoRepositoryImpl(remote(['fact.pedidos:ver', 'fact.pedidos:crear'])).misPermisos()
+    const r = await new PermisoRepositoryImpl(remote(['restaurantes.comandas:ver', 'restaurantes.comandas:crear'])).misPermisos()
     expect(r.isRight()).toBe(true)
     if (r.isRight()) {
-      expect(r.value.puedeVer('fact.pedidos')).toBe(true)
-      expect(r.value.puede('fact.pedidos', 'crear')).toBe(true)
-      expect(r.value.puede('fact.pedidos', 'anular')).toBe(false)
-      expect(r.value.puedeVer('inv.stock')).toBe(false)
+      expect(r.value.puedeVer('restaurantes.comandas')).toBe(true)
+      expect(r.value.puede('restaurantes.comandas', 'crear')).toBe(true)
+      expect(r.value.puede('restaurantes.comandas', 'anular')).toBe(false)
+      expect(r.value.puedeVer('inventario.stock')).toBe(false)
     }
   })
 
@@ -93,7 +93,7 @@ describe('PermisoRepositoryImpl', () => {
     const r = await new PermisoRepositoryImpl({
       mios: async () => [],
       catalogo: async () => [
-        { submodulo: 'fact.notaventa', modulo: 'fact', acciones: ['ver', 'anular', 'teletransportar'] },
+        { submodulo: 'reservas.reservas', modulo: 'reservas', acciones: ['ver', 'anular', 'teletransportar'] },
       ],
     }).catalogo()
     expect(r.isRight() && r.value[0].acciones).toEqual(['ver', 'anular'])

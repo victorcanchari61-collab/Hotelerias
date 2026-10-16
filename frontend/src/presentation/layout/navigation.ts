@@ -1,66 +1,80 @@
 import type { LucideIcon } from 'lucide-react'
 import {
-  ArrowLeftRight,
-  FileBarChart,
-  Banknote,
-  Boxes,
+  Armchair,
+  BedDouble,
+  BedSingle,
+  Bell,
+  BookOpenText,
+  Briefcase,
   Building2,
   CalendarCheck,
+  CalendarClock,
   CalendarDays,
+  CalendarRange,
+  Car,
+  ChefHat,
   ClipboardCheck,
   ClipboardList,
-  Coins,
+  Clock,
+  ConciergeBell,
   Contact,
   CreditCard,
+  Crown,
+  DoorOpen,
+  FileBarChart,
   FileMinus,
   FileText,
+  Flower2,
+  Gift,
   HandCoins,
-  TrendingUp,
-  LayoutDashboard,
-  Hash,
+  HeartHandshake,
+  Hotel,
   IdCard,
+  KeyRound,
   Landmark,
+  LayoutDashboard,
   LayoutGrid,
+  ListChecks,
+  MapPin,
+  Megaphone,
+  MessageSquareHeart,
   Package,
   PackageCheck,
-  PackageOpen,
-  PackageX,
-  Tags,
-  PackagePlus,
   PackageSearch,
-  PiggyBank,
+  PartyPopper,
   Receipt,
   ReceiptText,
-  Repeat,
-  Route,
   ScrollText,
   Settings,
   ShieldCheck,
+  Shirt,
   ShoppingBag,
   ShoppingCart,
   Sliders,
-  Store,
-  Undo2,
-  Truck,
+  SprayCan,
+  Sparkles,
+  Star,
+  Tags,
+  TrendingUp,
   UserCog,
   Users,
-  Warehouse,
+  UtensilsCrossed,
   Wallet,
+  Warehouse,
+  Wine,
+  Wrench,
+  Boxes,
+  ArrowLeftRight,
+  Banknote,
 } from 'lucide-react'
 
-/** Clave de color: coincide con los `data-sys` de styles/systems.css. */
-export type SysKey =
-  | 'brand'
-  | 'maestros'
-  | 'compras'
-  | 'inv'
-  | 'finanzas'
-  | 'fact'
-  | 'tms'
-  | 'dms'
-  | 'rrhh'
-  | 'config'
-  | 'dashboard'
+/**
+ * El sistema usa UN SOLO COLOR (styles/themes.css), así que todos los grupos
+ * comparten la misma clave. Se conserva el campo porque el kit de UI lo pide y
+ * porque, si un módulo necesitara el suyo, solo hay que ampliar este tipo y
+ * agregar un bloque [data-sys] en themes.css.
+ */
+export type SysKey = 'brand'
 
 export interface NavItem {
   id: string
@@ -72,9 +86,9 @@ export interface NavItem {
   /** No se pinta en el sider (queda reservada para mas adelante, o vive como pestaña de otra). */
   hidden?: boolean
   /**
-   * Otros submodulos que viven DENTRO de esta pantalla, como pestañas: Metodos de pago dentro de
-   * Bancos. Cada uno conserva su permiso, asi que la entrada se muestra y se abre si se puede ver
-   * este o cualquiera de esos; la pantalla enseña solo las pestañas que tocan.
+   * Otros submodulos que viven DENTRO de esta pantalla, como pestañas. Cada uno conserva su
+   * permiso, asi que la entrada se muestra y se abre si se puede ver este o cualquiera de esos;
+   * la pantalla ensena solo las pestañas que tocan.
    */
   incluye?: string[]
 }
@@ -88,164 +102,191 @@ export interface NavGroup {
 }
 
 /**
- * Modulos y submodulos del sistema.
+ * Módulos y submódulos de una CADENA HOTELERA: una sola empresa, varias sedes,
+ * con alojamiento, restaurantes, servicios exclusivos y productos, más el ERP
+ * (inventario, compras, finanzas, RR. HH.) y el CRM.
  *
- * Clientes y Proveedores viven en Maestros porque los consumen varios
- * sistemas: al cliente lo factura Facturacion, lo visita DMS y lo entrega TMS;
- * al proveedor le compra Compras y le recepciona Inventario. Un solo lugar
- * donde crearlos y editarlos, los demas modulos solo los seleccionan.
+ * Cada id es "modulo.vista" y de él salen la URL (`/reservas/tarifas`) y el
+ * permiso (`reservas.tarifas:ver`). Tiene que coincidir con el catálogo del
+ * backend (internal/permiso/catalogo.go): ahí está la lista de acciones de cada
+ * submódulo. Una entrada sin pantalla construida aparece con un punto tenue
+ * ("pendiente") y abre "en construcción".
+ *
+ * El orden es el del día a día de un hotel: primero lo que se mira (tableros) y
+ * lo que se opera con el huésped, después el ERP y al final la configuración.
  */
 export const NAV_GROUPS: NavGroup[] = [
-  // Los tableros van primero: son lo que se mira antes de entrar a operar.
   {
     id: 'dashboard',
     label: 'Dashboard',
-    sys: 'dashboard',
+    sys: 'brand',
     icon: LayoutDashboard,
     items: [
-      { id: 'dashboard.ventas', label: 'Ventas', icon: ShoppingCart },
-      { id: 'dashboard.rentabilidad', label: 'Rentabilidad', icon: TrendingUp },
-      { id: 'dashboard.cobranza', label: 'Cobranza', icon: Wallet },
-      { id: 'dashboard.inventario', label: 'Inventario', icon: Boxes },
-      { id: 'dashboard.reparto', label: 'Pedidos y reparto', icon: PackageCheck },
+      { id: 'dashboard.ocupacion', label: 'Ocupación', icon: BedSingle },
+      { id: 'dashboard.ingresos', label: 'Ingresos', icon: TrendingUp },
+      { id: 'dashboard.restaurantes', label: 'Restaurantes', icon: ChefHat },
     ],
   },
   {
-    id: 'maestros',
-    label: 'Maestros',
-    sys: 'maestros',
-    icon: LayoutGrid,
+    id: 'recepcion',
+    label: 'Recepción',
+    sys: 'brand',
+    icon: ConciergeBell,
     items: [
-      { id: 'maestros.clientes', label: 'Clientes', icon: Contact },
-      { id: 'maestros.proveedores', label: 'Proveedores', icon: Building2 },
-      { id: 'maestros.productos', label: 'Productos', icon: Package },
+      { id: 'recepcion.panel', label: 'Panel de habitaciones', icon: LayoutGrid },
+      { id: 'recepcion.estancias', label: 'Check-in y check-out', icon: DoorOpen },
+      { id: 'recepcion.cargos', label: 'Cargos a la habitación', icon: Receipt },
+    ],
+  },
+  {
+    id: 'reservas',
+    label: 'Reservas',
+    sys: 'brand',
+    icon: CalendarCheck,
+    items: [
+      { id: 'reservas.reservas', label: 'Reservas', icon: CalendarDays },
+      { id: 'reservas.disponibilidad', label: 'Disponibilidad', icon: CalendarRange },
+      { id: 'reservas.tarifas', label: 'Tarifas y temporadas', icon: Tags },
+      { id: 'reservas.paquetes', label: 'Paquetes y promociones', icon: Package },
+    ],
+  },
+  {
+    id: 'habitaciones',
+    label: 'Habitaciones',
+    sys: 'brand',
+    icon: BedDouble,
+    items: [
+      { id: 'habitaciones.habitaciones', label: 'Habitaciones', icon: Hotel },
+      { id: 'habitaciones.tipos', label: 'Tipos de habitación', icon: KeyRound },
+      { id: 'habitaciones.housekeeping', label: 'Limpieza (housekeeping)', icon: SprayCan },
+      { id: 'habitaciones.mantenimiento', label: 'Mantenimiento', icon: Wrench },
+    ],
+  },
+  {
+    id: 'crm',
+    label: 'CRM',
+    sys: 'brand',
+    icon: HeartHandshake,
+    items: [
+      { id: 'crm.huespedes', label: 'Huéspedes', icon: Contact },
+      { id: 'crm.fidelizacion', label: 'Fidelización y VIP', icon: Crown },
+      { id: 'crm.campanas', label: 'Campañas', icon: Megaphone },
+      { id: 'crm.opiniones', label: 'Opiniones', icon: MessageSquareHeart },
+    ],
+  },
+  {
+    id: 'restaurantes',
+    label: 'Restaurantes',
+    sys: 'brand',
+    icon: UtensilsCrossed,
+    items: [
+      { id: 'restaurantes.pos', label: 'Punto de venta', icon: CreditCard },
+      { id: 'restaurantes.comandas', label: 'Comandas y cocina', icon: ClipboardList },
+      { id: 'restaurantes.carta', label: 'Carta y menús', icon: BookOpenText },
+      { id: 'restaurantes.mesas', label: 'Mesas y salones', icon: Armchair },
+      { id: 'restaurantes.roomservice', label: 'Room service 24/7', icon: Bell },
+    ],
+  },
+  {
+    id: 'servicios',
+    label: 'Servicios exclusivos',
+    sys: 'brand',
+    icon: Sparkles,
+    items: [
+      { id: 'servicios.catalogo', label: 'Catálogo de servicios', icon: ListChecks },
+      { id: 'servicios.pedidos', label: 'Pedidos del huésped', icon: ConciergeBell },
+      { id: 'servicios.spa', label: 'Wellness y spa', icon: Flower2 },
+      { id: 'servicios.transporte', label: 'Traslados y transporte', icon: Car },
+      { id: 'servicios.eventos', label: 'Eventos y experiencias', icon: PartyPopper },
+    ],
+  },
+  {
+    id: 'productos',
+    label: 'Productos y amenidades',
+    sys: 'brand',
+    icon: Gift,
+    items: [
+      { id: 'productos.catalogo', label: 'Productos y amenidades', icon: Shirt },
+      { id: 'productos.bienvenida', label: 'Regalos de bienvenida', icon: Gift },
+      { id: 'productos.minibar', label: 'Minibar', icon: Wine },
+    ],
+  },
+  {
+    id: 'inventario',
+    label: 'Inventario',
+    sys: 'brand',
+    icon: Boxes,
+    items: [
+      { id: 'inventario.almacenes', label: 'Almacenes', icon: Warehouse },
+      { id: 'inventario.stock', label: 'Stock por almacén', icon: PackageSearch },
+      { id: 'inventario.kardex', label: 'Kardex', icon: ClipboardCheck },
+      { id: 'inventario.ajustes', label: 'Ajustes de inventario', icon: Sliders },
+      { id: 'inventario.transferencias', label: 'Transferencias', icon: ArrowLeftRight },
     ],
   },
   {
     id: 'compras',
     label: 'Compras',
-    sys: 'compras',
+    sys: 'brand',
     icon: ShoppingCart,
-    // El flujo manda el orden: se emite una orden al proveedor, cuando este
-    // la confirma se convierte en compra, y al llegar la mercaderia se
-    // registra la recepcion.
+    // El flujo manda el orden: se emite una orden al proveedor, cuando este la
+    // confirma se convierte en compra, y al llegar la mercaderia se recepciona.
     items: [
+      { id: 'compras.proveedores', label: 'Proveedores', icon: Building2 },
       { id: 'compras.ordenes', label: 'Órdenes de compra', icon: ClipboardList },
       { id: 'compras.compras', label: 'Mis compras', icon: ShoppingBag },
       { id: 'compras.recepciones', label: 'Recepciones', icon: PackageCheck },
     ],
   },
   {
-    id: 'inv',
-    label: 'Inventario',
-    sys: 'inv',
-    icon: Boxes,
-    items: [
-      { id: 'inv.almacenes', label: 'Almacenes', icon: Warehouse },
-      { id: 'inv.stock', label: 'Stock por almacén', icon: PackageSearch },
-      { id: 'inv.kardex', label: 'Kardex', icon: PackagePlus },
-      { id: 'inv.ajustes', label: 'Ajustes de inventario', icon: ClipboardCheck },
-      { id: 'inv.transferencias', label: 'Transferencias', icon: Truck },
-      { id: 'inv.prestamos', label: 'Préstamos', icon: HandCoins },
-      { id: 'inv.lotes', label: 'Lotes y vencimientos', icon: CalendarDays },
-      { id: 'inv.conteos', label: 'Conteos cíclicos', icon: ClipboardCheck },
-    ],
-  },
-  {
-    id: 'fact',
+    id: 'facturacion',
     label: 'Facturación',
-    sys: 'fact',
+    sys: 'brand',
     icon: ReceiptText,
-    // Por ahora no se factura: se trabaja con pedido y nota de venta. Los
-    // comprobantes electronicos quedan reservados, junto a Series y Parametros
-    // en Configuracion, para cuando el cliente decida facturar.
     items: [
-      { id: 'fact.pedidos', label: 'Pedidos', icon: ClipboardList },
-      { id: 'fact.notaventa', label: 'Notas de venta', icon: FileText },
-      { id: 'fact.precios', label: 'Listas de precios', icon: Banknote },
-      { id: 'fact.comprobantes', label: 'Comprobantes', icon: Receipt, pending: true, hidden: true },
-      {
-        id: 'fact.notas',
-        label: 'Notas de crédito y débito',
-        icon: FileMinus,
-        pending: true,
-        hidden: true,
-      },
+      { id: 'facturacion.comprobantes', label: 'Comprobantes electrónicos', icon: FileText },
+      { id: 'facturacion.notas', label: 'Notas de crédito y débito', icon: FileMinus },
     ],
   },
   {
     id: 'finanzas',
     label: 'Finanzas',
-    sys: 'finanzas',
+    sys: 'brand',
     icon: Landmark,
     items: [
-      { id: 'finanzas.caja', label: 'Mi Caja', icon: HandCoins },
-      { id: 'finanzas.cajas', label: 'Cajas', icon: Users },
+      { id: 'finanzas.cajas', label: 'Cajas', icon: HandCoins },
       { id: 'finanzas.cierres', label: 'Cierres de caja', icon: ClipboardCheck },
-      { id: 'finanzas.bancos', label: 'Bancos', icon: Landmark, incluye: ['finanzas.metodospago'] },
-      // Es una pestaña de Bancos: no va en el menu, pero sigue siendo un submodulo con su permiso.
-      { id: 'finanzas.metodospago', label: 'Métodos de pago', icon: Coins, hidden: true },
+      { id: 'finanzas.bancos', label: 'Bancos', icon: Landmark },
       { id: 'finanzas.cobrar', label: 'Cuentas por cobrar', icon: Wallet },
       { id: 'finanzas.pagar', label: 'Cuentas por pagar', icon: CreditCard },
-      { id: 'finanzas.ganancias', label: 'Mis ganancias', icon: TrendingUp },
       { id: 'finanzas.resultados', label: 'Estado de resultados', icon: FileBarChart },
-      { id: 'finanzas.movimientos', label: 'Movimientos', icon: ArrowLeftRight },
-      { id: 'finanzas.operativos', label: 'Ingresos y egresos', icon: Repeat },
-      { id: 'finanzas.financiamiento', label: 'Préstamos recibidos', icon: PiggyBank },
-    ],
-  },
-  {
-    id: 'tms',
-    label: 'TMS',
-    sys: 'tms',
-    icon: Truck,
-    items: [
-      { id: 'tms.mercados', label: 'Mercados', icon: Store },
-      { id: 'tms.rutas', label: 'Rutas', icon: Route },
-      { id: 'tms.flota', label: 'Flota', icon: Truck },
-      { id: 'tms.conductores', label: 'Conductores', icon: IdCard },
-      { id: 'tms.despachos', label: 'Despachos', icon: PackageOpen },
-      { id: 'tms.novedades', label: 'Novedades', icon: PackageX },
-      { id: 'tms.motivos', label: 'Motivos de novedad', icon: Tags },
-    ],
-  },
-  {
-    id: 'dms',
-    label: 'DMS',
-    sys: 'dms',
-    icon: Store,
-    items: [
-      { id: 'dms.visitas', label: 'Visitas', icon: Store },
-      { id: 'dms.devoluciones', label: 'Devoluciones', icon: Undo2 },
-      { id: 'dms.evidencias', label: 'Evidencias', icon: ClipboardCheck, pending: true },
     ],
   },
   {
     id: 'rrhh',
     label: 'RR. HH.',
-    sys: 'rrhh',
+    sys: 'brand',
     icon: Users,
     items: [
       { id: 'rrhh.empleados', label: 'Empleados', icon: Users },
-      { id: 'rrhh.asistencia', label: 'Asistencia', icon: CalendarCheck },
-      { id: 'rrhh.planilla', label: 'Planilla semanal', icon: Wallet },
-      { id: 'rrhh.adelantos', label: 'Adelantos', icon: HandCoins },
+      { id: 'rrhh.asistencia', label: 'Asistencia', icon: Clock },
+      { id: 'rrhh.turnos', label: 'Turnos y horarios', icon: CalendarClock },
+      { id: 'rrhh.planilla', label: 'Planilla', icon: Banknote },
     ],
   },
   {
     id: 'config',
     label: 'Configuración',
-    sys: 'config',
+    sys: 'brand',
     icon: Settings,
     items: [
+      { id: 'config.empresa', label: 'Empresa', icon: Building2 },
+      { id: 'config.sedes', label: 'Sedes', icon: MapPin },
       { id: 'config.usuarios', label: 'Usuarios', icon: UserCog },
       { id: 'config.roles', label: 'Roles', icon: IdCard },
       { id: 'config.accesos', label: 'Accesos', icon: ShieldCheck },
-      { id: 'config.empresa', label: 'Empresa', icon: Building2 },
       { id: 'config.auditoria', label: 'Auditoría', icon: ScrollText },
-      // Reservados: se muestran cuando el cliente decida usar facturacion.
-      { id: 'config.series', label: 'Series de comprobantes', icon: Hash, pending: true, hidden: true },
-      { id: 'config.parametros', label: 'Parámetros', icon: Sliders, pending: true, hidden: true },
+      { id: 'config.parametros', label: 'Parámetros', icon: Sliders },
     ],
   },
 ]

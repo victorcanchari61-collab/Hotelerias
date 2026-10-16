@@ -79,7 +79,7 @@ function EscuchaCambios({ onCambio }: { onCambio: () => Promise<void> }) {
 }
 
 /**
- * `puede('fact.notaventa', 'anular')` para esconder lo que no se permite.
+ * `puede('reservas.reservas', 'anular')` para esconder lo que no se permite.
  *
  * Esconder es comodidad, no seguridad: el guard del backend rechaza igual a
  * quien llame al endpoint directo.

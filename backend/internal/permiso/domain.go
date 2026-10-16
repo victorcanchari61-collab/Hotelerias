@@ -15,7 +15,7 @@ type Clave struct {
 
 func (c Clave) String() string { return c.Submodulo + ":" + string(c.Accion) }
 
-// ParseClave lee "fact.notaventa:anular". No valida contra el catálogo.
+// ParseClave lee "reservas.reservas:anular". No valida contra el catálogo.
 func ParseClave(s string) (Clave, error) {
 	i := strings.LastIndexByte(s, ':')
 	if i <= 0 || i == len(s)-1 {

@@ -3,7 +3,7 @@ import { PermisoSet } from '@/domain/entities/Permiso'
 import { acceso, evaluateAccess } from './access'
 import type { Access, AccessContext, AccessDecision } from './access'
 
-const permisos = new PermisoSet(['config.usuarios:ver', 'config.usuarios:editar', 'inv.stock:ver'])
+const permisos = new PermisoSet(['config.usuarios:ver', 'config.usuarios:editar', 'inventario.stock:ver'])
 
 const ctx = (parcial: Partial<AccessContext> = {}): AccessContext => ({
   auth: 'authenticated',
@@ -72,12 +72,12 @@ describe('evaluateAccess', () => {
     })
 
     it('distingue la acción: ver no implica editar', () => {
-      expect(tipo(acceso.puede('inv.stock', 'ver'), ctx())).toBe('allow')
-      expect(tipo(acceso.puede('inv.stock', 'editar'), ctx())).toBe('denied')
+      expect(tipo(acceso.puede('inventario.stock', 'ver'), ctx())).toBe('allow')
+      expect(tipo(acceso.puede('inventario.stock', 'editar'), ctx())).toBe('denied')
     })
 
     it('un permiso de otro submódulo no sirve', () => {
-      expect(tipo(acceso.puede('inv.almacenes'), ctx())).toBe('denied')
+      expect(tipo(acceso.puede('inventario.almacenes'), ctx())).toBe('denied')
     })
   })
 
@@ -86,12 +86,12 @@ describe('evaluateAccess', () => {
       kind: 'permisoAlguno',
       requeridos: [
         { submodulo: 'finanzas.bancos', accion: 'ver' },
-        { submodulo: 'finanzas.metodospago', accion: 'ver' },
+        { submodulo: 'finanzas.cobrar', accion: 'ver' },
       ],
     }
 
     it('basta con uno', () => {
-      expect(tipo(bancos, ctx({ permisos: new PermisoSet(['finanzas.metodospago:ver']) }))).toBe('allow')
+      expect(tipo(bancos, ctx({ permisos: new PermisoSet(['finanzas.cobrar:ver']) }))).toBe('allow')
     })
 
     it('sin ninguno se niega y se listan todos los que servían', () => {

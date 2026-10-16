@@ -122,7 +122,7 @@ describe('la app, de punta a punta (DI con repositorios falsos)', () => {
     })
 
     it('sin el permiso: "no tienes acceso" y dice QUÉ pantalla', async () => {
-      montar({ ruta: '/config/usuarios', conSesion: true, permisos: ['inv.stock:ver'] })
+      montar({ ruta: '/config/usuarios', conSesion: true, permisos: ['inventario.stock:ver'] })
 
       expect(await screen.findByText('No tienes acceso a esta pantalla')).toBeTruthy()
       expect(screen.getByText('Usuarios')).toBeTruthy() // el nombre, no "config.usuarios"
@@ -130,13 +130,13 @@ describe('la app, de punta a punta (DI con repositorios falsos)', () => {
     })
 
     it('una entrada del menú sin pantalla construida muestra "en construcción", no un 404', async () => {
-      montar({ ruta: '/inv/stock', conSesion: true, permisos: ['inv.stock:ver'] })
+      montar({ ruta: '/inventario/stock', conSesion: true, permisos: ['inventario.stock:ver'] })
 
       expect(await screen.findByText('Esta sección todavía no está disponible.')).toBeTruthy()
     })
 
     it('esa misma pantalla vacía también exige su permiso', async () => {
-      montar({ ruta: '/inv/stock', conSesion: true, permisos: [] })
+      montar({ ruta: '/inventario/stock', conSesion: true, permisos: [] })
 
       expect(await screen.findByText('No tienes acceso a esta pantalla')).toBeTruthy()
     })
@@ -166,7 +166,7 @@ describe('la app, de punta a punta (DI con repositorios falsos)', () => {
     })
 
     it('el menú solo muestra lo que la persona puede abrir, y los grupos vacíos desaparecen', async () => {
-      montar({ ruta: '/', conSesion: true, permisos: ['inv.stock:ver'] })
+      montar({ ruta: '/', conSesion: true, permisos: ['inventario.stock:ver'] })
       await screen.findByText('Hola, Ana')
 
       // Mientras los permisos cargan el menú NO pinta nada (en vez de pintarlo

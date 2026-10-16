@@ -19,7 +19,7 @@ export interface AlertaResponse {
   severidad: SeveridadAlerta
   titulo: string
   detalle: string
-  /** Id de vista del menú ("inv.stock") para navegar al hacer clic. */
+  /** Id de vista del menú ("inventario.stock") para navegar al hacer clic. */
   ruta: string | null
   fecha: string | null
 }

@@ -36,20 +36,25 @@ Construir una plataforma única que permita a **Hotel Velothr**:
 
 | Módulo | Descripción |
 | --- | --- |
-| **PMS / Front Desk** | Check-in / check-out, estado de habitaciones, housekeeping (limpieza), huéspedes. |
-| **Reservas** | Reservas de todos los canales (web, teléfono, recepción, OTAs). |
-| **Tarifas** | Listas de precios, temporadas, revenue y descuentos. |
-| **POS** | Punto de venta para restaurante, bar, tienda y consumos cargados a la habitación. |
-| **Facturación** | Comprobantes electrónicos, notas de crédito/débito, series y parámetros. |
-| **Inventario** | Almacenes, stock, kardex, lotes, amenidades e insumos. |
-| **Compras** | Órdenes, compras y recepciones a proveedores. |
-| **Finanzas** | Cajas, bancos, cuentas por cobrar/pagar, costos y estado de resultados. |
-| **RR. HH.** | Empleados, asistencia, planilla y adelantos. |
-| **Mantenimiento** | Órdenes de trabajo de habitaciones e instalaciones. |
-| **Dashboard / Reportes** | Indicadores por sede y consolidados a nivel nacional. |
-| **Configuración** | Empresas/sedes, usuarios, roles, permisos y auditoría. |
+| **Recepción (PMS / Front Desk)** | Panel de habitaciones, check-in / check-out y cargos a la habitación. |
+| **Reservas** | Reservas de todos los canales, disponibilidad, tarifas y temporadas, paquetes y promociones. |
+| **Habitaciones** | Habitaciones y sus tipos, limpieza (housekeeping) y mantenimiento. |
+| **CRM** | Huéspedes, fidelización y VIP, campañas y opiniones. |
+| **Restaurantes** | Punto de venta, comandas y cocina, carta, mesas y room service 24/7. |
+| **Servicios exclusivos** | Mayordomía, concierge, traslados y transporte, spa y wellness, eventos y experiencias. |
+| **Productos y amenidades** | Amenidades y productos, regalos de bienvenida y minibar. |
+| **Inventario** | Almacenes, stock por almacén, kardex, ajustes y transferencias. |
+| **Compras** | Proveedores, órdenes de compra, compras y recepciones. |
+| **Facturación** | Comprobantes electrónicos y notas de crédito/débito. |
+| **Finanzas** | Cajas, cierres, bancos, cuentas por cobrar/pagar y estado de resultados. |
+| **RR. HH.** | Empleados, asistencia, turnos y horarios, planilla. |
+| **Dashboard** | Ocupación, ingresos y restaurantes, por sede y consolidado. |
+| **Configuración** | Empresa y sedes, usuarios, roles, accesos, auditoría y parámetros. |
 
-> El menú ERP actual del frontend (Maestros, Compras, Inventario, Facturación, Finanzas, TMS, DMS, RR. HH., Configuración) proviene de un proyecto de distribución y es una **plantilla de referencia**. Debe adaptarse a los módulos hoteleros listados arriba, conservando los conceptos transversales: una sola empresa, múltiples sedes, permisos por submodulo, auditoría y reportes.
+> Esta es la lista de módulos **del sistema** (el menú del frontend y el catálogo de permisos del backend,
+> que una prueba mantiene sincronizados): 14 módulos y 59 submódulos. Es una **primera propuesta** pensada para
+> una cadena hotelera con alojamiento, restaurantes, servicios exclusivos y productos; agregar, quitar o
+> renombrar uno es editar dos archivos (ver `docs/CAMBIOS.md`). Una pantalla sin construir aparece como "pendiente".
 
 ---
 

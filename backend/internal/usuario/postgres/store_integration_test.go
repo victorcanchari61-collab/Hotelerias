@@ -140,8 +140,8 @@ func TestListarNoDuplicaAQuienTieneVariosRoles(t *testing.T) {
 	if err := pool.QueryRow(ctx, `INSERT INTO usuario (nombre, email, password_hash) VALUES ('Mixto','m@hotel.pe','h') RETURNING id`).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
-	// Vendedor primero (id menor que Administrador? no: Administrador es id 1).
-	_, err := pool.Exec(ctx, `INSERT INTO usuario_rol SELECT $1, id FROM rol WHERE nombre IN ('Vendedor','Almacenero','Administrador')`, id)
+	// Tres roles, uno de ellos de acceso total.
+	_, err := pool.Exec(ctx, `INSERT INTO usuario_rol SELECT $1, id FROM rol WHERE nombre IN ('Recepcionista','Almacenero','Administrador')`, id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,11 +296,11 @@ func TestUnUsuarioSinPermisoNoPuedeListarUsuarios(t *testing.T) {
 	ctx := context.Background()
 	srv, tokens := montarAPI(t, pool)
 
-	// Un vendedor sin ningún permiso asignado a su rol.
-	hash, _ := barato.Hash("clave-vendedor-1")
+	// Un recepcionista sin ningún permiso asignado a su rol.
+	hash, _ := barato.Hash("clave-recepcion-1")
 	var id int64
-	_ = pool.QueryRow(ctx, `INSERT INTO usuario (nombre, email, password_hash) VALUES ('Vendedor','v@hotel.pe',$1) RETURNING id`, hash).Scan(&id)
-	_, _ = pool.Exec(ctx, `INSERT INTO usuario_rol SELECT $1, id FROM rol WHERE nombre='Vendedor'`, id)
+	_ = pool.QueryRow(ctx, `INSERT INTO usuario (nombre, email, password_hash) VALUES ('Recepcion','v@hotel.pe',$1) RETURNING id`, hash).Scan(&id)
+	_, _ = pool.Exec(ctx, `INSERT INTO usuario_rol SELECT $1, id FROM rol WHERE nombre='Recepcionista'`, id)
 
 	tok, _ := tokens.Emitir(id)
 	code, body := llamar(t, srv, "GET", "/api/usuario", "", tok)

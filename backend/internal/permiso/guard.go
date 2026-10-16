@@ -31,7 +31,7 @@ const (
 // Guard protege rutas exigiendo permisos. Se declara en la ruta, no dentro del
 // handler:
 //
-//	g.POST("/notasventa", guard.Require("fact.notaventa", permiso.Anular), h.Anular)
+//	g.POST("/notasventa", guard.Require("reservas.reservas", permiso.Anular), h.Anular)
 //
 // Reemplaza al [Authorize(Roles = "Administrador")] a mano: aquello ataba el
 // permiso al nombre de un rol, así que crear uno nuevo no servía de nada.
