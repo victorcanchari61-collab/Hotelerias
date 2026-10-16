@@ -5,6 +5,7 @@ import {
   centimosASoles,
   condicionesTexto,
   fechaCorta,
+  formatMonto,
   formatSoles,
   pluralNoches,
   rangoFechas,
@@ -21,6 +22,23 @@ describe('formatSoles', () => {
     [-8000, '-S/ 80.00'],
   ])('%i céntimos → %s', (cent, texto) => {
     expect(formatSoles(cent).replace(/ /g, ' ')).toBe(texto)
+  })
+})
+
+describe('formatMonto', () => {
+  it.each([
+    [10661, 'USD', 'US$ 106.61'],
+    [123450, 'USD', 'US$ 1,234.50'],
+    [5, 'USD', 'US$ 0.05'],
+    [38000, 'PEN', 'S/ 380.00'],
+    [-8000, 'USD', '-US$ 80.00'],
+    [100, 'EUR', 'EUR 1.00'],
+  ])('%i en %s → %s', (cent, moneda, texto) => {
+    expect(formatMonto(cent, moneda).replace(/ /g, ' ')).toBe(texto)
+  })
+
+  it('sin moneda es soles', () => {
+    expect(formatMonto(38000).replace(/ /g, ' ')).toBe('S/ 380.00')
   })
 })
 

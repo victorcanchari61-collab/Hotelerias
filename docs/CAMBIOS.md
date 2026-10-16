@@ -5,6 +5,69 @@ Cómo usar lo que se describe aquí: [`backend/README.md`](../backend/README.md)
 
 ---
 
+## 2026-10-15 — Dos monedas (PEN y USD) y módulos faltantes del menú
+
+Se completó el menú con los módulos que faltaban para un hotel de lujo (el grupo **Integraciones** y
+nueve submódulos) y se agregó **moneda** al dinero antes de que existan facturas. La exoneración del IGV
+a extranjeros **no se programó**: queda como diseño para confirmar con el contador.
+Diseño y preguntas abiertas: [`DISENO-MONEDA-IGV.md`](DISENO-MONEDA-IGV.md). Migración `0006_moneda.sql`.
+
+### Menú y permisos: 59 → 71 submódulos
+
+| Módulo | Nuevo | Permiso |
+|---|---|---|
+| Recepción | Fichas de registro (documento, nacionalidad, fecha de ingreso) | `recepcion.fichas` |
+| Habitaciones | Objetos olvidados · Lencería y lavandería | `habitaciones.objetos` · `habitaciones.lenceria` |
+| CRM | Puntos y membresías | `crm.lealtad` (con *confirmar* = canjear/ajustar) |
+| Restaurantes | Recetas y escandallo | `restaurantes.recetas` |
+| Servicios exclusivos | Mayordomía y concierge · Mascotas · Salones y banquetes | `servicios.mayordomia` · `servicios.mascotas` · `servicios.salones` |
+| Finanzas | **Tipo de cambio** (construido) | `finanzas.tipocambio` |
+| **Integraciones** (grupo nuevo) | Channel manager · Pasarelas de pago · Telefonía y cerraduras | `integraciones.channel` · `.pagos` · `.dispositivos` |
+
+Excepto *Tipo de cambio*, estas pantallas salen como **«en construcción»** (el registro de rutas las
+crea solas desde el menú) pero ya tienen su permiso, así que se pueden asignar a roles desde hoy.
+
+### Dos monedas
+
+- **Tablas**: `moneda` (PEN base, USD) y `tipo_cambio` (uno por día y moneda; compra y venta). La
+  reserva guarda `moneda`, el `tipo_cambio_micro` con que se convirtió y `total_pen_cent`. Un `CHECK`
+  garantiza que en soles no hay tipo de cambio y en otra moneda siempre.
+- **Enteros siempre**: importes en la unidad menor; la tasa ×1.000.000 y entrando como **texto**
+  (`"3.752"`) para no pasar por coma flotante. Redondeo mitad hacia arriba, idéntico en Go y TypeScript.
+- **Cotizar y reservar en dólares**: el motor de promociones decide en soles y lo decidido se convierte;
+  las líneas suman exacto. La reserva **copia** el tipo de cambio: corregir un día no mueve lo reservado.
+- **Sin tipo de cambio reciente no se cotiza en dólares** (se admite hasta 7 días atrás por fines de
+  semana y feriados); la web simplemente no ofrece la opción.
+- **Web**: selector S/ · US$ en la cabecera (la preferencia se recuerda en el navegador y la pantalla
+  funciona aunque el almacenamiento falle). El desglose muestra el tipo de cambio y el equivalente en soles.
+- **Panel**: *Finanzas → Tipo de cambio* (registrar y corregir) y *Reservas* muestra cada reserva en su
+  moneda; el «importe confirmado» suma el equivalente en soles.
+
+### Rutas nuevas
+
+| Método | Ruta | Acceso |
+|---|---|---|
+| GET | `/api/portal/monedas` | Público: monedas y venta de hoy (solo las que se pueden cotizar) |
+| GET · POST | `/api/tipo-cambio` | `finanzas.tipocambio` ver · crear (el POST registra o corrige el día) |
+| POST | `/api/portal/cotizar` · `/portal/reservas` | aceptan `"moneda": "USD"` |
+
+### Verificación
+
+- Backend: unitarias de `moneda` (conversión, tasas, vigencia, validaciones) y de `reserva` (soles por
+  defecto, dólares con descuento, sin tasa, moneda inválida) + 4 de integración contra PostgreSQL
+  (monedas públicas, cotizar y reservar en dólares con la tasa copiada, reserva en soles, permisos y validación).
+- Frontend: 334 pruebas (37 nuevas): conversión idéntica al servidor, casos de uso, selector de moneda,
+  almacenamiento roto, «mis reservas» en dólares y la pantalla de tipo de cambio.
+- En vivo contra la API: cotiza en PEN y USD, rechaza EUR y una tasa enviada como número JSON.
+
+### Pendiente
+
+- **IGV a extranjeros (DL 919)**: ver las 9 preguntas para el contador en el documento de diseño.
+- Tipo de cambio automático (SUNAT/SBS); hoy es manual.
+- Cobro y pasarela de pago; recotizar si el tipo de cambio cambió entre cotizar y reservar.
+
+---
+
 ## 2026-10-15 — Configuración completa: Empresa, Sedes, Usuarios, Roles, Accesos y Auditoría
 
 Se terminó el grupo **Configuración** del menú, portando la **lógica** del proyecto `distributor`

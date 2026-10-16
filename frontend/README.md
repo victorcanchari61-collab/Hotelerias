@@ -277,8 +277,10 @@ npx vitest run
 
 - **Portal:** sin pasarela de pago (la reserva se confirma sin cobro), sin recuperar contraseña
   del huésped y sin administración de sedes/habitaciones desde el panel (se siembran).
-- **Features:** Roles, Empresa y el formulario de crear/editar usuario. Los casos de uso de
-  crear/actualizar ya existen y están probados; falta la pantalla.
+- **Pantallas del menú** sin construir (salen como «en construcción»): recepción, habitaciones,
+  restaurantes, inventario, facturación… y el grupo Integraciones. Ya tienen permiso en el catálogo.
+- **Monedas:** el tipo de cambio es manual; el IGV a extranjeros espera al contador
+  (`docs/DISENO-MONEDA-IGV.md`).
 - **Alertas:** la campana está montada pero sin datos (el backend no expone alertas).
 - **Tiempo real:** `lib/realtime.ts` usa SignalR; el backend en Go no lo habla.
 - **Lockfiles:** conviven `package-lock.json` y `pnpm-lock.yaml`; conviene elegir uno.

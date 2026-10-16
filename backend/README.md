@@ -124,7 +124,7 @@ módulos** es propio de una cadena hotelera. Un permiso es `submodulo:accion`
 
 ### Reglas
 
-1. **El catálogo vive en código** ([`permiso/catalogo.go`](internal/permiso/catalogo.go)): 59 submódulos en 14 módulos (recepción, reservas, habitaciones, CRM, restaurantes, servicios exclusivos, productos, inventario, compras, facturación, finanzas, RR. HH., dashboard y configuración), y cada uno declara **solo** las acciones que le tienen sentido (la auditoría no se crea, el kardex no se anula). El front dibuja su matriz con `GET /api/permiso/catalogo`.
+1. **El catálogo vive en código** ([`permiso/catalogo.go`](internal/permiso/catalogo.go)): 71 submódulos en 15 módulos (recepción, reservas, habitaciones, CRM, restaurantes, servicios exclusivos, productos, inventario, compras, facturación, finanzas, RR. HH., integraciones, dashboard y configuración), y cada uno declara **solo** las acciones que le tienen sentido (la auditoría no se crea, el kardex no se anula). El front dibuja su matriz con `GET /api/permiso/catalogo`.
 2. **Un usuario hereda los permisos de sus roles.** Con varios roles, sus permisos son la **unión**: tener más roles nunca quita nada.
 3. **Los roles con `acceso_total`** (Administrador) pueden todo y no se configuran. Es un dato del rol, no su nombre.
 4. **Sobre eso, excepciones individuales que solo suman** (no existe la que quita algo):
@@ -196,7 +196,8 @@ La respuesta 403 incluye qué faltaba, para que el frontend abra el modal de ped
 | GET | `/api/portal/sedes` · `/sedes/:id` | Público | Hoteles y sus habitaciones |
 | GET | `/api/portal/sedes/:id/disponibilidad?entrada=&salida=&huespedes=` | Público | Habitaciones con cuántas quedan para esas fechas |
 | GET | `/api/portal/promociones` | Público (opcional: sesión) | Ofertas sin código; con sesión, también las de su tipo |
-| POST | `/api/portal/cotizar` | Público (opcional: sesión) | Precio con el mejor descuento; con sesión, el de su tipo de cliente |
+| GET | `/api/portal/monedas` | Público | Monedas y la **venta** de hoy; solo las que se pueden cotizar (sin tipo de cambio reciente no aparece USD) |
+| POST | `/api/portal/cotizar` | Público (opcional: sesión) | Precio con el mejor descuento; con sesión, el de su tipo de cliente. `"moneda": "USD"` convierte con la venta de hoy |
 | POST | `/api/portal/registro` · `/login` | Público | `{token, cliente}` |
 | GET | `/api/portal/me` | **Huésped** | Su perfil y tipo |
 | POST | `/api/portal/reservas` | **Huésped** | Reservar (`409` si ya no hay cupo o cambió el precio) |
@@ -211,7 +212,8 @@ La respuesta 403 incluye qué faltaba, para que el frontend abra el modal de ped
 | GET · POST · PUT | `/api/tipo-cliente` · `/:id` | `crm.fidelizacion` ver · crear · editar | Tipos de huésped |
 | GET | `/api/cliente` | `crm.huespedes:ver` | Huéspedes registrados |
 | PUT | `/api/cliente/:id/tipo` | `crm.huespedes:editar` | `{tipoClienteId}`; `null` = volver a la regla automática |
-| GET | `/api/reserva?estado=` | `reservas.reservas:ver` | Reservas de la cadena |
+| GET | `/api/reserva?estado=` | `reservas.reservas:ver` | Reservas de la cadena (cada una con `moneda`, `tipoCambioMicro` y `totalPenCent`) |
+| GET · POST | `/api/tipo-cambio` | `finanzas.tipocambio` ver · crear | Historial y alta/corrección del día. Las tasas van como **texto** (`"3.752"`) |
 | POST | `/api/reserva/:id/cancelar` | `reservas.reservas:anular` | Cancelar (sin la restricción de fechas) |
 
 **Configuración (personal)**:
@@ -303,6 +305,13 @@ Archivos `migrations/NNNN_nombre.sql`, embebidos en el binario y aplicados al ar
 - Se registran en `schema_migrations`.
 - Un *advisory lock* impide que dos instancias migren a la vez.
 - **Una migración aplicada no se edita**: se agrega una nueva.
+
+### Dinero y monedas
+
+Todo importe es un **entero en la unidad menor de su moneda** (céntimos, centavos). La lista de precios
+y la contabilidad van en soles; en dólares se muestra y se cobra convirtiendo con la **venta** del día,
+y la reserva guarda el tipo de cambio usado (×1.000.000, `3.752` → `3752000`). Detalle y reglas en
+[`docs/DISENO-MONEDA-IGV.md`](../docs/DISENO-MONEDA-IGV.md).
 
 ---
 
