@@ -1,5 +1,0 @@
-export { DashboardLayout } from './DashboardLayout'
-export type { DashboardLayoutProps } from './DashboardLayout'
-export { Sidebar } from './Sidebar'
-export { NAV_GROUPS, NAV_DEFAULT, resolveNav, navPath, navIdFromPath, puedeAbrir } from './navigation'
-export type { NavGroup, NavItem, SysKey } from './navigation'
