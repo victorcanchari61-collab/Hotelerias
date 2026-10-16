@@ -1,0 +1,47 @@
+/* =========================================================
+   legacy.css — compatibilidad con el kit de Distribuidor.
+
+   Los componentes PROPIOS de Hotelerias que vienen de ese proyecto
+   (Logo, BuscadorProductoModal, ImportarModal...) todavia leen los
+   tokens viejos. Aqui se mapean al tema unico de themes.css para que
+   sigan viendose bien sin tocarlos.
+
+   Un componente que se migra a --accent / --t-* deja de depender de
+   esto. Cuando no quede ninguno, este archivo se borra.
+   ========================================================= */
+
+/* Canales RGB (para rgb(var(--sys-rgb) / 0.12)): el azul de la marca. */
+:root {
+  --sys-rgb: 37 99 235;
+  --sys-dark-rgb: 30 64 175;
+  --sys-ink-rgb: 29 78 216;
+  --sys-on: #ffffff;
+}
+
+/* "brand": alias del color de accion del tema (Checkbox, DocumentoInput...). */
+@theme inline {
+  --color-brand: var(--accent);
+  --color-brand-hover: var(--accent-hover);
+  --color-brand-soft: var(--accent-soft);
+  --color-brand-ring: var(--accent-ring);
+  --color-on-brand: var(--accent-on);
+}
+
+/* Identidad de la plantilla de Distribuidor que todavia usa Logo / ModuleIcon. */
+@theme {
+  --color-navy: #14497f;
+  --color-navy-deep: #0e3560;
+  --color-gold: #f7cb84;
+  --color-bronze: #b5700b;
+
+  --color-fact: #2563eb;
+  --color-inv: #0e9f6e;
+  --color-tms: #0891b2;
+  --color-dms: #db2777;
+  --color-rrhh: #d97706;
+}
+
+@utility ui-brand {
+  background-color: var(--accent);
+  color: var(--accent-on);
+}

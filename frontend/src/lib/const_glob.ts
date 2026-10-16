@@ -1,4 +1,3 @@
-// Ruta relativa siempre: en dev el proxy de Vite (vite.config.ts) la manda al
-// backend local, y en producción lo hace Nginx. Así el mismo código sirve sin
-// importar el dominio o puerto donde termine publicado.
-export const API_BASE_URL = '/api'
+// La constante vive en core/constants/api.ts; esto solo conserva el import de
+// quien todavía lo hace desde aquí.
+export { API_BASE_URL } from '@/core/constants/api'

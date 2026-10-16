@@ -68,10 +68,12 @@ Hotelerias/
 │   │   └── routes/      # Arma /api y cuelga los módulos
 │   └── main.go          # Composition root
 ├── docs/        # Registro de cambios y decisiones
-└── frontend/    # SPA en React + Vite + TypeScript + Tailwind
+└── frontend/    # SPA en React + Vite + TypeScript + Tailwind — ver frontend/README.md
     └── src/
-        ├── components/  # UI, layout (sidebar/navegación), charts
-        └── lib/         # Cliente API, auth, permisos, realtime, excel, etc.
+        ├── core/ domain/ data/ di/   # arquitectura por capas (la regla la verifica una prueba)
+        ├── presentation/             # providers, rutas, layout y pantallas por feature
+        ├── shared/                   # kit de UI (copia del de Ecommerce), un solo color
+        └── lib/                      # fachadas heredadas (apiClient, authStorage, realtime)
 ```
 
 > `backend/internal/{handlers,services,middleware,models}` y `backend/pkg` son una
@@ -93,7 +95,7 @@ El repositorio es un **esqueleto funcional**:
 - ✅ Backend con conexiones a las tres bases de datos (solo PostgreSQL es obligatoria), migraciones y endpoint de salud.
 - ✅ **Sistema de permisos**: roles con herencia por unión, excepciones individuales (`una_vez`, `temporal`, `permanente`) y guard por ruta. Ver [`backend/README.md`](backend/README.md#sistema-de-permisos).
 - ✅ Validación de JWT y configuración por `config.yaml` / `.env` / entorno, sin secretos versionados.
-- ✅ Frontend con sistema de diseño, navegación ERP y cliente API con manejo de sesión/permisos.
+- ✅ Frontend con arquitectura por capas, rutas con políticas de acceso, kit de UI de un solo color y pantallas de login, inicio y usuarios (verificado contra un backend simulado).
 - ⬜ **Login y usuarios** en el backend (hoy `/api/auth/login` no existe: bloquea el frontend).
 - ⬜ CRUD de roles, concesión de excepciones, solicitudes de permiso y alcance de datos.
 - ⬜ Endpoints de negocio (reservas, PMS, facturación, inventario, etc.).
@@ -117,4 +119,5 @@ El repositorio es un **esqueleto funcional**:
 | Documento | Contenido |
 | --- | --- |
 | [`backend/README.md`](backend/README.md) | Cómo arrancar, configuración y secretos, arquitectura, sistema de permisos, endpoints, migraciones y pruebas |
+| [`frontend/README.md`](frontend/README.md) | Arquitectura por capas, rutas y políticas de acceso, kit de UI de un solo color, pruebas |
 | [`docs/CAMBIOS.md`](docs/CAMBIOS.md) | Registro de cambios con sus decisiones y los pendientes |

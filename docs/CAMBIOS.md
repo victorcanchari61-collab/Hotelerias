@@ -5,6 +5,91 @@ Cómo usar lo que se describe aquí: [`backend/README.md`](../backend/README.md)
 
 ---
 
+## 2026-10-15 — Frontend: arquitectura por capas, rutas y kit de Ecommerce
+
+### Resumen
+
+1. Se llevó a React la **arquitectura por capas** de `arequipagocreditos` (`core / domain / data / di / presentation`), corrigiendo lo que ahí viola SOLID.
+2. Se diseñaron las **rutas como parte de la arquitectura** (la referencia no tenía tabla de rutas).
+3. Se copió el **kit de UI de Ecommerce** (`shared/`) con sus animaciones, en **un solo color**, con los íconos y las letras del menú lateral de ese único color.
+
+Cómo se usa y cómo está armado: [`frontend/README.md`](../frontend/README.md).
+
+### 1. Arquitectura por capas
+
+| Capa | Contenido |
+|---|---|
+| `core` | `Either`, `Failure`/`toFailure`, `HttpClient`/`FileTransfer` + `FetchHttpClient`, `Emitter` |
+| `domain` | Entidades, interfaces de repositorio, casos de uso (una clase por caso) |
+| `data` | DTOs y mapeos, datasources, `*RepositoryImpl` |
+| `di` | Contenedor y un módulo de registro por feature |
+| `presentation` | Providers, rutas, layout, pantallas |
+
+Features construidas contra el contrato real del backend: **auth** (login, restaurar sesión,
+logout), **permiso** (`/permiso/mios`, `/permiso/catalogo`) y **usuario** (listar, crear,
+actualizar, cambiar estado, eliminar), con la pantalla de usuarios.
+
+**La regla de dependencias está verificada por una prueba** (`architecture.test.ts`), y se
+comprobó que de verdad falla: se inyectaron a propósito tres violaciones (dominio importando
+`data`, dominio importando React, presentación importando `data`) y la prueba las detectó.
+
+**Corregido respecto de la referencia**
+
+| En `arequipagocreditos` | Ahora |
+|---|---|
+| `AuthProvider` de 810 líneas | Provider delgado + reducer puro + casos de uso |
+| DI que instancia uno nuevo en cada acceso | Cada pieza se crea una sola vez |
+| `Either.isLeft` por `_left != null` (un éxito `null` parecía fallo) | El lado es una etiqueta |
+| Cascada de `catch` por status repetida en cada método | `attempt()` + un solo `toFailure()` |
+| Datasources que leen `SharedPreferences` | El almacenamiento es un datasource propio |
+| Mensaje de error repetido en cada provider | Un solo `describeFailure` |
+
+### 2. Rutas
+
+- Cada feature **declara** sus rutas (`routes.ts`); el registro las junta y **valida al arrancar** (id/URL repetidos, id de menú inexistente).
+- La URL y el permiso de una pantalla del menú **salen del id del menú**: no pueden desincronizarse del sidebar.
+- Cinco políticas de acceso (`public`, `guest`, `authenticated`, `permiso`, `permisoAlguno`), decididas por una **función pura** y agregables sin tocar las existentes.
+- **El menú nunca lleva a un 404**: toda entrada visible sin pantalla recibe "en construcción", con su permiso, y se marca como pendiente.
+- Una ruta protegida sin sesión manda al login y **vuelve a donde iba**; con sesión, el login manda adentro.
+
+### 3. Kit de Ecommerce, un solo color
+
+- `src/shared/{ui,layout,charts,lib}` es copia de `Ecommerce/frontend/src/shared`; componentes propios conservados: `Logo`, `AccionPdf`, `ImportarModal`, `VisorReportePdf`, etc.
+- **Un solo color** (`#2563eb`): `styles/themes.css` tiene un único tema con `--grad-end` = `--grad-start`, sin bloques por módulo.
+- **Menú lateral**: íconos, letras, marca y pie leen un único token (`--nav-ink`). Verificado en el navegador: las 16 filas del menú tienen exactamente el mismo color en texto, letra e ícono, y hay 0 degradados SVG.
+- **Eliminados** `IconGradientDefs` e `icon-gradient.ts`; `ThemedIcon` pinta con `currentColor`.
+- **Animaciones copiadas**: `ui-fade-up` (entrada de cada vista, respeta `prefers-reduced-motion`), `fadeIn` (menús), acordeón del menú, submenú flotante, transiciones del sider, `animate-spin`/`animate-pulse`.
+- `styles/legacy.css` mapea los tokens viejos de Distribuidor (`--sys-rgb`, `bg-brand`, navy/gold) al tema único, para que los componentes propios sigan viéndose bien sin tocarlos.
+- Una prueba (`theme.contract.test.ts`) fija el requisito: una próxima re-copia del kit **no** puede traer de vuelta los degradados sin que falle.
+
+### Cambios fuera de lo pedido
+
+| Cambio | Motivo |
+|---|---|
+| `HistorialCambios.tsx` importaba un tipo de `features/config`, que no existe | Rompía `tsc` y era un componente de UI acoplado a una feature. Ahora define la forma mínima que necesita. Con esto `tsc` quedó en **0 errores** y sirve de red de seguridad |
+| `lib/utils.ts#urlImagen` tenía escrito `http://127.0.0.1:5220/` | Contradecía el comentario de `const_glob` ("ruta relativa siempre") y rompía las fotos fuera de local. Ahora es relativa (el proxy de Vite la resuelve) |
+| `Checkbox` y `DocumentoInput` de Ecommerce usan `bg-brand`, que ese proyecto **no define** | En Ecommerce no se pintaban. `legacy.css` define `--color-brand*` como alias del acento |
+| `App.jsx` (demo con `toast.success`, `PageSection`...) | Estaba roto contra los componentes reales; lo reemplaza la app ruteada |
+| `lib/permisos.tsx` | Reemplazado por `presentation/providers/PermisosProvider` |
+| Se agregó `tsconfig.json`, alias `@/`, `vitest`, `jsdom` y `@testing-library/react` | No había tipos, ni alias, ni runner de pruebas |
+
+### Verificación
+
+- `tsc --noEmit`: 0 errores. `vite build`: OK, con code-splitting por pantalla.
+- `vitest`: **177 pruebas** en 12 archivos, incluida la app completa montada con repositorios falsos.
+- En el navegador (contra un backend simulado): login con redirección de vuelta, menú filtrado por permisos, acordeón, modo contraído con submenú flotante y menú de usuario.
+- **No** verificado contra el backend real: `/api/auth/login` y `/usuario` aún no existen ahí.
+
+### Pendiente (frontend)
+
+- Backend: `/api/auth/login`, `/auth/me` y `/usuario` (ver el pendiente del backend, más abajo).
+- Pantallas de Roles, Empresa y el formulario de crear/editar usuario (los casos de uso ya existen y están probados).
+- Campana de notificaciones sin datos (el backend no expone alertas) y tiempo real (SignalR vs. Go).
+- Elegir `package-lock.json` **o** `pnpm-lock.yaml`.
+- `lib/alertasApi.ts`, `consultaApi.ts`, `ubigeoApi.ts` siguen pegándole a la red directo: features por migrar a las capas.
+
+---
+
 ## 2026-10-15 — Sistema de permisos, plataforma y limpieza de merges
 
 ### Resumen
@@ -122,13 +207,4 @@ Detalle y tabla de variables en [`backend/README.md`](../backend/README.md#confi
 - Elegir **un** gestor de paquetes en el frontend: conviven `package-lock.json` y `pnpm-lock.yaml`, fuente segura de conflictos.
 - La base `Company_Multi` de la config heredada **no existe** y el nombre viene de una plantilla; definir el nombre definitivo.
 
-**Frontend** (no se modificó código en esta tanda)
-
-Quedó analizada una arquitectura por capas tomada de `arequipagocreditos` (Flutter, Clean
-Architecture). Resumen de lo decidido, para no perderlo:
-
-- Capas `core / domain / data / presentation / di`, con la regla de dependencias hacia adentro y una prueba automática que la verifica.
-- **La referencia no tiene tabla de rutas** (usa un `switch` de estado y `Navigator.push`), así que las rutas se **diseñan**: definiciones declarativas por módulo, política de acceso (`public | guest | authenticated | permiso | permisoAlguno`) evaluada por una función pura, y un registro que valida duplicados e ids del menú al arrancar.
-- Se corrige lo que la referencia hace mal respecto a SOLID: providers de ~800 líneas, DI que instancia en cada acceso, datasources que leen el almacenamiento directamente.
-- Las pantallas existentes de `lib/` (`apiClient`, `authStorage`, `permisos`) se mantienen como **fachadas** para no romper los componentes UI que ya las importan.
-- Prerrequisitos: `tsconfig.json`, alias `@/`, y un runner de pruebas (`vitest`); hoy no hay ninguno de los tres.
+**Frontend**: implementado después; ver la sección de arriba.

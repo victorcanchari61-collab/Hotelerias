@@ -1,1 +1,115 @@
-@import "./styles/theme.css";
+@import 'tailwindcss';
+@import './styles/themes.css';
+@import './styles/tones.css';
+@import './styles/legacy.css';
+
+/*
+ * Tokens fijos del sistema de diseno (no cambian con el tema).
+ * Copiado del kit de Ecommerce; el color vive en styles/themes.css.
+ */
+@theme {
+  --color-canvas: #f6f7f9;
+  --color-surface: #ffffff;
+  /* Fondo de las vistas: SIEMPRE gris. */
+  --color-surface-alt: #f1f5f9;
+  --color-ink: #0f172a;
+  --color-ink-muted: #64748b;
+  --color-muted: #64748b; /* alias de ink-muted */
+  --color-ink-soft: #94a3b8;
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
+
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fef2f2;
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Radios y sombras */
+  --radius-field: 6px;
+  --radius-panel: 20px;
+  --shadow-panel: 0 18px 45px -18px rgb(15 23 42 / 0.25);
+
+  /* Alturas de campos y botones: aqui se decide que tan altos son TODOS los controles.
+     sm 36px (tablas, barras)  md 40px (formularios)  lg 48px (login) */
+  --spacing-control: 2.5rem;
+  --height-field-sm: 2.25rem;
+  --height-field-md: 2.5rem;
+  --height-field-lg: 3rem;
+}
+
+/*
+ * Tokens que siguen al tema (styles/themes.css).
+ * Van en `inline`: la utilidad (bg-accent...) usa var(--accent) directamente en
+ * cada elemento, asi que toma el color del data-sys mas cercano.
+ */
+@theme inline {
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink); /* texto sobre fondo suave */
+  --color-accent-on: var(--accent-on); /* texto sobre el color de accion */
+  --color-accent-soft: var(--accent-soft);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background-color: var(--color-canvas);
+    -webkit-font-smoothing: antialiased;
+    /* Evita el scroll horizontal de toda la pagina si un elemento se pasa de ancho en movil. */
+    overflow-x: hidden;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--t-400) 35%, transparent);
+  }
+}
+
+/* Entrada suave de cada vista del panel. */
+@keyframes ui-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility ui-fade-up {
+  animation: ui-fade-up 280ms ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-fade-up {
+    animation: none;
+  }
+}
+
+/* Clases heredables: componer estas respeta el sistema de diseno. */
+@utility ui-focusable {
+  &:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-ring);
+  }
+}
+
+@utility ui-surface {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-panel);
+}
+
+@utility ui-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}

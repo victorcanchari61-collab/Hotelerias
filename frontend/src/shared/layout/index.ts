@@ -1,0 +1,10 @@
+// Estructura reutilizable de los sistemas internos (admin, POS, distribucion...).
+export { AppShell } from './AppShell'
+export type { AppShellProps } from './AppShell'
+export { NotificationsBell } from './NotificationsBell'
+export type { NotificationItem } from './NotificationsBell'
+export { Sidebar } from './Sidebar'
+export { Topbar } from './Topbar'
+export { UserMenu } from './UserMenu'
+export type { ContextOption, MenuLink, UserMenuProps } from './UserMenu'
+export type { Brand, NavGroup, NavItem } from './types'

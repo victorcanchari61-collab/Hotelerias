@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 
 /*
@@ -33,6 +34,15 @@ const proxy = {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  resolve: {
+    // "@/core/..." en vez de "../../../core/...": las capas se importan por
+    // su nombre, y se ve de un vistazo de que capa viene cada cosa.
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
+  test: {
+    include: ['src/**/*.test.{ts,tsx}'],
+    environment: 'node',
+  },
   server: { proxy },
   // Igual que arriba, para poder abrir el build ya compilado contra el backend.
   preview: { proxy },

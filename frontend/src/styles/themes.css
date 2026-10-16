@@ -1,0 +1,108 @@
+/* =========================================================
+   themes.css — el color del sistema.
+
+   Hotelerias usa UN SOLO COLOR: el azul de la marca. No hay un
+   color por modulo (como en Ecommerce) ni degradados: el
+   color de entrada se repite en --grad-start y --grad-end, asi
+   que todo lo derivado (--accent*, --t-*, --grad-tile) sale
+   plano.
+
+   De las tres entradas salen las demas tonalidades con color-mix.
+   Ningun componente usa colores fijos: leen estas variables, asi
+   que cambiar la marca es cambiar TRES lineas de aqui.
+
+   Entrada:  --grad-start  color principal (el de accion)
+             --grad-end    igual al anterior (un solo color)
+             --surface     tinte suave del tema (solo deriva --t-50).
+                           El fondo de las vistas NO lo usa: es siempre
+                           gris (index.css)
+   Salida:   --t-950..--t-50, --accent*, --nav-ink, --grad, --grad-tile
+
+   Si algun dia un modulo necesitara su propio color, basta agregar
+   un bloque  [data-sys='nombre'] { --grad-start: ...; --surface: ...; }
+   y envolver su rama con data-sys: la escala de abajo se recalcula
+   sola. Los componentes ya llevan data-sys donde corresponde.
+   ========================================================= */
+
+/* ---- 1. El tema: un color ---- */
+:root {
+  --grad-start: #2563eb; /* blue-600: el color del boton de login y de la marca */
+  --grad-end: #2563eb; /* el mismo: un solo color, sin degradado */
+  --surface: #eff6ff;
+}
+
+/* ---- 2. Escala derivada (de oscuro a claro) ----
+   Se declara en el MISMO elemento que el tema: una variable que usa var()
+   se resuelve donde se declara, asi que si esto viviera solo en :root, un
+   [data-sys] futuro no recalcularia la escala con sus propios colores. */
+:root,
+[data-sys] {
+  --grad: linear-gradient(90deg, var(--grad-start), var(--grad-end));
+  --grad-tile: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+
+  --t-950: color-mix(in oklab, color-mix(in oklab, var(--grad-start) 90%, var(--grad-end)), black 84%);
+  --t-900: color-mix(in oklab, color-mix(in oklab, var(--grad-start) 80%, var(--grad-end)), black 74%);
+  --t-800: color-mix(in oklab, var(--grad-start), black 64%);
+  --t-700: color-mix(in oklab, var(--grad-start), black 46%);
+  --t-600: color-mix(in oklab, var(--grad-start), black 24%); /* color de accion */
+  --t-500: color-mix(in oklab, var(--grad-start), black 8%);
+  --t-400: color-mix(in oklab, var(--grad-start) 70%, white);
+  --t-300: color-mix(in oklab, var(--grad-end) 34%, white);
+  --t-200: color-mix(in oklab, var(--grad-start) 12%, white);
+  --t-50: color-mix(in oklab, var(--surface) 45%, white);
+
+  /* roles semanticos que usan los componentes */
+  --accent: var(--t-600);
+  --accent-hover: var(--t-700);
+  --accent-ink: var(--t-700); /* texto sobre fondo suave */
+  --accent-on: #ffffff; /* texto sobre el color de accion */
+  --accent-soft: color-mix(in oklab, var(--t-600) 10%, white); /* fondo suave */
+  --accent-ring: color-mix(in oklab, var(--t-600) 25%, transparent); /* foco */
+
+  /* El MENU LATERAL: iconos y letras, todos de este unico color. Un solo
+     sitio para cambiarlo; ni degradados ni un color por modulo. */
+  --nav-ink: var(--accent-ink);
+}
+
+/* ---- 3. Estados: no cambian con el tema ---- */
+:root {
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #dc2626;
+  --info: #2563eb;
+}
+
+/* ---- 4. Utilidades sobre el color del tema ---- */
+@utility sys-bg {
+  background-color: var(--accent);
+  color: var(--accent-on);
+}
+
+@utility sys-gradient {
+  background-image: var(--grad-tile);
+  color: var(--accent-on);
+}
+
+@utility sys-text {
+  color: var(--accent-ink);
+}
+
+@utility sys-ring {
+  &:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-ring);
+  }
+}
+
+/* Entrada de menus y paneles desplegables (menu de usuario, campana, chips). */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -1,0 +1,55 @@
+/* =========================================================
+   tones.css — tonos para insignias, avisos y chips.
+
+   1 color base -> 4 variables que el componente solo consume:
+     --tone-solid  relleno fuerte / punto / barra
+     --tone-bg     fondo (8-12% del color mezclado con blanco)
+     --tone-fg     texto (el color oscurecido)
+     --tone-line   borde (~30% mezclado con blanco)
+
+   Uso:  <span class="tone-success bg-(--tone-bg) text-(--tone-fg)
+                       ring-1 ring-(--tone-line)">
+   ========================================================= */
+
+.tone-neutral {
+  --tone-solid: #6b7280;
+  --tone-bg: #f3f4f6;
+  --tone-fg: #4b5563;
+  --tone-line: #e5e7eb;
+}
+
+/* sigue al color del modulo activo */
+.tone-accent {
+  --tone-solid: var(--accent);
+  --tone-bg: var(--accent-soft);
+  --tone-fg: var(--accent-ink);
+  --tone-line: color-mix(in oklab, var(--accent) 28%, white);
+}
+
+.tone-success {
+  --tone-solid: var(--success);
+  --tone-bg: color-mix(in oklab, var(--success) 10%, white);
+  --tone-fg: color-mix(in oklab, var(--success), black 28%);
+  --tone-line: color-mix(in oklab, var(--success) 30%, white);
+}
+
+.tone-warning {
+  --tone-solid: var(--warning);
+  --tone-bg: color-mix(in oklab, var(--warning) 12%, white);
+  --tone-fg: color-mix(in oklab, var(--warning), black 45%);
+  --tone-line: color-mix(in oklab, var(--warning) 35%, white);
+}
+
+.tone-danger {
+  --tone-solid: var(--danger);
+  --tone-bg: color-mix(in oklab, var(--danger) 8%, white);
+  --tone-fg: color-mix(in oklab, var(--danger), black 22%);
+  --tone-line: color-mix(in oklab, var(--danger) 30%, white);
+}
+
+.tone-info {
+  --tone-solid: var(--info);
+  --tone-bg: color-mix(in oklab, var(--info) 8%, white);
+  --tone-fg: color-mix(in oklab, var(--info), black 22%);
+  --tone-line: color-mix(in oklab, var(--info) 30%, white);
+}
