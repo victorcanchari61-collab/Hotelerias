@@ -225,6 +225,7 @@ La respuesta 403 incluye qué faltaba, para que el frontend abra el modal de ped
 | GET · POST · PUT · DELETE | `/api/rol` · `/:id` | `config.roles` |
 | PUT | `/api/rol/:id/permisos` | `config.accesos:editar` (la matriz completa; **reemplaza**) |
 | GET · PUT | `/api/empresa` | `config.empresa` |
+| GET · POST · PUT · PATCH | `/api/habitacion` · `/opciones` · `/lote` · `/:id` · `/:id/estado` | `habitaciones.habitaciones` ver · crear · editar (acotado por hotel; no se quita una habitación que una reserva necesita) |
 | GET · PUT | `/api/parametro` | `config.parametros` ver · editar (valores como texto; guardar es todo o nada) |
 | GET · POST · PUT | `/api/sede` · `/:id` | `config.sedes` (se desactivan, no se borran) |
 | GET | `/api/permiso/usuario/:id` | `config.accesos:ver` (excepciones de una persona) |

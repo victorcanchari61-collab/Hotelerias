@@ -5,6 +5,67 @@ Cómo usar lo que se describe aquí: [`backend/README.md`](../backend/README.md)
 
 ---
 
+## 2026-10-17 — Habitaciones: el inventario de habitaciones físicas
+
+Hasta ahora el hotel solo sabía «hay 12 Deluxe». Ahora existen la 101, la 102… cada una con su tipo, piso
+y estado del día. Es la base de Recepción (check-in/out), Housekeeping y Mantenimiento.
+Migración `0008_habitacion.sql`; pantalla `/admin/habitaciones/habitaciones` (`habitaciones.habitaciones`).
+
+### Reglas
+
+- **`tipo_habitacion.cantidad` ahora es derivada**: es cuántas habitaciones **activas** tiene el tipo, y la
+  mantiene un **disparador de la base**, así que no puede contradecir al inventario ni por la API ni por
+  cualquier otro camino. La disponibilidad de la web sigue leyendo `cantidad` (no se tocó).
+- **Activa ≠ estado.** *Activa* es parte del inventario que se vende; desactivar una la quita de la venta.
+  *Estado* (limpia / sucia / mantenimiento / ocupada) es del día y **no** reduce lo que se puede reservar a
+  futuro: una habitación sucia hoy se vende mañana.
+- **No se puede quitar una habitación que una reserva necesita.** Desactivar una (o pasarla a otro tipo) se
+  rechaza con un 409 si dejaría más reservas simultáneas que habitaciones. La comprobación va en la **misma
+  transacción** y con el tipo bloqueado (el mismo candado que usa crear-reserva): dos personas quitando a la
+  vez, o quitando mientras alguien reserva, no pueden dejar una reserva sin habitación. Hay una prueba de
+  concurrencia que lo verifica.
+- **«Ocupada» no se asigna a mano**: la pone el check-in y la quita el check-out. Una ocupada no se desactiva,
+  no cambia de tipo ni de estado; una desactivada tampoco cambia de estado.
+- **Número único por hotel** (la 101 puede existir en todos los hoteles). Una habitación no cambia de hotel.
+- **Crear varias**: del 101 al 110 de una vez (hasta 100); **todas o ninguna** (si alguna ya existe, no se
+  crea ninguna y el mensaje dice cuáles).
+- **Alcance por hotel**: `habitaciones.habitaciones` se suma a los submódulos que se pueden acotar en
+  Accesos («mis sedes»). Lo de otro hotel responde como inexistente.
+- **Datos existentes**: la migración creó 80 habitaciones a partir de la cantidad de cada tipo (101… por hotel,
+  un piso por tipo) y las cantidades siguen cuadrando. La siembra de demostración también las crea.
+
+### Rutas nuevas
+
+| Método | Ruta | Permiso |
+|---|---|---|
+| GET | `/api/habitacion` · `/habitacion/opciones` | `habitaciones.habitaciones:ver` (acotado por hotel) |
+| POST | `/api/habitacion` · `/habitacion/lote` | `…:crear` |
+| PUT | `/api/habitacion/:id` | `…:editar` (datos, activar/desactivar) |
+| PATCH | `/api/habitacion/:id/estado` | `…:editar` (limpia · sucia · mantenimiento) |
+
+### Pantalla
+
+Listado con indicadores (habitaciones, limpias, sucias, en mantenimiento), filtros por hotel, tipo y estado, y
+por fila: marcar limpia / sucia / en mantenimiento con un clic, y editar. «Nueva habitación» y «Crear varias».
+
+### Verificación
+
+- Backend, **con la base real**: unitarias del servicio (reglas, alcance, errores) + 8 de integración
+  (la siembra y la cantidad cuadran, crear/desactivar mueve la cantidad, no se quita lo que una reserva necesita,
+  concurrencia, lote todo-o-nada, estados, alcance por hotel, sesión).
+- Frontend: 388 pruebas (33 nuevas): validaciones, casos de uso, y la pantalla (indicadores, solo lectura sin
+  permisos, estado con un clic, ocupada/desactivada bloqueadas, errores del servidor dentro del formulario, lote).
+- En vivo por Apache: lista de 80, cambio de estado, «ocupada» rechazada, opciones, 401 sin sesión.
+
+### Pendiente
+
+- **Recepción**: check-in/out asignando una habitación física a cada reserva (hoy la reserva sigue siendo por
+  tipo). Ahí se activa «ocupada».
+- Housekeeping y Mantenimiento (órdenes, responsables, historial) sobre este inventario.
+- Pantalla de **Tipos de habitación** (hoy se siembran): su `cantidad` será solo de lectura.
+
+---
+
 ## 2026-10-17 — Configuración → Parámetros
 
 La pantalla `/admin/config/parametros` existía solo en el menú y en el catálogo de permisos

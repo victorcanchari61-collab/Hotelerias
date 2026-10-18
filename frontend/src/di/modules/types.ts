@@ -12,6 +12,7 @@ import type {
   PromocionRepository,
   ReservaAdminRepository,
 } from '@/domain/repositories/GestionRepository'
+import type { HabitacionRepository } from '@/domain/repositories/HabitacionRepository'
 import type { ParametroRepository } from '@/domain/repositories/ParametroRepository'
 import type { TipoCambioRepository } from '@/domain/repositories/FinanzasRepository'
 import type { PortalRepository } from '@/domain/repositories/PortalRepository'
@@ -40,6 +41,8 @@ export interface RepositoryOverrides {
   promocion?: PromocionRepository
   fidelizacion?: FidelizacionRepository
   reservaAdmin?: ReservaAdminRepository
+  // Habitaciones físicas.
+  habitacion?: HabitacionRepository
   // Configuración: parámetros del sistema.
   parametro?: ParametroRepository
   // Finanzas: tipo de cambio.
