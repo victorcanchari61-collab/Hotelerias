@@ -87,13 +87,13 @@ function MarcoPortal() {
 
   return (
     <div className="velothr flex min-h-screen flex-col">
-      <header className="sticky top-0 z-30 border-b-2 border-dashed border-[var(--v-hilo-suave)] bg-[var(--v-cuero)]/92 backdrop-blur-sm">
+      <header className="z-30 border-b-2 border-dashed border-[var(--v-hilo-suave)] bg-[var(--v-cuero)] sm:sticky sm:top-0">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5">
           <Link to={PATHS.portal} className="shrink-0" aria-label="Hotel Velothr, inicio">
             <Placa />
           </Link>
 
-          <nav aria-label="Principal" className="order-3 -mx-4 flex w-[calc(100%+2rem)] overflow-x-auto px-4 sm:order-none sm:mx-0 sm:w-auto sm:px-0 [scrollbar-width:none]">
+          <nav aria-label="Principal" className="order-3 -mx-4 flex w-[calc(100%+2rem)] overflow-x-auto px-4 py-1 sm:order-none sm:mx-0 sm:w-auto sm:px-0 [scrollbar-width:none]">
             <NavLink to={PATHS.portal} end className={enlace}>
               Hoteles
             </NavLink>

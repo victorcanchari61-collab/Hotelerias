@@ -43,7 +43,7 @@ export function PortalHomePage() {
 
   function buscar(e: FormEvent) {
     e.preventDefault()
-    const id = Number(sedeId || sedes.datos[0]?.id)
+    const id = Number(sedeId)
     if (!id) return
     navigate(hotelPath(id, { entrada, salida, huespedes }))
   }
@@ -81,13 +81,13 @@ export function PortalHomePage() {
               <Desplegable
                 label="Hotel"
                 placeholder={sedes.cargando ? 'Cargando…' : 'Elige un hotel'}
-                value={sedeId}
+                value={sedeId || String(sedes.datos[0]?.id ?? '')}
                 onChange={(v) => setSedeId(String(v))}
                 options={sedes.datos.map((s) => ({ value: String(s.id), label: s.nombre, detalle: s.ciudad }))}
               />
               <div className="grid grid-cols-2 gap-3">
                 <Input label="Entrada" type="date" min={hoy} value={entrada} onChange={(e) => setEntrada(e.target.value)} />
-                <Input label="Salida" type="date" min={entrada} value={salida} onChange={(e) => setSalida(e.target.value)} />
+                <Input label="Salida" type="date" min={sumarDias(entrada, 1)} value={salida} onChange={(e) => setSalida(e.target.value)} />
               </div>
               <div className="grid grid-cols-[1fr_2fr] items-end gap-3">
                 <Input
@@ -139,15 +139,12 @@ export function PortalHomePage() {
             </Link>
           </div>
           <ul className="divide-y-2 divide-dashed divide-[var(--v-hilo-suave)] border-y-2 border-dashed border-[var(--v-hilo-suave)]">
-            {experiencias.datos.map(({ id, slug, titulo, resumen }, i) => (
+            {experiencias.datos.map(({ id, slug, titulo, resumen }) => (
               <li key={id}>
                 <Link
                   to={`${PATHS.experiencias}#${slug}`}
                   className="group flex items-center gap-4 py-4 transition-colors hover:bg-white/[0.03]"
                 >
-                  <span aria-hidden="true" className="v-etq v-num w-7 shrink-0 text-lg text-[var(--v-hilo)]">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
                   <span className="v-etq w-48 shrink-0 text-2xl">{titulo}</span>
                   <span className="hidden text-[var(--color-ink-muted)] sm:block">{resumen}</span>
                   <ArrowRight size={16} aria-hidden="true" className="ml-auto shrink-0 text-[var(--v-hilo)] transition-transform group-hover:translate-x-1" />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 import { describeFailure } from '@/core/errors/failures'
 import type { Entrada } from '@/domain/entities/Sitio'
 import { Alert, Button } from '@/shared/ui'
@@ -60,7 +61,7 @@ export function HistoriasPage() {
               <Papel className="flex h-full flex-col overflow-hidden transition-transform duration-200 group-hover:-translate-y-1">
                 {e.portada && (
                   <div className="aspect-[16/10] overflow-hidden">
-                    <FotoSitio medio={e.portada} className="transition-transform duration-500 group-hover:scale-[1.03]" />
+                    <FotoSitio medio={e.portada} alternativo={e.titulo} className="transition-transform duration-500 group-hover:scale-[1.03]" />
                   </div>
                 )}
                 <div className="flex flex-1 flex-col gap-2 p-6">
@@ -69,7 +70,9 @@ export function HistoriasPage() {
                   </time>
                   <h2 className="v-etq text-3xl leading-[0.95]">{e.titulo}</h2>
                   {e.resumen && <p className="line-clamp-3 text-sm leading-snug text-[var(--color-ink-muted)]">{e.resumen}</p>}
-                  <span className="v-etq mt-auto pt-3 text-sm text-[var(--accent-ink)]">Leer →</span>
+                  <span className="v-etq mt-auto flex items-center gap-1.5 pt-3 text-sm text-[var(--accent-ink)]">
+                    Leer <ArrowRight size={14} aria-hidden="true" />
+                  </span>
                 </div>
               </Papel>
             </Link>

@@ -3,9 +3,10 @@ import type { FormEvent } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { describeFailure } from '@/core/errors/failures'
 import { PASSWORD_MINIMA } from '@/domain/validation'
-import { Alert, Button, Card, Input } from '@/shared/ui'
+import { Alert, Button, Input } from '@/shared/ui'
 import { useClienteAuth } from '../../providers/ClienteAuthProvider'
 import { PATHS } from '../../routes/paths'
+import { Papel } from './components/mundo'
 
 export function RegistroPage() {
   const { registrar } = useClienteAuth()
@@ -43,8 +44,8 @@ export function RegistroPage() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-12">
-      <Card>
-        <h1 className="text-2xl font-bold tracking-tight">Crea tu cuenta</h1>
+      <Papel className="p-7 sm:p-9">
+        <h1 className="v-etq text-4xl">Crea tu cuenta</h1>
         <p className="mt-1 text-sm text-ink-muted">
           Para reservar necesitas una cuenta. Con ella verás tu precio de huésped y tus reservas.
         </p>
@@ -84,7 +85,7 @@ export function RegistroPage() {
             Ingresa
           </Link>
         </p>
-      </Card>
+      </Papel>
     </div>
   )
 }

@@ -5,6 +5,65 @@ Cómo usar lo que se describe aquí: [`backend/README.md`](../backend/README.md)
 
 ---
 
+## 2026-10-18 — Sitio web: todo lo que ve el cliente se administra desde el panel
+
+El pedido: «toda la página que ven los clientes debe ser administrable: banners, fotos, videos,
+carrusel, contacto, blog, historias». Antes la web pública tenía los textos escritos en el código.
+Ahora hay un grupo nuevo en el menú, **Sitio web**, y la web lee de ahí.
+
+### Qué se administra (siete pantallas en `/admin`)
+
+| Pantalla | Qué controla en la web |
+|---|---|
+| Portada y carrusel | Los banners que rotan arriba de la portada: foto o video, título, botón, fechas de vigencia, orden |
+| Fotos y videos | La biblioteca: se sube una vez y se elige desde cualquier otra pantalla. Se describe cada archivo (texto alternativo) |
+| Galerías de hoteles | Las fotos, en orden, de cada hotel y de cada tipo de habitación |
+| Experiencias | La página «Experiencias» y el índice de la portada |
+| Blog e historias | Borrador → publicar (el permiso de publicar es aparte: `confirmar`) |
+| Nosotros y contacto | El texto y la foto de las dos páginas fijas, con vista previa |
+| Mensajes recibidos | Lo que escriben los visitantes en «Contacto»: nuevo → leído → respondido |
+
+El catálogo de permisos pasa de 71 a **78 submódulos** (módulo nuevo `sitio`, siete submódulos).
+
+### Reglas que se hacen cumplir
+
+- **Los archivos se validan por su contenido**, no por la extensión ni por lo que diga el navegador: fotos JPG/PNG/WebP/GIF hasta 8 MB, videos MP4/WebM hasta 60 MB. Un SVG se rechaza (puede llevar scripts). Se guardan con un nombre aleatorio y se sirven con `nosniff` y `Content-Security-Policy: sandbox`.
+- **Un archivo en uso no se borra** (banner, experiencia, historia, página o galería): el panel lo muestra con su contador de usos.
+- **Nada del panel se vuelve HTML.** Los textos largos usan un formato simple (`## subtítulo`, `- lista`, `**negrita**`, `*cursiva*`, `[texto](/ruta)`) que la web dibuja con elementos propios; los enlaces solo pueden ser `/ruta` o `https://`.
+- **Contacto**: campo trampa y tope de 5 mensajes por hora por dirección; el visitante ve el motivo si se rechaza.
+- **Una historia solo se ve publicada**; un banner solo dentro de sus fechas y mientras esté activo.
+
+### La web pública (rediseño «El baúl del viajero»)
+
+Portada (carrusel + las cuatro etiquetas de hotel + experiencias + historias + pasaporte de
+membresías), hotel (galería, fichas de habitación, la agotada como etiqueta fantasma), detalle de
+habitación, experiencias, historias (lista y lectura), nosotros, contacto, membresías, ofertas, mis
+reservas, ingresar, registro y reservar. Solo fuentes del sistema; respeta «reducir movimiento».
+El carrusel tiene botón de pausa y se detiene al apuntarlo o enfocarlo con el teclado.
+
+### Se corrigió de pasada
+
+- **«Mis reservas» decidía por su cuenta si se podía cancelar** (entrada futura) e ignoraba el parámetro de Configuración. Ahora el servidor manda `cancelable` según `reservas.cancelacion_dias`, y la web (hotel y confirmar reserva) lo anuncia con ese mismo número. Antes decía «sin costo hasta el día anterior» fijo, lo cual no era cierto si el parámetro cambiaba.
+- **Contenido inicial de muestra** (migración 0012): las cinco experiencias de siempre y un texto para «Nosotros» y «Contacto», para que la web no salga vacía. Se editan o se borran desde el panel. **No se descargó ninguna foto**: las suben ustedes; sin foto, la web muestra un recuadro punteado en vez de inventar una imagen.
+
+### Rutas nuevas
+
+Ver la tabla de [`backend/README.md`](../backend/README.md): `/api/sitio/*` (panel) y `/api/portal/portada|experiencias|entradas|paginas|galeria|contacto/mensaje` (público). Migraciones `0011_sitio.sql` y `0012_sitio_contenido_inicial.sql`.
+
+### Verificación
+
+- `go vet ./...` y `go test ./...` en verde **contra PostgreSQL real** (28 pruebas de integración del sitio: subida, validación por contenido, recorrido de rutas, Range de video, vigencia de banners, publicar, galerías, mensajes, límite de envíos, permisos).
+- Frontend: `tsc` limpio, 33 archivos y 468 pruebas en verde (panel con permisos y confirmaciones, carrusel, blog sin ejecutar HTML, contacto con rechazo del servidor, enlaces peligrosos), `vite build`.
+- Revisado a mano en el navegador a 375 px (sin desborde horizontal) y con revisión de diseño independiente; sus hallazgos se aplicaron.
+
+### Pendiente
+
+- **Subir las fotos y videos reales** (Sitio web → Fotos y videos) y armar las galerías; hasta entonces la web usa recuadros punteados.
+- Cada habitación pide su galería por separado (N consultas por página de hotel): si el hotel tiene muchas habitaciones conviene una consulta única.
+- Opcional: pantalla de carga con esqueleto en la web (hoy es texto o vacío mientras llega el contenido).
+
+---
+
 ## 2026-10-17 — Limpieza (housekeeping): quién limpió cada habitación y cuándo
 
 Cierra el ciclo de la habitación:

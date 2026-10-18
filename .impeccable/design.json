@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-18T00:00:00Z",
+  "title": "Design System: Hotel Velothr (web pública)",
+  "extensions": {
+    "colorMeta": {
+      "cuero": { "role": "neutral", "displayName": "Cuero curtido", "canonical": "#1a110d", "tonalRamp": ["#0d0806", "#140d0a", "#1a110d", "#241812", "#33231a", "#58432f", "#7d5f3d", "#c79a62"] },
+      "papel": { "role": "neutral", "displayName": "Papel de etiqueta", "canonical": "#efe8d8", "tonalRamp": ["#5f5043", "#8a7b66", "#bba98a", "#d6c9ae", "#e3dac4", "#efe8d8", "#f6f0e2", "#fbf7ec"] },
+      "hilo": { "role": "tertiary", "displayName": "Hilo de camello", "canonical": "#c79a62", "tonalRamp": ["#3f2f1d", "#5a4429", "#7d5f3d", "#a07b4d", "#c79a62", "#dcb47c", "#e3c08a", "#efd9b3"] },
+      "sello": { "role": "primary", "displayName": "Violeta de sello de aduana", "canonical": "#6d3fd0", "tonalRamp": ["#2a1659", "#3d2380", "#552ea8", "#6d3fd0", "#8a63e0", "#a07fec", "#b79cff", "#d8c9ff"] },
+      "lima": { "role": "secondary", "displayName": "Teal del Pacífico (Lima)", "canonical": "#0f6e73", "tonalRamp": ["#08373a", "#0b4f53", "#0f6e73", "#3a8d90", "#6aaeac", "#9ad0cb", "#c4e3e0", "#e6f3f1"] },
+      "cusco": { "role": "secondary", "displayName": "Terracota de achiote (Cusco)", "canonical": "#b23f25", "tonalRamp": ["#4f1a0f", "#7a2a19", "#b23f25", "#c8664e", "#dc8c76", "#f0b49e", "#f7d3c3", "#fbeee6"] },
+      "arequipa": { "role": "secondary", "displayName": "Blanco sillar (Arequipa)", "canonical": "#ecebe3", "tonalRamp": ["#23282c", "#2c5d8a", "#6b7f8f", "#a3adb4", "#c8cbc9", "#dedcd4", "#ecebe3", "#f6f5f0"] },
+      "paracas": { "role": "secondary", "displayName": "Índigo con mostaza (Paracas)", "canonical": "#243b86", "tonalRamp": ["#101c45", "#182a64", "#243b86", "#4d5fa0", "#8a7a3a", "#e9b73a", "#f2d27a", "#f6e7b8"] }
+    },
+    "typographyMeta": {
+      "etiqueta": { "displayName": "Etiqueta", "purpose": "Capitales condensadas: nombres de hotel, navegación, botones, sello." },
+      "nota": { "displayName": "Nota", "purpose": "Serif cursiva del sistema para subtítulos y frases cálidas." },
+      "body": { "displayName": "Texto corrido", "purpose": "Fuente del sistema para lectura y formularios." }
+    },
+    "shadows": [
+      { "name": "papel", "value": "0 14px 28px -12px rgb(0 0 0 / 0.65), 0 2px 4px rgb(0 0 0 / 0.35)", "purpose": "Papel de etiqueta apoyado sobre el cuero." },
+      { "name": "etiqueta-reposo", "value": "drop-shadow(0 12px 14px rgb(0 0 0 / 0.55)) drop-shadow(0 2px 2px rgb(0 0 0 / 0.4))", "purpose": "Etiqueta de hotel; va en la caja exterior por la máscara de esquinas." },
+      { "name": "etiqueta-levantada", "value": "drop-shadow(0 22px 20px rgb(0 0 0 / 0.5)) drop-shadow(0 3px 3px rgb(0 0 0 / 0.35))", "purpose": "Etiqueta apuntada o enfocada." }
+    ],
+    "motion": [
+      { "name": "v-ease", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Ease-out exponencial para todo el movimiento." },
+      { "name": "v-pegar", "value": "760ms, retraso i*140ms + 120ms", "purpose": "La etiqueta se pega al entrar. Desactivada con reducir movimiento." },
+      { "name": "v-sellar", "value": "520ms, retraso 380ms", "purpose": "El sello cae una vez. Con reducir movimiento: aparición de 200ms." },
+      { "name": "v-aparecer", "value": "420ms, retraso i*70ms", "purpose": "Aparición suave de 10px. Desactivada con reducir movimiento." },
+      { "name": "etiqueta-hover", "value": "420ms", "purpose": "La etiqueta se levanta 8px al apuntarla." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Etiqueta de hotel",
+      "kind": "card",
+      "refersTo": "etiqueta-hotel",
+      "description": "Papel litografiado en la tinta del hotel, con marco impreso y esquinas troqueladas.",
+      "html": "<a class=\"ds-etiqueta\" href=\"#\"><span class=\"ds-etiqueta-int\"><span class=\"ds-etq-ciudad\">Cusco</span><span class=\"ds-etq-nombre\">Casona Imperial</span><span class=\"ds-etq-cta\">Ver el hotel</span></span></a>",
+      "css": ".ds-etiqueta { position: relative; display: block; width: 240px; background: #b23f25; color: #fbeee6; border-radius: 3px; transform: rotate(-3deg); transition: transform 420ms cubic-bezier(0.16,1,0.3,1); text-decoration: none; filter: drop-shadow(0 12px 14px rgb(0 0 0 / 0.55)); } .ds-etiqueta::before { content: ''; position: absolute; inset: 10px; border: 1.5px solid rgb(240 180 158 / 0.7); border-radius: 2px; pointer-events: none; } .ds-etiqueta:hover, .ds-etiqueta:focus-visible { transform: translateY(-8px) rotate(-1.2deg); } .ds-etiqueta:focus-visible { outline: 2px solid #fbeee6; outline-offset: -6px; } .ds-etiqueta-int { display: flex; flex-direction: column; gap: 12px; padding: 24px; min-height: 200px; } .ds-etq-ciudad, .ds-etq-cta { font-family: Bahnschrift, 'Arial Narrow', system-ui, sans-serif; font-stretch: 75%; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 14px; } .ds-etq-nombre { font-family: Bahnschrift, 'Arial Narrow', system-ui, sans-serif; font-stretch: 75%; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 2.1rem; line-height: 0.92; }"
+    },
+    {
+      "name": "Papel",
+      "kind": "card",
+      "refersTo": "papel",
+      "description": "Superficie clara para formularios y texto largo.",
+      "html": "<div class=\"ds-papel\"><p class=\"ds-papel-t\">Tus fechas</p><p class=\"ds-papel-n\">Elige el hotel y sella tu baúl.</p></div>",
+      "css": ".ds-papel { background: #efe8d8; color: #1d1612; border-radius: 4px; padding: 20px; max-width: 320px; box-shadow: 0 14px 28px -12px rgb(0 0 0 / 0.65), 0 2px 4px rgb(0 0 0 / 0.35); } .ds-papel-t { margin: 0; font-family: Bahnschrift, 'Arial Narrow', system-ui, sans-serif; font-stretch: 75%; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 1.6rem; line-height: 0.95; } .ds-papel-n { margin: 8px 0 0; font-family: 'Iowan Old Style', Palatino, Georgia, serif; font-style: italic; font-size: 1.125rem; color: #5f5043; }"
+    },
+    {
+      "name": "Sello de aduana",
+      "kind": "custom",
+      "refersTo": "sello",
+      "description": "Única tinta violeta; confirma una acción o marca lo activo.",
+      "html": "<span class=\"ds-sello\"><small>Velothr</small><strong>Reservado</strong></span>",
+      "css": ".ds-sello { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; padding: 0.55rem 0.9rem; color: #b79cff; border: 3px double currentColor; border-radius: 6px; font-family: Bahnschrift, 'Arial Narrow', system-ui, sans-serif; font-stretch: 75%; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; line-height: 1; transform: rotate(-7deg); } .ds-sello strong { font-size: 1.45rem; letter-spacing: 0.06em; } .ds-sello small { font-size: 0.72rem; letter-spacing: 0.14em; }"
+    },
+    {
+      "name": "Etiqueta fantasma",
+      "kind": "chip",
+      "refersTo": "etiqueta-hotel",
+      "description": "Lo agotado o vacío: borde punteado, sin relleno.",
+      "html": "<span class=\"ds-fantasma\">Agotada</span>",
+      "css": ".ds-fantasma { display: inline-block; padding: 4px 8px; color: #f2eadb; border: 2px dashed rgb(242 234 219 / 0.55); border-radius: 3px; background: transparent; font-family: Bahnschrift, 'Arial Narrow', system-ui, sans-serif; font-stretch: 75%; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 14px; }"
+    },
+    {
+      "name": "Botón de hilo lleno",
+      "kind": "button",
+      "refersTo": "boton-hilo-lleno",
+      "description": "Acción principal sobre cuero.",
+      "html": "<button class=\"ds-btn\">Crear cuenta</button>",
+      "css": ".ds-btn { height: 36px; padding: 0 14px; background: #c79a62; color: #1a110d; border: 0; border-radius: 3px; font-family: Bahnschrift, 'Arial Narrow', system-ui, sans-serif; font-stretch: 75%; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.95rem; transition: background-color 150ms; cursor: pointer; } .ds-btn:hover { background: #dcb47c; } .ds-btn:focus-visible { outline: 2px solid #c79a62; outline-offset: 3px; }"
+    },
+    {
+      "name": "Botón de hilo contorno",
+      "kind": "button",
+      "refersTo": "boton-hilo-contorno",
+      "description": "Acción secundaria sobre cuero.",
+      "html": "<button class=\"ds-btn-o\">Ingresar</button>",
+      "css": ".ds-btn-o { height: 36px; padding: 0 14px; background: transparent; color: #c79a62; border: 1px solid #c79a62; border-radius: 3px; font-family: Bahnschrift, 'Arial Narrow', system-ui, sans-serif; font-stretch: 75%; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.95rem; cursor: pointer; } .ds-btn-o:hover { background: #c79a62; color: #1a110d; } .ds-btn-o:focus-visible { outline: 2px solid #c79a62; outline-offset: 3px; }"
+    },
+    {
+      "name": "Recuadro de foto ausente",
+      "kind": "custom",
+      "description": "Lo que se muestra cuando el personal aún no sube foto: recuadro punteado, nunca una imagen inventada.",
+      "html": "<div class=\"ds-sinfoto\" aria-hidden=\"true\">sin foto</div>",
+      "css": ".ds-sinfoto { display: grid; place-items: center; width: 240px; aspect-ratio: 16/9; border: 2px dashed #7d5f3d; border-radius: 4px; color: #7d5f3d; background: #1a110d; font-family: system-ui, sans-serif; font-size: 14px; }"
+    },
+    {
+      "name": "Navegación",
+      "kind": "nav",
+      "description": "Enlaces en capitales condensadas sobre cuero; el activo en hilo con subrayado punteado.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-a ds-on\" href=\"#\">Hoteles</a><a class=\"ds-nav-a\" href=\"#\">Experiencias</a></nav>",
+      "css": ".ds-nav { display: flex; padding: 8px; background: #1a110d; border-bottom: 2px dashed #7d5f3d; } .ds-nav-a { position: relative; padding: 8px 12px; color: #cdbfa8; text-decoration: none; font-family: Bahnschrift, 'Arial Narrow', system-ui, sans-serif; font-stretch: 75%; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.95rem; } .ds-nav-a:hover { color: #f2eadb; } .ds-on { color: #c79a62; } .ds-on::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: -1px; border-bottom: 2px dashed #c79a62; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El baúl del viajero",
+    "overview": "Cuatro hoteles son cuatro etiquetas litografiadas pegadas en un mismo baúl: una casa, cuatro destinos. El suelo es cuero curtido casi negro; lo que se lee y se rellena vive en papel de etiqueta; lo que ordena la página es un pespunte de hilo color camello.\n\nLa densidad es media y calmada. El color es escaso a propósito: cada hotel trae su tinta solo dentro de su etiqueta, y el violeta del sello de aduana aparece únicamente donde algo está activo o confirmado. Las fotos las pone el personal; el sistema nunca fabrica una imagen. El panel /admin usa otro kit y queda fuera.",
+    "keyCharacteristics": [
+      "Dos superficies: cuero oscuro (suelo) y papel claro (formularios y texto largo).",
+      "Una tinta por hotel, una tinta violeta para lo activo.",
+      "Capitales condensadas para etiquetas; serif itálica para notas; sistema para texto corrido.",
+      "Separadores punteados (pespunte) en vez de líneas sólidas.",
+      "Movimiento propio: la etiqueta se pega, el sello cae."
+    ],
+    "rules": [
+      { "name": "The One Seal Rule", "body": "El violeta no decora jamás. Solo señala lo activo, lo actual o lo confirmado; si algo no está en ese estado, no lleva violeta.", "section": "colors" },
+      { "name": "The One Ink Per Hotel Rule", "body": "La tinta de un hotel no sale de su etiqueta ni se usa para otra cosa.", "section": "colors" },
+      { "name": "The Condensed Caps Rule", "body": "Las capitales condensadas son para etiquetas, nombres y botones; el texto de lectura nunca va en mayúsculas condensadas.", "section": "typography" },
+      { "name": "The Tabular Price Rule", "body": "Cifras de precio y contadores usan font-variant-numeric: tabular-nums (clase v-num).", "section": "typography" },
+      { "name": "The Shadow On The Box Rule", "body": "La sombra de una etiqueta troquelada va en .v-etiqueta-caja, nunca en el elemento enmascarado.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do poner las fotos solo desde el panel (Sitio web); el personal las sube con su descripción.",
+      "Do mostrar un recuadro punteado de hilo suave (2px dashed #7d5f3d) cuando falta una foto, en vez de inventar o poner una de relleno.",
+      "Do poner todo texto largo editable en un `Papel` y dibujarlo con `TextoRico`, nunca como HTML.",
+      "Do reservar el violeta (#6d3fd0 sobre papel, #b79cff sobre cuero) para lo activo, actual o confirmado.",
+      "Do dibujar lo agotado o inexistente como etiqueta fantasma punteada.",
+      "Do dejar todo contenido visible sin animación y respetar `prefers-reduced-motion`.",
+      "Do usar un nombre de hotel corto (`nombreCorto`) en la etiqueta y el nombre completo para lectores de pantalla."
+    ],
+    "donts": [
+      "Don't usar el violeta como decoración, énfasis ni color de botón.",
+      "Don't usar la tinta de un hotel fuera de su etiqueta.",
+      "Don't inyectar HTML del panel con `dangerouslySetInnerHTML`.",
+      "Don't apagar lo agotado bajándole la opacidad; se dibuja fantasma.",
+      "Don't aplicar este sistema al panel `/admin`, que usa otro kit.",
+      "Don't presentar como real lo que es de muestra; el pie lo declara.",
+      "Don't poner una animación que oculte contenido en su estado inicial."
+    ]
+  }
+}

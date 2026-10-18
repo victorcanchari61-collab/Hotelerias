@@ -412,11 +412,12 @@ func TestExperiencias(t *testing.T) {
 		}
 		return decode[sitio.Experiencia](t, body)
 	}
-	a := crear("Spa y bienestar", true)
-	b := crear("Spa y bienestar", true) // mismo título: otra dirección
+	// Un título que la migración de contenido inicial no usa, para que la dirección salga limpia.
+	a := crear("Taller de cerámica", true)
+	b := crear("Taller de cerámica", true) // mismo título: otra dirección
 	crear("Oculta", false)
 
-	if a.Slug != "spa-y-bienestar" || b.Slug != "spa-y-bienestar-2" {
+	if a.Slug != "taller-de-ceramica" || b.Slug != "taller-de-ceramica-2" {
 		t.Fatalf("slugs: %q %q", a.Slug, b.Slug)
 	}
 	if strings.Join(a.Ejemplos, "|") != "uno|dos" {
@@ -425,13 +426,21 @@ func TestExperiencias(t *testing.T) {
 
 	// Editar el título no cambia la dirección.
 	code, body, _ := e.do(t, "PUT", fmt.Sprintf("/api/sitio/experiencia/%d", a.ID), map[string]any{"titulo": "Otro nombre", "activo": true}, e.admin)
-	if code != 200 || decode[sitio.Experiencia](t, body).Slug != "spa-y-bienestar" {
+	if code != 200 || decode[sitio.Experiencia](t, body).Slug != "taller-de-ceramica" {
 		t.Fatalf("editar: %d %s", code, body)
 	}
 
 	_, body, _ = e.do(t, "GET", "/api/portal/experiencias", nil, "")
-	if pub := decode[[]sitio.Experiencia](t, body); len(pub) != 2 {
-		t.Fatalf("la web ve %d (la oculta no debe salir)", len(pub))
+	// Además de las dos creadas aquí, la web ve las de la migración inicial; la oculta no sale.
+	vistas := map[int64]bool{}
+	for _, x := range decode[[]sitio.Experiencia](t, body) {
+		vistas[x.ID] = true
+		if x.Titulo == "Oculta" {
+			t.Fatal("la web no debe ver una experiencia oculta")
+		}
+	}
+	if !vistas[a.ID] || !vistas[b.ID] {
+		t.Fatalf("la web debía ver las dos activas: %v", vistas)
 	}
 	if code, _, _ := e.do(t, "DELETE", fmt.Sprintf("/api/sitio/experiencia/%d", b.ID), nil, e.admin); code != http.StatusNoContent {
 		t.Fatal(code)
@@ -492,7 +501,8 @@ func TestElBlogSoloMuestraLoPublicado(t *testing.T) {
 func TestPaginasNosotrosYContacto(t *testing.T) {
 	e := armar(t)
 	code, body, _ := e.do(t, "GET", "/api/portal/paginas/nosotros", nil, "")
-	if code != 200 || decode[sitio.Pagina](t, body).Titulo != "Nosotros" {
+	// La migración inicial deja un texto de muestra: la página existe y se lee sin sesión.
+	if code != 200 || decode[sitio.Pagina](t, body).Clave != "nosotros" {
 		t.Fatalf("%d %s", code, body)
 	}
 	m := e.medio(t)

@@ -17,7 +17,7 @@ export function NosotrosPage() {
       {pagina.error && <Alert>{pagina.error}</Alert>}
       {!p && !pagina.error && <p className="text-[var(--color-ink-muted)]">{pagina.cargando ? 'Cargando…' : ''}</p>}
       {p && (
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start">
+        <div className={p.medio ? 'grid gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start' : 'max-w-3xl'}>
           <div>
             <h1 className="v-etq text-[clamp(2.7rem,7vw,4.6rem)] leading-[0.9]">{p.titulo}</h1>
             <Papel className="mt-8 p-7 sm:p-10">
@@ -26,7 +26,7 @@ export function NosotrosPage() {
           </div>
           {p.medio && (
             <div className="aspect-[4/5] overflow-hidden rounded-[4px] border-2 border-dashed border-[var(--v-hilo-suave)] lg:sticky lg:top-24">
-              <FotoSitio medio={p.medio} prioridad />
+              <FotoSitio medio={p.medio} alternativo={p.titulo} prioridad />
             </div>
           )}
         </div>

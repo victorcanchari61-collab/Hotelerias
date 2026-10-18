@@ -73,8 +73,9 @@ export function HabitacionPage() {
     <div className="mx-auto max-w-6xl space-y-8 px-4 py-8">
       {volver}
 
+      {/* En el móvil el precio va justo después de las fotos; en escritorio, a un lado. */}
       <div className="grid gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start">
-        <div className="space-y-6">
+        <div className="lg:col-start-1 lg:row-start-1">
           {fotos.datos.length > 0 ? (
             <GaleriaFotos fotos={fotos.datos} />
           ) : (
@@ -82,21 +83,9 @@ export function HabitacionPage() {
               <BedDouble size={56} strokeWidth={1.2} />
             </div>
           )}
-          <section>
-            <h2 className="v-etq text-3xl">Lo que incluye</h2>
-            <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
-              {habitacion.amenidades.map((a) => (
-                <li key={a} className="flex gap-2 text-sm">
-                  <span aria-hidden="true" className="mt-[0.45rem] size-1.5 shrink-0 rounded-full bg-[var(--v-hilo)]" />
-                  {a}
-                </li>
-              ))}
-            </ul>
-          </section>
         </div>
 
-        <Papel className="space-y-4 p-6 lg:sticky lg:top-24">
-          <p className="v-etq text-sm text-[var(--color-ink-soft)]">{sede?.nombre}</p>
+        <Papel className="space-y-4 p-6 lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <h1 className="v-etq text-[clamp(2.2rem,4vw,3rem)] leading-[0.92]">{habitacion.nombre}</h1>
           <p className="text-sm text-[var(--color-ink-muted)]">{habitacion.descripcion}</p>
           <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--color-ink-muted)]">
@@ -129,6 +118,20 @@ export function HabitacionPage() {
             <p className="text-xs text-[var(--color-ink-soft)]">Para confirmar tendrás que iniciar sesión o crear tu cuenta.</p>
           )}
         </Papel>
+
+        <div className="lg:col-start-1 lg:row-start-2">
+          <section>
+            <h2 className="v-etq text-3xl">Lo que incluye</h2>
+            <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+              {habitacion.amenidades.map((a) => (
+                <li key={a} className="flex gap-2 text-sm">
+                  <span aria-hidden="true" className="mt-[0.45rem] size-1.5 shrink-0 rounded-full bg-[var(--v-hilo)]" />
+                  {a}
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       </div>
     </div>
   )

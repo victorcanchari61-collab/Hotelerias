@@ -124,7 +124,7 @@ módulos** es propio de una cadena hotelera. Un permiso es `submodulo:accion`
 
 ### Reglas
 
-1. **El catálogo vive en código** ([`permiso/catalogo.go`](internal/permiso/catalogo.go)): 71 submódulos en 15 módulos (recepción, reservas, habitaciones, CRM, restaurantes, servicios exclusivos, productos, inventario, compras, facturación, finanzas, RR. HH., integraciones, dashboard y configuración), y cada uno declara **solo** las acciones que le tienen sentido (la auditoría no se crea, el kardex no se anula). El front dibuja su matriz con `GET /api/permiso/catalogo`.
+1. **El catálogo vive en código** ([`permiso/catalogo.go`](internal/permiso/catalogo.go)): 78 submódulos en 16 módulos (recepción, reservas, habitaciones, CRM, restaurantes, servicios exclusivos, productos, inventario, compras, facturación, finanzas, RR. HH., sitio web, integraciones, dashboard y configuración), y cada uno declara **solo** las acciones que le tienen sentido (la auditoría no se crea, el kardex no se anula). El front dibuja su matriz con `GET /api/permiso/catalogo`.
 2. **Un usuario hereda los permisos de sus roles.** Con varios roles, sus permisos son la **unión**: tener más roles nunca quita nada.
 3. **Los roles con `acceso_total`** (Administrador) pueden todo y no se configuran. Es un dato del rol, no su nombre.
 4. **Sobre eso, excepciones individuales que solo suman** (no existe la que quita algo):
@@ -217,6 +217,8 @@ La respuesta 403 incluye qué faltaba, para que el frontend abra el modal de ped
 | GET · POST | `/api/tipo-cambio` | `finanzas.tipocambio` ver · crear | Historial y alta/corrección del día. Las tasas van como **texto** (`"3.752"`) |
 | POST | `/api/reserva/:id/cancelar` | `reservas.reservas:anular` | Cancelar (sin la restricción de fechas) |
 
+**Sitio web (público, sin sesión)**: `GET /api/portal/portada` (banners activos y vigentes), `/experiencias`, `/entradas` · `/entradas/:slug` (solo publicadas), `/paginas/:clave`, `/galeria/:entidad/:id`, y `POST /api/portal/contacto/mensaje` (honeypot + 5 por hora por dirección). Los archivos se sirven en `/uploads/sitio/<32 hex>.<ext>` con `nosniff` y CSP `sandbox`.
+
 **Configuración (personal)**:
 
 | Método | Ruta | Permiso |
@@ -230,6 +232,13 @@ La respuesta 403 incluye qué faltaba, para que el frontend abra el modal de ped
 | POST | `/api/estancia/:id/check-out` | `recepcion.estancias:confirmar` (la habitación queda sucia, la reserva completada) |
 | GET | `/api/ficha-registro/:id` | `recepcion.fichas:ver` (dato personal; la bitácora lo guarda enmascarado) |
 | GET · POST · PUT · PATCH | `/api/habitacion` · `/opciones` · `/lote` · `/:id` · `/:id/estado` | `habitaciones.habitaciones` ver · crear · editar (acotado por hotel; no se quita una habitación que una reserva necesita) |
+| GET · POST · PUT · DELETE | `/api/sitio/banner` · `/:id` | `sitio.portada` (carrusel de la portada: foto o video, botón, fechas, orden) |
+| GET · POST · PUT · DELETE | `/api/sitio/medio` · `/:id` | `sitio.medios` (biblioteca de fotos y videos; subida `multipart` con el campo `archivo`; no se borra uno en uso) |
+| GET · PUT | `/api/sitio/galerias-destinos` · `/galeria/:entidad/:id` | `sitio.galerias` (fotos de cada hotel y tipo de habitación, en orden, hasta 30) |
+| GET · POST · PUT · DELETE | `/api/sitio/experiencia` · `/:id` | `sitio.experiencias` |
+| GET · POST · PUT · DELETE · POST | `/api/sitio/entrada` · `/:id` · `/:id/publicar` · `/:id/despublicar` | `sitio.blog` ver · crear · editar · eliminar · confirmar (publicar) |
+| GET · PUT | `/api/sitio/pagina/:clave` | `sitio.paginas` (`nosotros` y `contacto`) |
+| GET · PATCH · DELETE | `/api/sitio/mensaje` · `/:id/estado` · `/:id` | `sitio.mensajes` (lo que llega por el formulario de contacto) |
 | GET · PUT | `/api/parametro` | `config.parametros` ver · editar (valores como texto; guardar es todo o nada) |
 | GET · POST · PUT | `/api/sede` · `/:id` | `config.sedes` (se desactivan, no se borran) |
 | GET | `/api/permiso/usuario/:id` | `config.accesos:ver` (excepciones de una persona) |

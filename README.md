@@ -52,7 +52,7 @@ Construir una plataforma única que permita a **Hotel Velothr**:
 | **Configuración** | Empresa y sedes, usuarios, roles, accesos, auditoría y parámetros. |
 
 > Esta es la lista de módulos **del sistema** (el menú del frontend y el catálogo de permisos del backend,
-> que una prueba mantiene sincronizados): 14 módulos y 59 submódulos. Es una **primera propuesta** pensada para
+> que una prueba mantiene sincronizados): 16 módulos y 78 submódulos. Es una **primera propuesta** pensada para
 > una cadena hotelera con alojamiento, restaurantes, servicios exclusivos y productos; agregar, quitar o
 > renombrar uno es editar dos archivos (ver `docs/CAMBIOS.md`). Una pantalla sin construir aparece como "pendiente".
 

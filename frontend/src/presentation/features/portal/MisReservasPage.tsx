@@ -115,20 +115,19 @@ export function MisReservasPage() {
 
       <div className="mt-8 space-y-6">
         {reservas.datos.map((r) => {
-          const activa = r.estado === 'confirmada'
           return (
             <Papel
               key={r.id}
               as="article"
-              className={cn('flex overflow-hidden', !activa && 'opacity-80', r.codigo === nueva && 'ring-2 ring-[var(--v-sello-claro)]')}
+              className={cn('flex overflow-hidden', r.codigo === nueva && 'ring-2 ring-[var(--v-sello-claro)]')}
             >
               <div
                 className={cn(
-                  'flex w-28 shrink-0 flex-col items-center justify-center gap-1 border-r-2 border-dashed border-[var(--color-line-strong)] p-3 text-center sm:w-36',
+                  'flex w-28 shrink-0 flex-col items-center justify-center gap-1 border-r-2 border-dashed border-[var(--color-line-strong)] p-3 text-center sm:w-40',
                 )}
               >
                 <span className="v-etq text-xs text-[var(--color-ink-muted)]">{ESTADO[r.estado]}</span>
-                <span className="v-etq v-num text-2xl">{formatMonto(r.totalCent, r.moneda)}</span>
+                <span className="v-etq v-num text-xl break-words sm:text-2xl">{formatMonto(r.totalCent, r.moneda)}</span>
                 {r.moneda !== 'PEN' && <span className="text-xs text-[var(--color-ink-muted)]">≈ {formatSoles(r.totalPenCent)}</span>}
               </div>
 

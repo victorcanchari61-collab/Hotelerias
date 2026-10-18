@@ -18,6 +18,7 @@ import {
   bannerDe,
   entradaDe,
   experienciaDe,
+  medioDe,
   mensajeDe,
   paginaDe,
 } from '@/test/fakesSitio'
@@ -356,6 +357,40 @@ describe('la web pública con el contenido del panel', () => {
 
     expect(await screen.findByRole('heading', { name: 'Nuestra casa' })).toBeTruthy()
     expect(screen.getByText('Somos cuatro hoteles del Perú.')).toBeTruthy()
+  })
+
+  it('la página del hotel muestra su galería y lleva a cada habitación', async () => {
+    montar({
+      ruta: '/hoteles/1?entrada=2026-11-10&salida=2026-11-12&huespedes=2',
+      preparar: ({ publico }) => {
+        publico.galerias['sede:1'] = [medioDe({ id: 1, descripcion: 'Fachada de día' }), medioDe({ id: 2, descripcion: 'Patio interior' })]
+      },
+    })
+
+    expect((await screen.findAllByRole('img', { name: 'Fachada de día' })).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Ver la foto 2 de 2' })).toBeTruthy()
+    const enlace = await screen.findAllByRole('link', { name: 'Habitación Deluxe' })
+    expect(enlace[0].getAttribute('href')).toContain('/hoteles/1/habitaciones/10')
+  })
+
+  it('el detalle de la habitación muestra sus fotos, su precio y reserva', async () => {
+    montar({
+      ruta: '/hoteles/1/habitaciones/10?entrada=2026-11-10&salida=2026-11-12&huespedes=2',
+      preparar: ({ publico }) => {
+        publico.galerias['tipo_habitacion:10'] = [medioDe({ id: 3, descripcion: 'Cama king con vista' })]
+      },
+    })
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Habitación Deluxe' })).toBeTruthy()
+    expect(await screen.findByRole('img', { name: 'Cama king con vista' })).toBeTruthy()
+    expect((await screen.findAllByText(/760\.00/)).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Reservar' })).toBeTruthy()
+  })
+
+  it('una habitación que no existe lo dice', async () => {
+    montar({ ruta: '/hoteles/1/habitaciones/999' })
+
+    expect(await screen.findByText('No encontramos esa habitación.')).toBeTruthy()
   })
 
   describe('contacto', () => {

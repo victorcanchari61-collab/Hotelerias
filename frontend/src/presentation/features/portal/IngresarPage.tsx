@@ -2,9 +2,10 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { describeFailure } from '@/core/errors/failures'
-import { Alert, Button, Card, Input } from '@/shared/ui'
+import { Alert, Button, Input } from '@/shared/ui'
 import { useClienteAuth } from '../../providers/ClienteAuthProvider'
 import { PATHS } from '../../routes/paths'
+import { Papel } from './components/mundo'
 
 /**
  * Iniciar sesión como huésped. Cuando entra bien no navega: la ruta (política
@@ -38,8 +39,8 @@ export function IngresarPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-12">
-      <Card>
-        <h1 className="text-2xl font-bold tracking-tight">Ingresar</h1>
+      <Papel className="p-7 sm:p-9">
+        <h1 className="v-etq text-4xl">Ingresar</h1>
         <p className="mt-1 text-sm text-ink-muted">
           {veniaAReservar
             ? 'Inicia sesión para confirmar tu reserva. Tus datos de la reserva se conservan.'
@@ -85,7 +86,7 @@ export function IngresarPage() {
             Créala gratis
           </Link>
         </p>
-      </Card>
+      </Papel>
     </div>
   )
 }

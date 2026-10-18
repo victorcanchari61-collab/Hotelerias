@@ -115,7 +115,7 @@
   --color-ink: var(--v-tinta);
   --color-ink-muted: var(--v-tinta-suave);
   --color-muted: var(--v-tinta-suave);
-  --color-ink-soft: #7d6d5e;
+  --color-ink-soft: #6b5b4d;
   --color-line: #d6c9ae;
   --color-line-strong: #bba98a;
   --color-danger: #a8321f;
@@ -184,10 +184,17 @@
     radial-gradient(circle 11px at 100% 0, transparent 97%, #000) top right / 51% 51% no-repeat,
     radial-gradient(circle 11px at 0 100%, transparent 97%, #000) bottom left / 51% 51% no-repeat,
     radial-gradient(circle 11px at 100% 100%, transparent 97%, #000) bottom right / 51% 51% no-repeat;
+  transition: transform 420ms var(--v-ease);
+}
+/* La caja de la etiqueta lleva la sombra: la máscara de las esquinas la recortaría si fuera del mismo elemento. */
+.v-etiqueta-caja {
+  display: block;
   filter: drop-shadow(0 12px 14px rgb(0 0 0 / 0.55)) drop-shadow(0 2px 2px rgb(0 0 0 / 0.4));
-  transition:
-    transform 420ms var(--v-ease),
-    filter 420ms var(--v-ease);
+  transition: filter 420ms var(--v-ease);
+}
+.v-etiqueta-caja:hover,
+.v-etiqueta-caja:focus-within {
+  filter: drop-shadow(0 22px 20px rgb(0 0 0 / 0.5)) drop-shadow(0 3px 3px rgb(0 0 0 / 0.35));
 }
 /* El marco impreso: una línea fina a 10px del borde, como en la litografía. */
 .v-etiqueta::before {
@@ -222,12 +229,16 @@
 a.v-etiqueta:hover,
 a.v-etiqueta:focus-visible {
   transform: translateY(-8px) rotate(calc(var(--giro) * 0.4));
-  filter: drop-shadow(0 22px 20px rgb(0 0 0 / 0.5)) drop-shadow(0 3px 3px rgb(0 0 0 / 0.35));
+}
+/* El foco va por DENTRO: la máscara de las esquinas recorta todo lo que sale del borde. */
+a.v-etiqueta:focus-visible {
+  outline: 2px solid var(--tinta-texto);
+  outline-offset: -6px;
 }
 
 /* Etiqueta fantasma: lo agotado se dibuja, no se apaga. */
 .v-fantasma {
-  color: var(--color-ink-muted);
+  color: var(--color-ink);
   border: 2px dashed color-mix(in oklab, currentColor 55%, transparent);
   border-radius: 3px;
   background: transparent;
@@ -287,7 +298,7 @@ a.v-etiqueta:focus-visible {
   }
 }
 .v-pegar {
-  animation: v-pegar 760ms var(--v-ease) both;
+  animation: v-pegar 760ms var(--v-ease) backwards;
   animation-delay: calc(var(--i, 0) * 140ms + 120ms);
 }
 
@@ -321,7 +332,7 @@ a.v-etiqueta:focus-visible {
   }
 }
 .v-aparecer {
-  animation: v-aparecer 420ms var(--v-ease) both;
+  animation: v-aparecer 420ms var(--v-ease) backwards;
   animation-delay: calc(var(--i, 0) * 70ms);
 }
 
@@ -332,9 +343,14 @@ a.v-etiqueta:focus-visible {
   }
   /* El sello conserva su aparición (confirma una acción), sin el golpe. */
   .v-sellar {
-    animation: v-aparecer 200ms ease both;
+    animation: v-aparecer 200ms ease backwards;
     animation-delay: 0ms;
-    transform: rotate(-7deg);
+  }
+  /* Con poco movimiento, nada se desliza ni se agranda: los cambios son instantáneos. */
+  .velothr *,
+  .velothr *::before,
+  .velothr *::after {
+    transition-duration: 0.01ms !important;
   }
   .v-etiqueta,
   a.v-etiqueta:hover,

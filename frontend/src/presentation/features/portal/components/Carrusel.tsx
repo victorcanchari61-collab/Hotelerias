@@ -35,6 +35,7 @@ export function Carrusel({ banners }: { banners: readonly Banner[] }) {
   const [encima, setEncima] = useState(false)
   const [conFoco, setConFoco] = useState(false)
   const n = banners.length
+  const conFotos = banners.some((b) => b.medio)
   const indice = Math.min(actual, Math.max(n - 1, 0))
   const rota = n > 1 && !quieto && !pausadoPorUsuario && !encima && !conFoco
 
@@ -64,12 +65,12 @@ export function Carrusel({ banners }: { banners: readonly Banner[] }) {
       className="relative overflow-hidden rounded-[4px] border-2 border-dashed border-[var(--v-hilo-suave)] bg-[var(--v-cuero)]"
       onMouseEnter={() => setEncima(true)}
       onMouseLeave={() => setEncima(false)}
-      onFocus={() => setConFoco(true)}
+      onFocus={(e) => setConFoco(e.target.matches(':focus-visible'))}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget)) setConFoco(false)
       }}
     >
-      <div className="relative h-[26rem] sm:h-[30rem]" aria-live={rota ? 'off' : 'polite'}>
+      <div className={cn('relative', conFotos ? 'h-[20rem]' : 'h-[19rem] sm:h-[15rem]')} aria-live={rota ? 'off' : 'polite'}>
         {banners.map((b, i) => {
           const visible = i === indice
           return (
@@ -79,9 +80,14 @@ export function Carrusel({ banners }: { banners: readonly Banner[] }) {
               aria-roledescription="diapositiva"
               aria-label={`${i + 1} de ${n}`}
               aria-hidden={!visible}
-              className={cn('absolute inset-0 transition-opacity duration-700 motion-reduce:transition-none', visible ? 'opacity-100' : 'pointer-events-none opacity-0')}
+              className={cn(
+                'absolute inset-0 transition-opacity duration-700 motion-reduce:transition-none',
+                visible ? 'opacity-100' : 'pointer-events-none opacity-0',
+                // Sin foto ni video, un resplandor de latón: el banner se ve hecho a propósito.
+                !b.medio && 'bg-[radial-gradient(ellipse_at_28%_18%,rgb(185_143_87/0.34),transparent_62%)]',
+              )}
             >
-              {b.medio?.tipo === 'imagen' && <img src={b.medio.url} alt={b.medio.descripcion} className="size-full object-cover" loading={i === 0 ? 'eager' : 'lazy'} />}
+              {b.medio?.tipo === 'imagen' && <img src={b.medio.url} alt={b.medio.descripcion || b.titulo} className="size-full object-cover" loading={i === 0 ? 'eager' : 'lazy'} />}
               {b.medio?.tipo === 'video' && (
                 <video
                   ref={(el) => {
@@ -91,16 +97,17 @@ export function Carrusel({ banners }: { banners: readonly Banner[] }) {
                   muted
                   loop
                   playsInline
+                  controls={quieto}
                   preload={i === 0 ? 'auto' : 'metadata'}
-                  aria-label={b.medio.descripcion || undefined}
+                  aria-label={b.medio.descripcion || b.titulo}
                   className="size-full object-cover"
                 />
               )}
               {/* Una pizarra de cuero detrás de la etiqueta: el texto nunca depende de la foto. */}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#120b08]/85 via-[#120b08]/30 to-transparent p-4 pt-24 sm:p-8">
-                <Papel className="max-w-md p-5 sm:p-6">
-                  <h2 className="v-etq text-[clamp(1.8rem,4.5vw,2.8rem)] leading-[0.92]">{b.titulo}</h2>
-                  {b.subtitulo && <p className="v-nota mt-2 text-lg leading-snug text-[var(--color-ink-muted)]">{b.subtitulo}</p>}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#120b08]/85 via-[#120b08]/30 to-transparent p-4 pt-16 sm:p-6">
+                <Papel className="max-w-md p-4 sm:p-5">
+                  <p className="v-etq line-clamp-3 text-[clamp(1.6rem,4vw,2.4rem)] leading-[0.92]">{b.titulo}</p>
+                  {b.subtitulo && <p className="v-nota mt-2 line-clamp-2 text-lg leading-snug text-[var(--color-ink-muted)]">{b.subtitulo}</p>}
                   {b.enlaceUrl && b.enlaceTexto && (
                     <EnlaceSitio
                       url={b.enlaceUrl}
@@ -119,7 +126,7 @@ export function Carrusel({ banners }: { banners: readonly Banner[] }) {
 
       {n > 1 && (
         <div className="absolute top-3 right-3 flex items-center gap-2 sm:top-auto sm:bottom-6 sm:right-6">
-          <div role="group" aria-label="Controles del carrusel" className="flex items-center gap-1 rounded-[3px] bg-[var(--v-cuero)]/85 p-1 backdrop-blur-sm">
+          <div role="group" aria-label="Controles del carrusel" className="flex items-center gap-1 rounded-[3px] bg-[var(--v-cuero)] p-1">
             <button type="button" onClick={() => ir(indice - 1)} className={BOTON} aria-label="Diapositiva anterior">
               <ChevronLeft size={18} aria-hidden="true" />
             </button>

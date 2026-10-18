@@ -1,5 +1,6 @@
-import { Alert } from '@/shared/ui'
-import { cn } from '@/shared/ui'
+import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+import { Alert, cn } from '@/shared/ui'
 import type { Experiencia } from '@/domain/entities/Sitio'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
@@ -10,6 +11,13 @@ import { Papel } from './components/mundo'
 export function ExperienciasPage() {
   const { useCases } = useDependencies()
   const experiencias = useCarga<Experiencia[]>(() => useCases.experienciasPublicas.execute(), [useCases], [])
+
+  // Un enlace como /experiencias#spa llega antes que los datos: se desplaza cuando ya están.
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (!hash || experiencias.datos.length === 0) return
+    document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView({ block: 'start' })
+  }, [hash, experiencias.datos])
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
@@ -39,7 +47,7 @@ export function ExperienciasPage() {
                   <ul className="mt-1 space-y-1.5 border-t-2 border-dashed border-[var(--color-line)] pt-4 text-sm">
                     {e.ejemplos.map((x) => (
                       <li key={x} className="flex gap-2">
-                        <span aria-hidden="true" className="mt-[0.45rem] size-1.5 shrink-0 rounded-full bg-[var(--v-sello)]" />
+                        <span aria-hidden="true" className="mt-[0.45rem] size-1.5 shrink-0 rounded-full bg-[var(--accent-ink)]" />
                         {x}
                       </li>
                     ))}
@@ -48,7 +56,7 @@ export function ExperienciasPage() {
               </div>
               {e.medio && (
                 <div className="min-h-64 md:min-h-full">
-                  <FotoSitio medio={e.medio} />
+                  <FotoSitio medio={e.medio} alternativo={e.titulo} />
                 </div>
               )}
             </Papel>

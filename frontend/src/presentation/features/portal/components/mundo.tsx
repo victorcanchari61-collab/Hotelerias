@@ -1,6 +1,6 @@
 import type { CSSProperties, ElementType, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Star } from 'lucide-react'
+import { ArrowRight, Star } from 'lucide-react'
 import type { Sede } from '@/domain/entities/Portal'
 import { cn } from '@/shared/ui'
 import { Emblema } from './Emblema'
@@ -68,9 +68,10 @@ export function EtiquetaHotel({
   className?: string
 }) {
   return (
+    <span className={cn('v-etiqueta-caja', className)}>
     <Link
       to={to}
-      className={cn('v-etiqueta v-pegar', claseTinta(sede.imagen), GIROS[indice % GIROS.length], className)}
+      className={cn('v-etiqueta v-pegar', claseTinta(sede.imagen), GIROS[indice % GIROS.length])}
       style={conIndice(indice)}
     >
       <span className="flex min-h-[21rem] flex-col gap-3 p-6">
@@ -91,9 +92,12 @@ export function EtiquetaHotel({
 
         <span className="line-clamp-3 text-sm leading-snug opacity-90">{sede.descripcion}</span>
 
-        <span className="v-etq mt-auto pt-2 text-sm">Ver el hotel →</span>
+        <span className="v-etq mt-auto flex items-center gap-1.5 pt-2 text-sm">
+          Ver el hotel <ArrowRight size={14} aria-hidden="true" />
+        </span>
       </span>
     </Link>
+    </span>
   )
 }
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { BedDouble, Maximize2, Star, Users } from 'lucide-react'
+import { ArrowRight, BedDouble, Maximize2, Star, Users } from 'lucide-react'
 import { sumarDias } from '@/domain/fechas'
 import type { DetalleSede } from '@/domain/entities/Portal'
 import type { MedioRef } from '@/domain/entities/Sitio'
@@ -117,6 +117,7 @@ export function HotelPage() {
     <div className="mx-auto max-w-6xl space-y-10 px-4 py-8">
       {/* --- Encabezado: la etiqueta del hotel, con su tinta, y sus fotos --- */}
       <section className={cn('grid gap-6', fotos.datos.length > 0 && 'lg:grid-cols-[minmax(0,4fr)_minmax(0,7fr)] lg:items-start')}>
+        <div className="v-etiqueta-caja">
         <div className={cn('v-etiqueta', sede ? claseTinta(sede.imagen) : 'v-etiqueta--lima')}>
           <div className="flex flex-col gap-4 p-7">
             <div className="flex items-start justify-between gap-3">
@@ -138,6 +139,7 @@ export function HotelPage() {
             {sede && <p className="v-etq text-sm">{sede.direccion}</p>}
           </div>
         </div>
+        </div>
         <GaleriaFotos fotos={fotos.datos} />
       </section>
 
@@ -151,7 +153,7 @@ export function HotelPage() {
           )}
           <ul className="flex flex-wrap content-start gap-2">
             {sede.servicios.map((s) => (
-              <li key={s} className="v-etq rounded-[3px] border border-[var(--v-hilo-suave)] px-2.5 py-1 text-sm text-[var(--v-hilo)]">
+              <li key={s} className="v-etq py-1 pr-3 text-sm text-[var(--v-hilo)]">
                 {s}
               </li>
             ))}
@@ -163,7 +165,7 @@ export function HotelPage() {
       <Papel className="p-5 sm:p-6">
         <form onSubmit={buscar} aria-label="Cambiar las fechas" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_.6fr_1fr_auto] lg:items-end">
           <Input label="Entrada" type="date" min={hoy} value={fEntrada} onChange={(e) => setFEntrada(e.target.value)} />
-          <Input label="Salida" type="date" min={fEntrada} value={fSalida} onChange={(e) => setFSalida(e.target.value)} />
+          <Input label="Salida" type="date" min={sumarDias(fEntrada, 1)} value={fSalida} onChange={(e) => setFSalida(e.target.value)} />
           <Input
             label="Huéspedes"
             type="number"
@@ -214,14 +216,16 @@ export function HotelPage() {
         <ul className="space-y-5">
           {opciones.datos.map(({ habitacion: h, cotizacion: c }) => {
             const agotada = h.disponibles < 1
+            const Contenedor = agotada ? 'div' : Papel
             return (
               <li key={h.id}>
                 {/* Una habitación agotada es una etiqueta fantasma: se ve, pero no se pega. */}
-                <Papel className={cn('overflow-hidden', agotada && 'v-fantasma !bg-transparent !shadow-none')}>
+                {/* Lo agotado es una etiqueta fantasma sobre el cuero: sin papel, con su propia tinta clara. */}
+                <Contenedor className={cn('overflow-hidden', agotada && 'v-fantasma')}>
                   <div className="grid sm:grid-cols-[240px_1fr_260px]">
                     <FotoHabitacion tipoId={h.id} className="h-44 sm:h-auto" />
 
-                    <div className={cn('space-y-3 p-5', agotada && 'opacity-80')}>
+                    <div className="space-y-3 p-5">
                       <div className="flex flex-wrap items-center gap-3">
                         <h3 className="v-etq text-3xl leading-[0.95]">
                           <Link to={habitacionPath(sedeId, h.id, busqueda)} className="hover:underline">
@@ -231,7 +235,7 @@ export function HotelPage() {
                         {agotada ? (
                           <span className="v-etq rounded-[3px] border-2 border-dashed border-current px-2 py-0.5 text-sm">Agotada</span>
                         ) : h.disponibles <= 2 ? (
-                          <span className="v-etq rounded-[3px] bg-[var(--v-sello)] px-2 py-0.5 text-sm text-[#f6ecd6]">Quedan {h.disponibles}</span>
+                          <span className="v-etq rounded-[3px] bg-[var(--accent)] px-2 py-0.5 text-sm text-[var(--accent-on)]">Quedan {h.disponibles}</span>
                         ) : null}
                       </div>
                       <p className="text-sm text-[var(--color-ink-muted)]">{h.descripcion}</p>
@@ -247,8 +251,8 @@ export function HotelPage() {
                           </span>
                         ))}
                       </p>
-                      <Link to={habitacionPath(sedeId, h.id, busqueda)} className="v-etq inline-block text-sm text-[var(--accent-ink)] hover:underline">
-                        Ver la habitación →
+                      <Link to={habitacionPath(sedeId, h.id, busqueda)} className="v-etq inline-flex items-center gap-1.5 text-sm text-[var(--accent-ink)] hover:underline">
+                        Ver la habitación <ArrowRight size={14} aria-hidden="true" />
                       </Link>
                     </div>
 
@@ -272,7 +276,7 @@ export function HotelPage() {
                       </Button>
                     </div>
                   </div>
-                </Papel>
+                </Contenedor>
               </li>
             )
           })}

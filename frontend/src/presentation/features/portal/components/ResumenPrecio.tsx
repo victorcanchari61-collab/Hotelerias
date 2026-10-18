@@ -29,7 +29,7 @@ export function ResumenPrecio({ cotizacion: c }: { cotizacion: Cotizacion }) {
 
       <div className="flex justify-between gap-4 border-t border-line pt-2 text-base">
         <dt className="font-bold">Total</dt>
-        <dd className="font-bold">{m(c.totalCent)}</dd>
+        <dd className="v-num text-xl font-bold">{m(c.totalCent)}</dd>
       </div>
 
       {c.tipoCambioMicro !== null && (

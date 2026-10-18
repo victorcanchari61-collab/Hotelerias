@@ -3,13 +3,16 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CalendarDays, Crown, Users } from 'lucide-react'
 import { describeFailure } from '@/core/errors/failures'
 import type { Cotizacion } from '@/domain/entities/Portal'
-import { Alert, Button, Card, Input, buttonClasses } from '@/shared/ui'
+import { Alert, Button, Input, buttonClasses } from '@/shared/ui'
 import { useCarga } from '../../hooks/useCarga'
 import { useClienteAuth } from '../../providers/ClienteAuthProvider'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { useMoneda } from '../../providers/MonedaProvider'
 import { PATHS, hotelPath } from '../../routes/paths'
+import { PARAM } from '@/domain/entities/Parametro'
+import type { ParametrosPublicos } from '@/domain/entities/Parametro'
 import { ResumenPrecio } from './components/ResumenPrecio'
+import { Papel } from './components/mundo'
 import { pluralNoches, rangoFechas } from './format'
 
 /**
@@ -37,6 +40,10 @@ export function ReservarPage() {
   const [notas, setNotas] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // La política de cancelación sale del panel (Configuración → Parámetros); si no se lee, no se promete nada.
+  const politica = useCarga<ParametrosPublicos>(() => useCases.listarParametrosPublicos.execute(), [useCases], {})
+  const diasCancelacion = politica.datos[PARAM.cancelacionDias]
 
   const cotizacion = useCarga<Cotizacion | null>(
     () =>
@@ -97,7 +104,7 @@ export function ReservarPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
-      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Confirma tu reserva</h1>
+      <h1 className="v-etq text-[clamp(2.4rem,6vw,3.6rem)]">Confirma tu reserva</h1>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.3fr_1fr]">
         <div className="space-y-4">
@@ -105,11 +112,9 @@ export function ReservarPage() {
           {error && <Alert>{error}</Alert>}
 
           {c && (
-            <Card>
-              <p className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
-                {c.sedeNombre}
-              </p>
-              <h2 className="text-xl font-bold">{c.habitacion}</h2>
+            <Papel className="p-6">
+              <h2 className="v-etq text-3xl leading-[0.95]">{c.habitacion}</h2>
+              <p className="text-sm text-[var(--color-ink-muted)]">{c.sedeNombre}</p>
               <p className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-muted">
                 <span className="flex items-center gap-1.5">
                   <CalendarDays size={15} /> {rangoFechas(c.checkIn, c.checkOut)} · {pluralNoches(c.noches)}
@@ -124,10 +129,10 @@ export function ReservarPage() {
               >
                 Cambiar fechas o habitación
               </Link>
-            </Card>
+            </Papel>
           )}
 
-          <Card className="space-y-4">
+          <Papel className="space-y-4 p-6">
             <div className="flex items-end gap-2">
               <Input
                 label="Código promocional"
@@ -161,12 +166,15 @@ export function ReservarPage() {
                 placeholder="Hora de llegada, alergias, celebración…"
               />
             </label>
-          </Card>
+          </Papel>
         </div>
 
         <div>
-          <Card className="space-y-4 lg:sticky lg:top-24">
-            <h2 className="font-bold">Resumen</h2>
+          <Papel className="space-y-4 p-6 lg:sticky lg:top-24">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="v-etq text-2xl">Resumen</h2>
+              <span className="v-fantasma v-etq px-2 py-1 text-sm">Sin confirmar</span>
+            </div>
             {cotizacion.cargando && !c && <p className="text-sm text-ink-muted">Calculando…</p>}
             {c && (
               <>
@@ -189,12 +197,15 @@ export function ReservarPage() {
                   Confirmar reserva
                 </Button>
                 <p className="text-xs text-ink-muted">
-                  Reservas a nombre de {cliente?.nombre}. Puedes cancelar sin costo hasta el día
-                  anterior a tu llegada.
+                  Reservas a nombre de {cliente?.nombre}.
+                  {diasCancelacion !== undefined &&
+                    (Number(diasCancelacion) <= 0
+                      ? ' Puedes cancelar por la web hasta el mismo día de tu llegada.'
+                      : ` Puedes cancelar por la web hasta ${diasCancelacion} ${Number(diasCancelacion) === 1 ? 'día' : 'días'} antes de tu llegada.`)}
                 </p>
               </>
             )}
-          </Card>
+          </Papel>
         </div>
       </div>
     </div>
