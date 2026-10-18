@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -47,6 +48,8 @@ import (
 	"hotelerias/backend/internal/rol"
 	rolpg "hotelerias/backend/internal/rol/postgres"
 	"hotelerias/backend/internal/routes"
+	"hotelerias/backend/internal/sitio"
+	sitiopg "hotelerias/backend/internal/sitio/postgres"
 	"hotelerias/backend/internal/usuario"
 	usuariopg "hotelerias/backend/internal/usuario/postgres"
 	"hotelerias/backend/migrations"
@@ -162,8 +165,9 @@ func run() error {
 	monedaSvc := moneda.NewServicio(monedapg.NewStore(dbs.Postgres), hotel.Hoy, bitacora).ConParametros(parametroSvc)
 	reservaSvc := reserva.NewServicio(reservaRepo, hoteles, promoSvc, clienteSvc, monedaSvc, hotel.Hoy).ConParametros(parametroSvc)
 
+	empresaSvc := empresa.NewServicio(empresapg.NewStore(dbs.Postgres), bitacora)
 	portalHandler := portal.NewHandler(hotelSvc, promoSvc, clienteSvc, reservaSvc, monedaSvc, hotel.Hoy,
-		auth.ClienteOpcional(tokens)).ConParametros(parametroSvc)
+		auth.ClienteOpcional(tokens)).ConParametros(parametroSvc).ConMembresias(clienteSvc).ConContacto(empresaSvc)
 
 	// Los permisos del panel por recurso: quien los arma decide qué exige cada
 	// uno. Solo se arma el guard de las acciones que ese submódulo admite; las
@@ -189,7 +193,6 @@ func run() error {
 
 	// --- Configuración: empresa, sedes, roles, accesos y auditoría ---
 	adminSedes := hotel.NewAdmin(hoteles, hotel.Hoy, bitacora)
-	empresaSvc := empresa.NewServicio(empresapg.NewStore(dbs.Postgres), bitacora)
 	rolSvc := rol.NewServicio(rolpg.NewStore(dbs.Postgres), permiso.Permisos, rolesConCache, bitacora)
 	gestionUsuarios := usuario.NewGestion(cuentas, hasher, bitacora)
 
@@ -202,13 +205,21 @@ func run() error {
 	alcanceLimpieza := alcanceSedes{g: gestionPermisos, submodulo: "habitaciones.housekeeping"}
 	limpiezaSvc := limpieza.NewServicio(limpiezapg.NewStore(dbs.Postgres), hotel.Hoy, bitacora)
 
+	// --- Sitio web: contenido de la web pública, administrable desde el panel ---
+	carpetaSitio := filepath.Join(cfg.Server.UploadsDir, "sitio")
+	sitioSvc := sitio.NewServicio(sitiopg.NewStore(dbs.Postgres), sitio.Disco{Dir: carpetaSitio}, hotel.Hoy, bitacora)
+
 	// --- HTTP ---
 	router := httpx.NewRouter(cfg.AllowedOrigins)
+	// Los archivos subidos (Apache y Nginx reenvían /uploads al backend).
+	router.GET("/uploads/sitio/:archivo", sitio.Servir(carpetaSitio))
+	router.HEAD("/uploads/sitio/:archivo", sitio.Servir(carpetaSitio))
 	routes.Register(router, routes.Deps{
 		Authenticate: auth.Authenticate(tokens),
 		Public: []routes.Module{
 			authHandler.Publico(),
 			portalHandler.Publico(),
+			sitio.NewPublico(sitioSvc),
 		},
 		Modules: []routes.Module{
 			authHandler.Privado(),
@@ -225,6 +236,11 @@ func run() error {
 			moneda.NewHandler(monedaSvc, guardas("finanzas.tipocambio")),
 			estancia.NewHandler(estanciaSvc, guardas("recepcion.estancias"), guardas("recepcion.fichas"), alcanceRecepcion),
 			limpieza.NewHandler(limpiezaSvc, guardas("habitaciones.housekeeping"), alcanceLimpieza),
+			sitio.NewHandler(sitioSvc, sitio.Guardas{
+				Portada: guardas("sitio.portada"), Medios: guardas("sitio.medios"), Galerias: guardas("sitio.galerias"),
+				Experiencias: guardas("sitio.experiencias"), Blog: guardas("sitio.blog"),
+				Paginas: guardas("sitio.paginas"), Mensajes: guardas("sitio.mensajes"),
+			}),
 			habitacion.NewHandler(habitacionSvc, guardas("habitaciones.habitaciones"), alcanceHabitaciones),
 			reserva.NewAdminHandler(reservaSvc, guardas("reservas.reservas"), alcanceReservas, bitacora),
 		},

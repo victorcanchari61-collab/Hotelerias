@@ -253,6 +253,22 @@ var Permisos = nuevoCatalogo([]Submodulo{
 	sub("rrhh.turnos", catalogoSinBorrado),
 	sub("rrhh.planilla", []Accion{Ver, Crear, Editar, Anular, Exportar}),
 
+	// --- Sitio web: lo que el visitante ve en la web pública ---
+	// El carrusel de la portada. Un banner no tiene historial: se borra.
+	sub("sitio.portada", catalogo),
+	// Fotos y videos subidos. Uno que está en uso no se borra (el servicio lo impide y dice dónde).
+	sub("sitio.medios", catalogo),
+	// Qué fotos y videos tiene cada hotel y cada tipo de habitación, y en qué orden.
+	sub("sitio.galerias", []Accion{Ver, Editar}),
+	// Spa, restaurantes, eventos…
+	sub("sitio.experiencias", catalogo),
+	// Historias y noticias. "Confirmar" es publicar y despublicar: escribir y publicar son permisos distintos.
+	sub("sitio.blog", con(catalogo, Confirmar)),
+	// «Nosotros» y «Contacto»: páginas fijas con contenido editable.
+	sub("sitio.paginas", []Accion{Ver, Editar}),
+	// Lo que llega por el formulario de contacto. "Editar" es marcarlo leído o respondido.
+	sub("sitio.mensajes", []Accion{Ver, Editar, Eliminar}),
+
 	// --- Integraciones (conectividad con plataformas externas) ---
 	// "Confirmar" es sincronizar a mano disponibilidad y tarifas con las OTAs.
 	sub("integraciones.channel", []Accion{Ver, Editar, Confirmar}),

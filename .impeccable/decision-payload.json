@@ -1,0 +1,120 @@
+{
+  "title": "Elige el mundo visual de la web de Hotel Velothr",
+  "question": "La tirada asignó «El baúl del viajero»: cuatro hoteles como cuatro etiquetas pegadas en un mismo baúl. Quédate con ella, elige otra o vuelve a tirar.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "El baúl del viajero",
+      "kicker": "LA TIRADA",
+      "lineage": "etiquetas de hotel y de aduana pegadas en maletas de los años 50 y 60",
+      "thesis": "Cada hotel es una etiqueta litografiada y tú vas llenando el baúl: una sola casa, cuatro destinos.",
+      "palette": ["#1b120f", "#0f6e73", "#c4472a", "#243b86", "#e0a91f", "#eceae0"],
+      "materials": ["cuero curtido oscuro", "papel litografiado troquelado", "tinta de imprenta de cuatro colores"],
+      "viewport": "Un baúl de cuero oscuro a pantalla completa con cuatro etiquetas troqueladas, una por hotel, cada una con su tinta, su emblema y su nombre en capitales condensadas; el título y «Ver disponibilidad» van sobre una etiqueta de papel más grande en el centro.",
+      "risk": "Si las etiquetas se hacen demasiado decorativas, estorban al buscador y a los precios; hay que mantenerlas legibles antes que bonitas.",
+      "raised": [
+        {
+          "from": "challenger-orienteering",
+          "raise": "Una sola tinta reservada para lo activo: lo que estás reservando se dibuja con el único violeta de la página, por encima de todo lo demás."
+        },
+        {
+          "from": "challenger-sevenseg",
+          "raise": "La ausencia se dibuja con el mismo cuidado que la presencia: una habitación agotada es una etiqueta fantasma de borde punteado, no un botón gris."
+        }
+      ]
+    },
+    {
+      "id": "model-pick",
+      "label": "El manto de Paracas",
+      "kicker": "LA ELECCIÓN DE IMPECCABLE",
+      "lineage": "mantos bordados de la cultura Paracas (textil peruano)",
+      "thesis": "Una banda bordada con figuras recorre la página como un manto: lana teñida de índigo, rojo de grana y ocre sobre negro.",
+      "palette": ["#14101a", "#1d2a6b", "#b3262a", "#d9a441", "#f0e6d2"],
+      "materials": ["lana de camélido teñida", "bordado de figuras", "fondo negro profundo"],
+      "viewport": "Una franja de figuras bordadas, estilizadas y a gran escala, cruza el primer viewport sobre fondo casi negro; el titular en rojo grana y el buscador sobre una tela índigo.",
+      "risk": "El ornamento denso compite con los precios y los formularios, y usar una iconografía real exige respeto: se estilizaría sin copiar piezas concretas."
+    },
+    {
+      "id": "challenger-orienteering",
+      "label": "Plano de orientación",
+      "verdict": "competitive",
+      "lineage": "mapas de orientación (norma ISOM)",
+      "thesis": "Los cuatro hoteles son controles en un plano y tu reserva es el recorrido que los une.",
+      "palette": ["#ffffff", "#9aa63a", "#f2d64b", "#8a5a2b", "#6b2d8f"],
+      "materials": ["tintas ISOM", "curvas de nivel", "capa de recorrido"],
+      "viewport": "Un plano del Perú con curvas de nivel y cuatro círculos numerados de hotel; el recorrido violeta que une los que eliges va por encima.",
+      "case": "Aclara muy bien el producto (cuatro destinos y un recorrido), pero la gente de viaje de lujo no se reconoce en el lenguaje de la orientación deportiva.",
+      "risk": "Se siente más deportivo que hotelero.",
+      "kept": "La tinta única para lo activo."
+    },
+    {
+      "id": "challenger-cape",
+      "label": "Capa de seda con cordón",
+      "verdict": "competitive",
+      "lineage": "capa de seda negra con cordón dorado que se recoge",
+      "thesis": "Seda negra mate y un solo cordón dorado que une y transforma lo que hay.",
+      "palette": ["#0c0c0e", "#c9a23a", "#3a3a40", "#6b6b73"],
+      "materials": ["seda negra mate", "cordón dorado", "pespunte grafito"],
+      "viewport": "Un semicírculo de seda negra con un cordón dorado que baja hasta el buscador.",
+      "case": "Transmite lujo al instante, pero no explica por sí sola qué hace la cadena ni qué se puede reservar.",
+      "risk": "Lujo genérico: se parece a muchas webs de hoteles de gama alta.",
+      "kept": "El cordón único como hilo que guía de punta a punta."
+    },
+    {
+      "id": "challenger-broadside",
+      "label": "Pliego de imprenta popular",
+      "verdict": "declined",
+      "lineage": "pliegos de la imprenta de Posada",
+      "thesis": "Grabado de relieve y versos apretados en dos columnas.",
+      "palette": ["#14110f", "#ecdcbc", "#d93a2b"],
+      "materials": ["papel de periódico", "tinta de relieve"],
+      "case": "Pierde en ambas: ni el público de viaje se identifica ni aclara qué se ofrece.",
+      "kept": "El contraste de una sola tinta pesada contra el papel."
+    },
+    {
+      "id": "challenger-neon",
+      "label": "Neón doblado a mano",
+      "verdict": "declined",
+      "lineage": "letreros de neón de gas",
+      "thesis": "Una palabra de vidrio que se enciende en cuarto oscuro.",
+      "palette": ["#07090f", "#3d6bff", "#e5473a"],
+      "materials": ["tubo de vidrio", "gas cobalto"],
+      "case": "Pierde en ambas: es un lenguaje de bar, no de estadía.",
+      "kept": "Un único elemento luminoso por pantalla."
+    },
+    {
+      "id": "challenger-pixel",
+      "label": "Arcade de píxeles",
+      "verdict": "declined",
+      "lineage": "pantallas CRT de arcade",
+      "thesis": "Píxeles gordos y brillo de fósforo.",
+      "palette": ["#0a0a14", "#ff4fa3", "#35e0ff"],
+      "materials": ["fósforo", "líneas de barrido"],
+      "case": "Pierde en ambas: nada de esto dice hospitalidad.",
+      "kept": "La disciplina de una grilla entera sin nada fuera de medida."
+    },
+    {
+      "id": "challenger-sevenseg",
+      "label": "Reloj de siete segmentos",
+      "verdict": "declined",
+      "lineage": "relojes de mesa de noche y marcadores",
+      "thesis": "Una sola máscara de ocho celdas con los segmentos apagados también diseñados.",
+      "palette": ["#0b0b0c", "#ff3b30", "#ffb000"],
+      "materials": ["LED rojo", "fondo mate"],
+      "case": "Pierde en ambas: es un lenguaje de instrumento, no de viaje.",
+      "kept": "Dibujar la ausencia con el mismo cuidado que la presencia."
+    }
+  ],
+  "reroll": { "registers": ["safer", "bolder"] },
+  "buildPath": { "value": "code", "toggle": false },
+  "canon": true,
+  "canonCard": {
+    "label": "El estándar de la categoría",
+    "thesis": "Una web de hoteles impecable: fotografía a sangre, buscador claro y precios legibles.",
+    "palette": ["#ffffff", "#0f1d33", "#b8975a"],
+    "materials": ["fotografía de producto", "retícula limpia"],
+    "viewport": "Foto a pantalla completa del hotel con el buscador de fechas encima y cuatro hoteles debajo.",
+    "risk": "Se confunde con cualquier otra cadena: es así a propósito."
+  },
+  "steer": true
+}

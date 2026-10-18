@@ -13,6 +13,13 @@ export const PATHS = {
   portal: '/',
   ofertas: '/ofertas',
   hotel: '/hoteles/:id',
+  habitacion: '/hoteles/:id/habitaciones/:tipoId',
+  experiencias: '/experiencias',
+  historias: '/historias',
+  historia: '/historias/:slug',
+  membresias: '/membresias',
+  nosotros: '/nosotros',
+  contacto: '/contacto',
   ingresar: '/ingresar',
   registro: '/registro',
   reservar: '/reservar',
@@ -23,6 +30,27 @@ export const PATHS = {
   adminLogin: `${PANEL_BASE}/login`,
   perfil: `${PANEL_BASE}/perfil`,
 } as const
+
+/** La URL de un tipo de habitación de un hotel, con la búsqueda que traía si la hay. */
+export function habitacionPath(
+  sedeId: number,
+  tipoId: number,
+  query?: Record<string, string | number | undefined>,
+): string {
+  const base = `/hoteles/${sedeId}/habitaciones/${tipoId}`
+  if (!query) return base
+  const params = new URLSearchParams()
+  for (const [k, v] of Object.entries(query)) {
+    if (v !== undefined && v !== '') params.set(k, String(v))
+  }
+  const s = params.toString()
+  return s ? `${base}?${s}` : base
+}
+
+/** La URL de una historia del blog. */
+export function historiaPath(slug: string): string {
+  return `/historias/${encodeURIComponent(slug)}`
+}
 
 /** La URL de la página de un hotel, con su búsqueda si la hay. */
 export function hotelPath(id: number, query?: Record<string, string | number | undefined>): string {

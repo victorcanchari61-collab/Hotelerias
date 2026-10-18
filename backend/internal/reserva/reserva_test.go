@@ -32,6 +32,7 @@ type repoFalso struct {
 	cancelado []int64
 	// duplicados: cuántas veces responder ErrCodigoDuplicado antes de aceptar.
 	duplicados int
+	delCliente []Reserva
 }
 
 func (r *repoFalso) Crear(_ context.Context, n Nueva) (Reserva, error) {
@@ -56,7 +57,7 @@ func (r *repoFalso) PorID(_ context.Context, id int64) (Reserva, error) {
 	}
 	return Reserva{}, ErrNoEncontrada
 }
-func (r *repoFalso) DeCliente(context.Context, int64) ([]Reserva, error)        { return nil, nil }
+func (r *repoFalso) DeCliente(context.Context, int64) ([]Reserva, error)        { return r.delCliente, nil }
 func (r *repoFalso) Listar(context.Context, Estado, []int64) ([]Reserva, error) { return nil, nil }
 func (r *repoFalso) Cancelar(_ context.Context, id int64) (bool, error) {
 	r.cancelado = append(r.cancelado, id)
@@ -533,5 +534,34 @@ func TestMaximoDeNochesSaleDeLosParametros(t *testing.T) {
 	var v httpx.Validacion
 	if !errors.As(err, &v) {
 		t.Fatalf("6 noches con tope 5: err = %v", err)
+	}
+}
+
+func TestElServidorDiceCuandoUnaReservaEsCancelable(t *testing.T) {
+	ctx := context.Background()
+	// Hoy es 2026-11-01.
+	casos := []struct {
+		dias    int
+		entrada string
+		estado  Estado
+		quiero  bool
+	}{
+		{1, "2026-11-02", Confirmada, true},
+		{1, "2026-11-01", Confirmada, false}, // el día de la entrada ya no
+		{0, "2026-11-01", Confirmada, true},  // con plazo 0, hasta el mismo día
+		{3, "2026-11-03", Confirmada, false},
+		{3, "2026-11-04", Confirmada, true},
+		{1, "2026-12-01", Cancelada, false}, // una cancelada ya no se cancela
+		{1, "2026-12-01", Completada, false},
+	}
+	for _, c := range casos {
+		s, repo, _ := armar(t)
+		s.ConParametros(parametrosFalsos{"reservas.cancelacion_dias": c.dias})
+		repo.delCliente = []Reserva{{ID: 1, CheckIn: f(c.entrada), Estado: c.estado}}
+
+		rs, err := s.DeCliente(ctx, 7)
+		if err != nil || len(rs) != 1 || rs[0].Cancelable != c.quiero {
+			t.Errorf("plazo %d, entrada %s, %s: cancelable = %v, err = %v; quiero %v", c.dias, c.entrada, c.estado, rs[0].Cancelable, err, c.quiero)
+		}
 	}
 }

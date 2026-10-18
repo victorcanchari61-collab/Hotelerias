@@ -2,6 +2,14 @@ import type { LucideIcon } from 'lucide-react'
 import { PANEL_BASE } from '../routes/paths'
 import {
   Armchair,
+  Globe,
+  GalleryHorizontal,
+  Images,
+  LayoutPanelTop,
+  Compass,
+  Newspaper,
+  Mail,
+
   Award,
   CircleDollarSign,
   Luggage,
@@ -292,6 +300,21 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'rrhh.asistencia', label: 'Asistencia', icon: Clock },
       { id: 'rrhh.turnos', label: 'Turnos y horarios', icon: CalendarClock },
       { id: 'rrhh.planilla', label: 'Planilla', icon: Banknote },
+    ],
+  },
+  {
+    id: 'sitio',
+    label: 'Sitio web',
+    sys: 'brand',
+    icon: Globe,
+    items: [
+      { id: 'sitio.portada', label: 'Portada y carrusel', icon: GalleryHorizontal },
+      { id: 'sitio.medios', label: 'Fotos y videos', icon: Images },
+      { id: 'sitio.galerias', label: 'Galerías de hoteles', icon: LayoutPanelTop },
+      { id: 'sitio.experiencias', label: 'Experiencias', icon: Compass },
+      { id: 'sitio.blog', label: 'Blog e historias', icon: Newspaper },
+      { id: 'sitio.paginas', label: 'Nosotros y contacto', icon: FileText },
+      { id: 'sitio.mensajes', label: 'Mensajes recibidos', icon: Mail },
     ],
   },
   {

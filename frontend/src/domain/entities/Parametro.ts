@@ -37,4 +37,5 @@ export type ParametrosPublicos = Record<string, string>
 export const PARAM = {
   checkinHora: 'hotel.checkin_hora',
   checkoutHora: 'hotel.checkout_hora',
+  cancelacionDias: 'reservas.cancelacion_dias',
 } as const

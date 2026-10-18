@@ -1,0 +1,369 @@
+/* =========================================================
+   portal.css — «El baúl del viajero»: el mundo visual de la web pública.
+
+   Vive APARTE de themes.css a propósito: el panel del personal sigue con su
+   único color; esto solo rige dentro de `.velothr` (la raíz de PortalLayout).
+
+   Dos superficies, dos juegos de tokens:
+     .velothr   el cuero oscuro del baúl (el suelo de la página)
+     .v-papel   el papel de una etiqueta (donde viven formularios y texto largo)
+   Los componentes del kit (Input, Button, Card…) leen --color-* y --accent*,
+   así que al estar dentro de un papel se ven claros y sobre el cuero, oscuros,
+   sin tocarlos.
+
+   Tintas (una por hotel) y UNA tinta reservada para lo activo: el violeta del
+   sello de aduana. Nada más usa ese violeta.
+   ========================================================= */
+
+.velothr {
+  /* --- suelo: cuero curtido --- */
+  --v-cuero: #1a110d;
+  --v-cuero-2: #241812;
+  --v-cuero-3: #33231a;
+  --v-hilo: #c79a62; /* el hilo del pespunte y de los herrajes */
+  --v-hilo-suave: #7d5f3d;
+
+  /* --- papel de etiqueta --- */
+  --v-papel: #efe8d8;
+  --v-papel-2: #fbf7ec;
+  --v-tinta: #1d1612;
+  --v-tinta-suave: #5f5043;
+
+  /* --- las cuatro tintas de hotel: fondo, texto y trazo de cada etiqueta --- */
+  --v-lima: #0f6e73;
+  --v-lima-on: #e6f3f1;
+  --v-lima-trazo: #9ad0cb;
+  --v-cusco: #b23f25;
+  --v-cusco-on: #fbeee6;
+  --v-cusco-trazo: #f0b49e;
+  --v-arequipa: #ecebe3;
+  --v-arequipa-on: #23282c;
+  --v-arequipa-trazo: #2c5d8a;
+  --v-paracas: #243b86;
+  --v-paracas-on: #f6e7b8;
+  --v-paracas-trazo: #e9b73a;
+
+  /* --- la tinta reservada para lo activo: sello de aduana --- */
+  --v-sello: #6d3fd0;
+  --v-sello-claro: #b79cff;
+
+  --v-fuente-etiqueta: Bahnschrift, 'DIN Condensed', 'Avenir Next Condensed', 'Roboto Condensed', 'Arial Narrow',
+    'Liberation Sans Narrow', 'Noto Sans Condensed', system-ui, sans-serif;
+  --v-fuente-nota: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --v-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* El kit lee estos tokens: sobre el cuero son oscuros y claros los textos. */
+  --color-canvas: var(--v-cuero);
+  --color-surface: var(--v-cuero-2);
+  --color-surface-alt: var(--v-cuero);
+  --color-ink: #f2eadb;
+  --color-ink-muted: #cdbfa8;
+  --color-muted: #cdbfa8;
+  --color-ink-soft: #ab9c85;
+  --color-line: #3d2c21;
+  --color-line-strong: #58432f;
+  --color-danger: #ff9b88;
+  --color-danger-soft: #3a1b15;
+  --accent: var(--v-hilo);
+  --accent-hover: #dcb47c;
+  --accent-ink: #e3c08a;
+  --accent-on: #1a110d;
+  --accent-soft: color-mix(in oklab, var(--v-hilo) 14%, transparent);
+  --accent-ring: color-mix(in oklab, var(--v-hilo) 50%, transparent);
+  --grad-tile: linear-gradient(var(--accent), var(--accent));
+
+  min-height: 100vh;
+  color: var(--color-ink);
+  background-color: var(--v-cuero);
+  /* El grano del cuero (ruido fino) y una viñeta: el baúl tiene volumen. */
+  background-image:
+    radial-gradient(120% 90% at 50% 0%, transparent 55%, rgb(0 0 0 / 0.45)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .8  0 0 0 0 .6  0 0 0 0 .4  0 0 0 .09 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Lo que el navegador dibuja y no es nuestro: seleccion, foco, barras ---- */
+.velothr ::selection {
+  background: color-mix(in oklab, var(--v-hilo) 55%, transparent);
+  color: #1a110d;
+}
+.velothr :focus-visible {
+  outline: 2px solid var(--v-hilo);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.velothr .v-papel :focus-visible {
+  outline-color: var(--v-sello);
+}
+.velothr {
+  scrollbar-color: var(--v-hilo-suave) var(--v-cuero);
+  scrollbar-width: thin;
+}
+.velothr input,
+.velothr textarea {
+  caret-color: var(--v-sello);
+}
+.velothr .v-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Papel de etiqueta: donde viven formularios y texto largo ---- */
+.v-papel {
+  --color-surface: var(--v-papel-2);
+  --color-surface-alt: var(--v-papel);
+  --color-ink: var(--v-tinta);
+  --color-ink-muted: var(--v-tinta-suave);
+  --color-muted: var(--v-tinta-suave);
+  --color-ink-soft: #7d6d5e;
+  --color-line: #d6c9ae;
+  --color-line-strong: #bba98a;
+  --color-danger: #a8321f;
+  --color-danger-soft: #fbe9e4;
+  --accent: #2b1b14;
+  --accent-hover: #43301f;
+  --accent-ink: #6b3a1c;
+  --accent-on: #f6ecd6;
+  --accent-soft: color-mix(in oklab, #2b1b14 8%, transparent);
+  --accent-ring: color-mix(in oklab, var(--v-sello) 40%, transparent);
+  --grad-tile: linear-gradient(var(--accent), var(--accent));
+  color: var(--v-tinta);
+  background-color: var(--v-papel);
+  /* Fibra de papel: el mismo ruido, en claro. */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .25  0 0 0 0 .15  0 0 0 .07 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+  border-radius: 4px;
+  box-shadow:
+    0 14px 28px -12px rgb(0 0 0 / 0.65),
+    0 2px 4px rgb(0 0 0 / 0.35);
+}
+
+/* ---- Pespunte: el hilo que separa y ordena la página ---- */
+.v-pespunte {
+  border: 0;
+  height: 0;
+  border-top: 2px dashed var(--v-hilo-suave);
+  opacity: 0.85;
+}
+
+/* ---- Letra de etiqueta: capitales condensadas ---- */
+.v-etq {
+  font-family: var(--v-fuente-etiqueta);
+  font-stretch: 75%;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 0.95;
+}
+.v-nota {
+  font-family: var(--v-fuente-nota);
+  font-style: italic;
+}
+
+/* ---- Etiqueta de hotel: papel litografiado troquelado ---- */
+.v-etiqueta {
+  --giro: 0deg;
+  --tinta-fondo: var(--v-lima);
+  --tinta-texto: var(--v-lima-on);
+  --tinta-trazo: var(--v-lima-trazo);
+  position: relative;
+  display: block;
+  color: var(--tinta-texto);
+  background-color: var(--tinta-fondo);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .12 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+  border-radius: 3px;
+  transform: rotate(var(--giro));
+  transform-origin: 50% 40%;
+  /* Esquinas troqueladas: cuatro muescas redondas. */
+  -webkit-mask:
+    radial-gradient(circle 11px at 0 0, transparent 97%, #000) top left / 51% 51% no-repeat,
+    radial-gradient(circle 11px at 100% 0, transparent 97%, #000) top right / 51% 51% no-repeat,
+    radial-gradient(circle 11px at 0 100%, transparent 97%, #000) bottom left / 51% 51% no-repeat,
+    radial-gradient(circle 11px at 100% 100%, transparent 97%, #000) bottom right / 51% 51% no-repeat;
+  mask:
+    radial-gradient(circle 11px at 0 0, transparent 97%, #000) top left / 51% 51% no-repeat,
+    radial-gradient(circle 11px at 100% 0, transparent 97%, #000) top right / 51% 51% no-repeat,
+    radial-gradient(circle 11px at 0 100%, transparent 97%, #000) bottom left / 51% 51% no-repeat,
+    radial-gradient(circle 11px at 100% 100%, transparent 97%, #000) bottom right / 51% 51% no-repeat;
+  filter: drop-shadow(0 12px 14px rgb(0 0 0 / 0.55)) drop-shadow(0 2px 2px rgb(0 0 0 / 0.4));
+  transition:
+    transform 420ms var(--v-ease),
+    filter 420ms var(--v-ease);
+}
+/* El marco impreso: una línea fina a 10px del borde, como en la litografía. */
+.v-etiqueta::before {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border: 1.5px solid color-mix(in oklab, var(--tinta-trazo) 70%, transparent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.v-etiqueta--lima {
+  --tinta-fondo: var(--v-lima);
+  --tinta-texto: var(--v-lima-on);
+  --tinta-trazo: var(--v-lima-trazo);
+}
+.v-etiqueta--cusco {
+  --tinta-fondo: var(--v-cusco);
+  --tinta-texto: var(--v-cusco-on);
+  --tinta-trazo: var(--v-cusco-trazo);
+}
+.v-etiqueta--arequipa {
+  --tinta-fondo: var(--v-arequipa);
+  --tinta-texto: var(--v-arequipa-on);
+  --tinta-trazo: var(--v-arequipa-trazo);
+}
+.v-etiqueta--paracas {
+  --tinta-fondo: var(--v-paracas);
+  --tinta-texto: var(--v-paracas-on);
+  --tinta-trazo: var(--v-paracas-trazo);
+}
+/* Se despega una esquina al apuntarla: la etiqueta se levanta un poco. */
+a.v-etiqueta:hover,
+a.v-etiqueta:focus-visible {
+  transform: translateY(-8px) rotate(calc(var(--giro) * 0.4));
+  filter: drop-shadow(0 22px 20px rgb(0 0 0 / 0.5)) drop-shadow(0 3px 3px rgb(0 0 0 / 0.35));
+}
+
+/* Etiqueta fantasma: lo agotado se dibuja, no se apaga. */
+.v-fantasma {
+  color: var(--color-ink-muted);
+  border: 2px dashed color-mix(in oklab, currentColor 55%, transparent);
+  border-radius: 3px;
+  background: transparent;
+}
+
+/* ---- Sello de aduana: la única tinta violeta ---- */
+.v-sello {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0.55rem 0.9rem;
+  color: var(--v-sello);
+  border: 3px double currentColor;
+  border-radius: 6px;
+  font-family: var(--v-fuente-etiqueta);
+  font-stretch: 75%;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  transform: rotate(-7deg);
+  /* La tinta no cubre del todo: un sello real se ve moteado. */
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.6 2.15'/></filter><rect width='100%' height='100%' filter='url(%23m)'/></svg>");
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.6 2.15'/></filter><rect width='100%' height='100%' filter='url(%23m)'/></svg>");
+}
+.velothr:not(.v-papel) .v-sello--sobre-cuero,
+.v-sello--sobre-cuero {
+  color: var(--v-sello-claro);
+}
+.v-sello strong {
+  font-size: 1.45rem;
+  letter-spacing: 0.06em;
+}
+.v-sello small {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+}
+
+/* =========================================================
+   Movimiento. Una escena propia: la etiqueta SE PEGA; y el sello CAE.
+   Todo parte de un estado visible; con «reducir movimiento» no hay entrada.
+   ========================================================= */
+@keyframes v-pegar {
+  0% {
+    opacity: 0;
+    transform: translateY(-46px) scale(1.14) rotate(calc(var(--giro) - 7deg));
+  }
+  58% {
+    opacity: 1;
+    transform: translateY(3px) scale(0.985) rotate(calc(var(--giro) + 0.6deg));
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(var(--giro));
+  }
+}
+.v-pegar {
+  animation: v-pegar 760ms var(--v-ease) both;
+  animation-delay: calc(var(--i, 0) * 140ms + 120ms);
+}
+
+@keyframes v-sellar {
+  0% {
+    opacity: 0;
+    transform: scale(2.1) rotate(-16deg);
+  }
+  55% {
+    opacity: 0.95;
+    transform: scale(0.94) rotate(-6deg);
+  }
+  100% {
+    opacity: 0.92;
+    transform: scale(1) rotate(-7deg);
+  }
+}
+.v-sellar {
+  animation: v-sellar 520ms var(--v-ease) both;
+  animation-delay: 380ms;
+}
+
+@keyframes v-aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.v-aparecer {
+  animation: v-aparecer 420ms var(--v-ease) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v-pegar,
+  .v-aparecer {
+    animation: none;
+  }
+  /* El sello conserva su aparición (confirma una acción), sin el golpe. */
+  .v-sellar {
+    animation: v-aparecer 200ms ease both;
+    animation-delay: 0ms;
+    transform: rotate(-7deg);
+  }
+  .v-etiqueta,
+  a.v-etiqueta:hover,
+  a.v-etiqueta:focus-visible {
+    transition: none;
+    transform: rotate(var(--giro));
+  }
+}
+
+/* Los giros de las etiquetas: unos grados, nunca el mismo. */
+.v-giro-a {
+  --giro: -3deg;
+}
+.v-giro-b {
+  --giro: 2.2deg;
+}
+.v-giro-c {
+  --giro: -1.4deg;
+}
+.v-giro-d {
+  --giro: 3deg;
+}
+
+/* En pantallas chicas las etiquetas giran menos: el texto no se corta. */
+@media (max-width: 640px) {
+  .v-giro-a,
+  .v-giro-b,
+  .v-giro-c,
+  .v-giro-d {
+    --giro: 0deg;
+  }
+}

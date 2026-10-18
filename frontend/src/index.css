@@ -2,6 +2,7 @@
 @import './styles/themes.css';
 @import './styles/tones.css';
 @import './styles/legacy.css';
+@import './styles/portal.css';
 
 /*
  * Tokens fijos del sistema de diseno (no cambian con el tema).

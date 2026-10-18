@@ -12,6 +12,7 @@ import type {
   PromocionRepository,
   ReservaAdminRepository,
 } from '@/domain/repositories/GestionRepository'
+import type { SitioPublicoRepository, SitioRepository } from '@/domain/repositories/SitioRepository'
 import type { LimpiezaRepository } from '@/domain/repositories/LimpiezaRepository'
 import type { EstanciaRepository } from '@/domain/repositories/EstanciaRepository'
 import type { HabitacionRepository } from '@/domain/repositories/HabitacionRepository'
@@ -43,6 +44,9 @@ export interface RepositoryOverrides {
   promocion?: PromocionRepository
   fidelizacion?: FidelizacionRepository
   reservaAdmin?: ReservaAdminRepository
+  // Sitio web: contenido de la web pública (panel y lectura pública).
+  sitio?: SitioRepository
+  sitioPublico?: SitioPublicoRepository
   // Limpieza (housekeeping).
   limpieza?: LimpiezaRepository
   // Recepción: check-in y check-out.

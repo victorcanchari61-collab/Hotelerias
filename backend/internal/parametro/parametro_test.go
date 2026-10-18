@@ -231,7 +231,11 @@ func TestPublicosSoloLosQueLaWebPuedeMostrar(t *testing.T) {
 	if pub[CheckinHora] != "14:00" || pub[CheckoutHora] != "12:00" {
 		t.Fatalf("%+v", pub)
 	}
-	for _, interno := range []string{MaxNoches, CancelacionDias, CambioDiasAtras} {
+	// La política de cancelación sí se muestra (el huésped debe conocerla).
+	if pub[CancelacionDias] != "1" {
+		t.Errorf("cancelación = %q", pub[CancelacionDias])
+	}
+	for _, interno := range []string{MaxNoches, CambioDiasAtras} {
 		if _, ok := pub[interno]; ok {
 			t.Errorf("%s es interno y no debe salir en la web", interno)
 		}

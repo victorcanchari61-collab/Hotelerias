@@ -1,6 +1,6 @@
 import { ApiPaths } from '@/core/constants/api'
 import type { HttpClient } from '@/core/network/HttpClient'
-import type { BusquedaEstadia, PromocionInput } from '@/domain/entities/Portal'
+import type { BusquedaEstadia, ContactoEmpresa, Membresia, PromocionInput } from '@/domain/entities/Portal'
 import type { RegistroCliente, TipoClienteInput } from '@/domain/entities/Cliente'
 import type { MonedasPublicasDto } from '../models/moneda.model'
 import type {
@@ -22,6 +22,8 @@ export interface PortalRemoteDataSource {
   disponibilidad(sedeId: number, busqueda: BusquedaEstadia): Promise<HabitacionDisponibleDto[] | null>
   monedas(): Promise<MonedasPublicasDto>
   parametros(): Promise<Record<string, string> | null>
+  membresias(): Promise<Membresia[] | null>
+  contacto(): Promise<Partial<ContactoEmpresa> | null>
   promociones(): Promise<PromocionDto[] | null>
   cotizar(body: unknown): Promise<CotizacionDto>
   reservar(body: unknown): Promise<ReservaDto>
@@ -56,6 +58,14 @@ export class PortalRemoteDataSourceImpl implements PortalRemoteDataSource {
 
   parametros() {
     return this.http.get<Record<string, string> | null>(ApiPaths.portal.parametros)
+  }
+
+  membresias() {
+    return this.http.get<Membresia[] | null>(ApiPaths.portal.membresias)
+  }
+
+  contacto() {
+    return this.http.get<Partial<ContactoEmpresa> | null>(ApiPaths.portal.contacto)
   }
 
   promociones() {

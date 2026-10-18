@@ -51,7 +51,8 @@ type Definicion struct {
 	Min    int    `json:"min"`
 	Max    int    `json:"max"`
 	Unidad string `json:"unidad"`
-	// Publico: la web lo puede mostrar (un horario sí; un límite interno no).
+	// Publico: la web lo puede mostrar (un horario o una política que el huésped debe conocer sí;
+	// un límite interno no).
 	Publico bool `json:"publico"`
 }
 
@@ -65,7 +66,7 @@ var Definiciones = []Definicion{
 	{
 		Clave: CancelacionDias, Grupo: "Reservas", Etiqueta: "Cancelación por la web",
 		Descripcion: "Con cuántos días de anticipación a la entrada el huésped puede cancelar por la web. 0 = hasta el mismo día de la entrada.",
-		Tipo:        Entero, Defecto: "1", Min: 0, Max: 30, Unidad: "días antes",
+		Tipo:        Entero, Defecto: "1", Min: 0, Max: 30, Unidad: "días antes", Publico: true,
 	},
 	{
 		Clave: CheckinHora, Grupo: "Horarios", Etiqueta: "Hora de check-in",

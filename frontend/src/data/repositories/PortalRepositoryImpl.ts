@@ -12,6 +12,7 @@ import type {
   SolicitudReserva,
 } from '@/domain/entities/Portal'
 import type { MonedasPublicas } from '@/domain/entities/Moneda'
+import type { ContactoEmpresa, Membresia } from '@/domain/entities/Portal'
 import type { ParametrosPublicos } from '@/domain/entities/Parametro'
 import type { PortalRepository } from '@/domain/repositories/PortalRepository'
 import type { PortalRemoteDataSource } from '../datasources/PortalRemoteDataSource'
@@ -45,6 +46,19 @@ export class PortalRepositoryImpl implements PortalRepository {
 
   monedas(): Promise<Either<Failure, MonedasPublicas>> {
     return attempt(async () => monedasPublicasFromDto(await this.remote.monedas()))
+  }
+
+  membresias(): Promise<Either<Failure, Membresia[]>> {
+    return attempt(async () =>
+      ((await this.remote.membresias()) ?? []).map((m) => ({ ...m, reservasMinimas: m.reservasMinimas ?? null })),
+    )
+  }
+
+  contacto(): Promise<Either<Failure, ContactoEmpresa>> {
+    return attempt(async () => {
+      const c = (await this.remote.contacto()) ?? {}
+      return { nombre: c.nombre ?? '', telefono: c.telefono ?? '', email: c.email ?? '', sitioWeb: c.sitioWeb ?? '' }
+    })
   }
 
   parametros(): Promise<Either<Failure, ParametrosPublicos>> {

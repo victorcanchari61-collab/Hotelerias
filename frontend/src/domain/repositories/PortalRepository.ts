@@ -4,6 +4,8 @@ import type { MonedasPublicas } from '../entities/Moneda'
 import type { ParametrosPublicos } from '../entities/Parametro'
 import type {
   BusquedaEstadia,
+  ContactoEmpresa,
+  Membresia,
   Cotizacion,
   DetalleSede,
   HabitacionDisponible,
@@ -20,6 +22,10 @@ export interface PortalRepository {
   disponibilidad(sedeId: number, busqueda: BusquedaEstadia): Promise<Either<Failure, HabitacionDisponible[]>>
   /** Las monedas que se ofrecen y el tipo de cambio de hoy. */
   monedas(): Promise<Either<Failure, MonedasPublicas>>
+  /** Las categorías de huésped activas, de la de entrada a la más alta. */
+  membresias(): Promise<Either<Failure, Membresia[]>>
+  /** Los datos de contacto de la empresa. */
+  contacto(): Promise<Either<Failure, ContactoEmpresa>>
   /** Lo que la web puede mostrar de los parámetros (los horarios). */
   parametros(): Promise<Either<Failure, ParametrosPublicos>>
   /** Las ofertas visibles (sin código); con sesión, también las de su tipo de cliente. */

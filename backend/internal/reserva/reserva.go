@@ -79,9 +79,12 @@ type Reserva struct {
 	DescuentoNombre string `json:"descuentoNombre"`
 	PromocionID     *int64 `json:"promocionId"`
 
-	Estado   Estado    `json:"estado"`
-	Notas    string    `json:"notas"`
-	CreadoEn time.Time `json:"creadoEn"`
+	Estado Estado `json:"estado"`
+	// Cancelable: el huésped todavía puede cancelarla por la web. Lo decide el servidor
+	// (con el plazo de Configuración) para que la pantalla no repita la regla.
+	Cancelable bool      `json:"cancelable"`
+	Notas      string    `json:"notas"`
+	CreadoEn   time.Time `json:"creadoEn"`
 }
 
 // Solicitud es lo que pide el huésped. Nada de importes: los calcula el servidor.
@@ -464,7 +467,15 @@ func (s *Servicio) Reservar(ctx context.Context, clienteID int64, sol Solicitud)
 
 // DeCliente son las reservas del huésped.
 func (s *Servicio) DeCliente(ctx context.Context, clienteID int64) ([]Reserva, error) {
-	return s.repo.DeCliente(ctx, clienteID)
+	rs, err := s.repo.DeCliente(ctx, clienteID)
+	if err != nil {
+		return nil, err
+	}
+	limite := s.hoy().Mas(s.cancelacionDias(ctx))
+	for i := range rs {
+		rs[i].Cancelable = rs[i].Estado == Confirmada && !rs[i].CheckIn.Antes(limite)
+	}
+	return rs, nil
 }
 
 // Cancelar anula una reserva del huésped. Se puede hasta el día anterior a la

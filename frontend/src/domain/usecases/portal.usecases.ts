@@ -7,6 +7,8 @@ import type { MonedasPublicas } from '../entities/Moneda'
 import type { ParametrosPublicos } from '../entities/Parametro'
 import type {
   BusquedaEstadia,
+  ContactoEmpresa,
+  Membresia,
   Cotizacion,
   DetalleSede,
   HabitacionDisponible,
@@ -148,6 +150,24 @@ export class ListarMonedasUseCase implements UseCase<void, MonedasPublicas> {
 
   execute(): Promise<Either<Failure, MonedasPublicas>> {
     return this.portal.monedas()
+  }
+}
+
+/** Las categorías de huésped que la web muestra. */
+export class ListarMembresiasUseCase implements UseCase<void, Membresia[]> {
+  constructor(private readonly portal: PortalRepository) {}
+
+  execute(): Promise<Either<Failure, Membresia[]>> {
+    return this.portal.membresias()
+  }
+}
+
+/** Los datos para escribir o llamar al hotel. */
+export class ObtenerContactoUseCase implements UseCase<void, ContactoEmpresa> {
+  constructor(private readonly portal: PortalRepository) {}
+
+  execute(): Promise<Either<Failure, ContactoEmpresa>> {
+    return this.portal.contacto()
   }
 }
 

@@ -29,6 +29,8 @@ import (
 	"hotelerias/backend/internal/cliente"
 	clientepg "hotelerias/backend/internal/cliente/postgres"
 	"hotelerias/backend/internal/demo"
+	"hotelerias/backend/internal/empresa"
+	empresapg "hotelerias/backend/internal/empresa/postgres"
 	"hotelerias/backend/internal/hotel"
 	hotelpg "hotelerias/backend/internal/hotel/postgres"
 	"hotelerias/backend/internal/moneda"
@@ -121,7 +123,8 @@ func armar(t *testing.T) *entorno {
 	monedaSvc := moneda.NewServicio(monedapg.NewStore(pool), hotel.Hoy, auditoria.Nop{}).ConParametros(parametroSvc)
 	reservaSvc := reserva.NewServicio(reservapg.NewStore(pool), hoteles, promoSvc, clienteSvc, monedaSvc, hotel.Hoy).ConParametros(parametroSvc)
 	h := portal.NewHandler(hotel.NewServicio(hoteles, hotel.Hoy).ConParametros(parametroSvc), promoSvc, clienteSvc, reservaSvc, monedaSvc, hotel.Hoy,
-		auth.ClienteOpcional(tokens)).ConParametros(parametroSvc)
+		auth.ClienteOpcional(tokens)).ConParametros(parametroSvc).ConMembresias(clienteSvc).
+		ConContacto(empresa.NewServicio(empresapg.NewStore(pool), auditoria.Nop{}))
 
 	router := httpx.NewRouter(nil)
 	routes.Register(router, routes.Deps{
@@ -837,7 +840,7 @@ func TestLaWebSoloVeLosParametrosPublicos(t *testing.T) {
 		t.Fatalf("%d %s", code, body)
 	}
 	pub := decode[map[string]string](t, body)
-	if pub["hotel.checkin_hora"] != "14:00" || pub["hotel.checkout_hora"] != "12:00" || len(pub) != 2 {
+	if pub["hotel.checkin_hora"] != "14:00" || pub["hotel.checkout_hora"] != "12:00" || pub["reservas.cancelacion_dias"] != "1" || len(pub) != 3 {
 		t.Fatalf("%+v", pub)
 	}
 
@@ -847,5 +850,67 @@ func TestLaWebSoloVeLosParametrosPublicos(t *testing.T) {
 	_, body = e.do(t, "GET", "/api/portal/parametros", nil, "")
 	if pub = decode[map[string]string](t, body); pub["hotel.checkin_hora"] != "15:30" {
 		t.Fatalf("%+v", pub)
+	}
+}
+
+// --- membresías y contacto (lo que muestran las páginas públicas) ---
+
+func TestMembresiasMuestraLasCategoriasActivasEnOrden(t *testing.T) {
+	e := armar(t)
+
+	code, body := e.do(t, "GET", "/api/portal/membresias", nil, "")
+	if code != 200 {
+		t.Fatalf("%d %s", code, body)
+	}
+	lista := decode[[]struct {
+		Nombre          string `json:"nombre"`
+		DescuentoPct    int    `json:"descuentoPct"`
+		ReservasMinimas *int   `json:"reservasMinimas"`
+	}](t, body)
+	nombres := []string{}
+	for _, m := range lista {
+		nombres = append(nombres, m.Nombre)
+	}
+	if len(lista) != 4 || nombres[0] != "Regular" || nombres[1] != "Frecuente" || nombres[2] != "VIP" || nombres[3] != "Corporativo" {
+		t.Fatalf("orden o contenido inesperado: %v", nombres)
+	}
+	if lista[1].DescuentoPct != 5 || lista[1].ReservasMinimas == nil || *lista[1].ReservasMinimas != 3 {
+		t.Fatalf("Frecuente: %+v", lista[1])
+	}
+	if lista[3].ReservasMinimas != nil {
+		t.Fatalf("Corporativo se asigna a mano: %+v", lista[3])
+	}
+
+	// Una desactivada no se muestra.
+	if _, err := e.pool.Exec(context.Background(), `UPDATE tipo_cliente SET activo = FALSE WHERE nombre = 'Corporativo'`); err != nil {
+		t.Fatal(err)
+	}
+	_, body = e.do(t, "GET", "/api/portal/membresias", nil, "")
+	if got := decode[[]map[string]any](t, body); len(got) != 3 {
+		t.Fatalf("debía quedar con 3: %d", len(got))
+	}
+}
+
+func TestContactoNoExponeLosDatosFiscales(t *testing.T) {
+	e := armar(t)
+	if _, err := e.pool.Exec(context.Background(), `
+		UPDATE empresa SET nombre_comercial = 'Hotel Velothr', ruc = '20123456789', telefono = '+51 1 555 0100',
+		                   email = 'reservas@velothr.pe', direccion = 'Av. Fiscal 123', representante_legal = 'Ana Gerente'`); err != nil {
+		t.Fatal(err)
+	}
+
+	code, body := e.do(t, "GET", "/api/portal/contacto", nil, "")
+	if code != 200 {
+		t.Fatalf("%d %s", code, body)
+	}
+	got := decode[map[string]string](t, body)
+	if got["nombre"] != "Hotel Velothr" || got["telefono"] != "+51 1 555 0100" || got["email"] != "reservas@velothr.pe" {
+		t.Fatalf("%+v", got)
+	}
+	// Lo fiscal y lo interno NO sale en una ruta pública.
+	for _, secreto := range []string{"20123456789", "Av. Fiscal 123", "Ana Gerente"} {
+		if bytes.Contains(body, []byte(secreto)) {
+			t.Fatalf("la ruta pública filtró %q: %s", secreto, body)
+		}
 	}
 }

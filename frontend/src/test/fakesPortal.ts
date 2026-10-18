@@ -14,6 +14,8 @@ import type {
 } from '@/domain/entities/Cliente'
 import type {
   BusquedaEstadia,
+  ContactoEmpresa,
+  Membresia,
   Cotizacion,
   DetalleSede,
   Habitacion,
@@ -147,6 +149,7 @@ export function reservaDe(parcial: Partial<Reserva> = {}): Reserva {
     descuentoOrigen: '',
     descuentoNombre: '',
     estado: 'confirmada',
+    cancelable: true,
     notas: '',
     creadoEn: null,
     ...parcial,
@@ -250,6 +253,22 @@ export class FakePortalRepository implements PortalRepository {
 
   /** Lo que la web puede mostrar de los parámetros. */
   parametrosPublicos: Record<string, string> = { 'hotel.checkin_hora': '14:00', 'hotel.checkout_hora': '12:00' }
+
+  membresiasLista: Membresia[] = [
+    { nombre: 'Regular', descripcion: 'Huésped nuevo o con pocas estadías.', descuentoPct: 0, reservasMinimas: null },
+    { nombre: 'Frecuente', descripcion: 'Ya nos eligió varias veces.', descuentoPct: 5, reservasMinimas: 3 },
+    { nombre: 'VIP', descripcion: 'Nuestros huéspedes más fieles.', descuentoPct: 10, reservasMinimas: 6 },
+    { nombre: 'Corporativo', descripcion: 'Cuenta de empresa con convenio.', descuentoPct: 8, reservasMinimas: null },
+  ]
+  contactoDatos: ContactoEmpresa = { nombre: 'Hotel Velothr', telefono: '+51 1 555 0100', email: 'reservas@velothr.pe', sitioWeb: '' }
+
+  async membresias() {
+    return right<Membresia[], Failure>(this.membresiasLista.map((m) => ({ ...m })))
+  }
+
+  async contacto() {
+    return right<ContactoEmpresa, Failure>({ ...this.contactoDatos })
+  }
 
   async parametros() {
     return right<Record<string, string>, Failure>({ ...this.parametrosPublicos })

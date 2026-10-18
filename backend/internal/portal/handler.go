@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"hotelerias/backend/internal/auth"
 	"hotelerias/backend/internal/cliente"
+	"hotelerias/backend/internal/empresa"
 	"hotelerias/backend/internal/hotel"
 	"hotelerias/backend/internal/moneda"
 	"hotelerias/backend/internal/platform/fecha"
@@ -45,6 +46,16 @@ type Monedas interface {
 	Publico(ctx context.Context) (moneda.Publico, error)
 }
 
+// Membresias son las categorías de huésped (Regular, Frecuente, VIP…).
+type Membresias interface {
+	Tipos(ctx context.Context) ([]cliente.Tipo, error)
+}
+
+// Contacto son los datos de la empresa que la web puede mostrar.
+type Contacto interface {
+	Obtener(ctx context.Context) (empresa.Empresa, error)
+}
+
 // Publicos son los parámetros que la web puede mostrar (horarios).
 type Publicos interface {
 	Publicos(ctx context.Context) map[string]string
@@ -65,6 +76,8 @@ type Handler struct {
 	reservas Reservas
 	monedas  Monedas
 	params   Publicos
+	tipos    Membresias
+	empresa  Contacto
 	hoy      func() fecha.Fecha
 
 	// opcional anota al huésped si trae sesión, sin exigirla.
@@ -79,6 +92,17 @@ func NewHandler(h Hoteles, o Ofertas, c Cuentas, r Reservas, m Monedas, hoy func
 		// Cada alta cuesta un bcrypt: sin tope, es una forma barata de tumbar el servidor.
 		altas: auth.NuevoLimitador(10, time.Hour),
 	}
+}
+
+// ConMembresias y ConContacto exponen las categorías de huésped y los datos de contacto.
+func (h *Handler) ConMembresias(m Membresias) *Handler {
+	h.tipos = m
+	return h
+}
+
+func (h *Handler) ConContacto(c Contacto) *Handler {
+	h.empresa = c
+	return h
 }
 
 // ConParametros expone los parámetros públicos en /portal/parametros.
@@ -97,6 +121,8 @@ func (h *Handler) Publico() interface{ Register(gin.IRouter) } {
 		r.GET("/portal/sedes", h.sedes)
 		r.GET("/portal/monedas", h.listarMonedas)
 		r.GET("/portal/parametros", h.parametros)
+		r.GET("/portal/membresias", h.membresias)
+		r.GET("/portal/contacto", h.contacto)
 		r.GET("/portal/sedes/:id", h.sede)
 		r.GET("/portal/sedes/:id/disponibilidad", h.disponibilidad)
 		r.POST("/portal/registro", h.registro)
@@ -126,6 +152,48 @@ func (h *Handler) sedes(c *gin.Context) {
 	if err != nil {
 		fail(c, err)
 		return
+	}
+	c.JSON(http.StatusOK, out)
+}
+
+// membresia es lo que la web muestra de una categoría de huésped: cómo se llega a ella y qué da.
+type membresia struct {
+	Nombre          string `json:"nombre"`
+	Descripcion     string `json:"descripcion"`
+	DescuentoPct    int    `json:"descuentoPct"`
+	ReservasMinimas *int   `json:"reservasMinimas"`
+}
+
+// membresias lista las categorías ACTIVAS, de la de entrada a la más alta.
+func (h *Handler) membresias(c *gin.Context) {
+	out := []membresia{}
+	if h.tipos == nil {
+		c.JSON(http.StatusOK, out)
+		return
+	}
+	tipos, err := h.tipos.Tipos(c.Request.Context())
+	if err != nil {
+		fail(c, err)
+		return
+	}
+	for _, t := range tipos {
+		if t.Activo {
+			out = append(out, membresia{t.Nombre, t.Descripcion, t.DescuentoPct, t.ReservasMinimas})
+		}
+	}
+	c.JSON(http.StatusOK, out)
+}
+
+// contacto: solo lo que sirve para escribir o llamar. Nada del RUC ni del domicilio fiscal.
+func (h *Handler) contacto(c *gin.Context) {
+	out := gin.H{"nombre": "", "telefono": "", "email": "", "sitioWeb": ""}
+	if h.empresa != nil {
+		e, err := h.empresa.Obtener(c.Request.Context())
+		if err != nil {
+			fail(c, err)
+			return
+		}
+		out = gin.H{"nombre": e.NombreComercial, "telefono": e.Telefono, "email": e.Email, "sitioWeb": e.SitioWeb}
 	}
 	c.JSON(http.StatusOK, out)
 }

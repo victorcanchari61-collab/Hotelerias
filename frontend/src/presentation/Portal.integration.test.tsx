@@ -262,12 +262,12 @@ describe('la web pública', () => {
       expect(await screen.findByText('Cancelada')).toBeTruthy()
     })
 
-    it('una reserva que ya empezó no ofrece cancelar', async () => {
+    it('una reserva que el servidor no deja cancelar no ofrece el botón', async () => {
       montar({
         ruta: '/mis-reservas',
         huesped: true,
         configurar: ({ portal }) => {
-          portal.misReservasLista = [reservaDe({ checkIn: '2026-10-30', checkOut: '2026-11-03' })]
+          portal.misReservasLista = [reservaDe({ checkIn: '2026-10-30', checkOut: '2026-11-03', cancelable: false })]
         },
       })
 

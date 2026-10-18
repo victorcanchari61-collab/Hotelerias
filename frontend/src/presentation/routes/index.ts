@@ -9,6 +9,7 @@ import { portalRoutes } from '../features/portal/routes'
 import { promocionesRoutes } from '../features/promociones/routes'
 import { recepcionRoutes } from '../features/recepcion/routes'
 import { reservasRoutes } from '../features/reservas/routes'
+import { sitioRoutes } from '../features/sitio/routes'
 import { usuariosRoutes } from '../features/usuarios/routes'
 import { EnConstruccion } from '../pages/EnConstruccion'
 import { buildRouteTable } from './registry'
@@ -30,6 +31,7 @@ export const ROUTE_MODULES: readonly RouteModule[] = [
   habitacionesRoutes,
   recepcionRoutes,
   reservasRoutes,
+  sitioRoutes,
   portalRoutes,
 ]
 

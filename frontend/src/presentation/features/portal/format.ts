@@ -75,3 +75,8 @@ export function centimosASoles(centimos: number): string {
   const abs = Math.abs(Math.round(centimos))
   return `${Math.trunc(abs / 100)}.${String(abs % 100).padStart(2, '0')}`
 }
+
+/** «17 de octubre de 2026», para el blog. */
+export function fechaLarga(d: Date | null): string {
+  return d ? new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'long', year: 'numeric' }).format(d) : ''
+}

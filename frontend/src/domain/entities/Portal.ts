@@ -141,8 +141,27 @@ export interface Reserva {
   descuentoOrigen: OrigenDescuento
   descuentoNombre: string
   estado: EstadoReserva
+  /** El huésped todavía puede cancelarla por la web (lo decide el servidor con el plazo de Configuración). */
+  cancelable: boolean
   notas: string
   creadoEn: Date | null
+}
+
+/** Una categoría de huésped, como la ve la web: cómo se llega a ella y qué da. */
+export interface Membresia {
+  nombre: string
+  descripcion: string
+  descuentoPct: number
+  /** Al llegar a esta cantidad de reservas se sube sola; null = solo la asigna el hotel. */
+  reservasMinimas: number | null
+}
+
+/** Lo que se puede mostrar de la empresa para escribir o llamar (nada fiscal). */
+export interface ContactoEmpresa {
+  nombre: string
+  telefono: string
+  email: string
+  sitioWeb: string
 }
 
 /** Qué se busca: cuándo y cuántos. */

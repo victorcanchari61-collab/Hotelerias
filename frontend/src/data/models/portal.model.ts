@@ -128,6 +128,7 @@ export interface ReservaDto {
   descuentoOrigen?: OrigenDescuento
   descuentoNombre?: string
   estado: EstadoReserva
+  cancelable?: boolean
   notas?: string
   creadoEn?: string
 }
@@ -294,6 +295,7 @@ export function reservaFromDto(dto: ReservaDto): Reserva {
     descuentoOrigen: dto.descuentoOrigen ?? '',
     descuentoNombre: dto.descuentoNombre ?? '',
     estado: dto.estado,
+    cancelable: dto.cancelable ?? false,
     notas: dto.notas ?? '',
     creadoEn: fecha(dto.creadoEn),
   }

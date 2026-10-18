@@ -1,36 +1,21 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import {
-  ChefHat,
-  ConciergeBell,
-  Gem,
-  Helicopter,
-  KeyRound,
-  PawPrint,
-  Sparkles,
-  Star,
-  Wine,
-} from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { sumarDias } from '@/domain/fechas'
-import { Alert, Button, buttonClasses, Card, Desplegable, Input } from '@/shared/ui'
+import type { Membresia } from '@/domain/entities/Portal'
+import type { Banner, Entrada, Experiencia } from '@/domain/entities/Sitio'
+import { Alert, Button, Desplegable, Input } from '@/shared/ui'
 import { useCarga } from '../../hooks/useCarga'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { useClienteAuth } from '../../providers/ClienteAuthProvider'
-import { PATHS, hotelPath } from '../../routes/paths'
+import { PATHS, historiaPath, hotelPath } from '../../routes/paths'
+import { fechaLarga } from './format'
+import { Carrusel } from './components/Carrusel'
+import { FotoSitio } from './components/FotoSitio'
+import { Pasaporte } from './components/Pasaporte'
 import { PromoCard } from './components/PromoCard'
-import { Visual } from './components/Visual'
-
-const LUJO = [
-  { icon: ConciergeBell, titulo: 'Mayordomo personal', texto: 'Alguien atento a lo que necesites, a toda hora.' },
-  { icon: KeyRound, titulo: 'Conserje de llaves', texto: 'Reservas, entradas y rincones que no salen en las guías.' },
-  { icon: Helicopter, titulo: 'Traslado de lujo', texto: 'Vehículos privados y, donde hay, helipuerto.' },
-  { icon: ChefHat, titulo: 'Gastronomía 24/7', texto: 'Cocina de autor en tu habitación, de día y de madrugada.' },
-  { icon: Wine, titulo: 'Bodega y restaurantes', texto: 'Carta de vinos y mesas de cocina de autor.' },
-  { icon: Sparkles, titulo: 'Spa y bienestar', texto: 'Tratamientos, piscinas infinitas y cabañas frente al paisaje.' },
-  { icon: Gem, titulo: 'Check-in privado', texto: 'Llegas y te instalas sin pasar por recepción.' },
-  { icon: PawPrint, titulo: 'Concierge de mascotas', texto: 'Tu compañero también tiene su estadía.' },
-] as const
+import { EtiquetaHotel, Papel, Pespunte } from './components/mundo'
 
 export function PortalHomePage() {
   const { useCases, hoy: hoyFn } = useDependencies()
@@ -44,6 +29,11 @@ export function PortalHomePage() {
     [useCases, status, cliente?.tipoClienteId],
     [],
   )
+  const membresias = useCarga<Membresia[]>(() => useCases.listarMembresias.execute(), [useCases], [])
+  // Lo que el personal administra: si algo falla o está vacío, la portada sigue sin esa parte.
+  const banners = useCarga<Banner[]>(() => useCases.portadaPublica.execute(), [useCases], [])
+  const experiencias = useCarga<Experiencia[]>(() => useCases.experienciasPublicas.execute(), [useCases], [])
+  const historias = useCarga<Entrada[]>(() => useCases.entradasPublicas.execute({ limite: 3, desde: 0 }), [useCases], [])
 
   const hoy = hoyFn()
   const [sedeId, setSedeId] = useState('')
@@ -60,139 +50,191 @@ export function PortalHomePage() {
 
   return (
     <div>
-      {/* --- Portada con la búsqueda --- */}
-      <section className="sys-gradient">
-        <div className="mx-auto max-w-6xl px-4 pt-12 pb-20 sm:pt-16">
-          <p className="text-sm font-semibold tracking-wide text-white/80 uppercase">
-            Hotel Velothr
-          </p>
-          <h1 className="mt-2 max-w-2xl text-3xl leading-tight font-bold tracking-tight text-white sm:text-5xl">
-            Una estadía a tu medida, en cuatro destinos del Perú
-          </h1>
-          <p className="mt-3 max-w-xl text-white/85">
-            Reserva en minutos. Entra a tu cuenta y tu categoría de huésped te da el mejor precio.
-          </p>
+      {banners.datos.length > 0 && (
+        <div className="mx-auto max-w-6xl px-4 pt-6">
+          <Carrusel banners={banners.datos} />
+        </div>
+      )}
+
+      {/* --- El baúl: titular y buscador a la izquierda; los cuatro hoteles, pegados, a la derecha --- */}
+      <section className="mx-auto grid max-w-6xl gap-10 px-4 pt-10 pb-16 lg:min-h-[calc(100svh-4.5rem)] lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-center lg:gap-12">
+        <div className="space-y-7">
+          <Papel className="v-aparecer p-7 sm:p-9">
+            <h1 className="v-etq text-[clamp(2.7rem,7vw,4.9rem)] leading-[0.88]">
+              Cuatro destinos.
+              <br />
+              Una sola casa.
+            </h1>
+            <p className="v-nota mt-5 max-w-md text-lg leading-snug text-[var(--color-ink-muted)]">
+              Lima, Cusco, Arequipa y Paracas bajo una misma cuenta. Entra y tu categoría de huésped te da el mejor precio.
+            </p>
+          </Papel>
+
+          <Papel className="v-aparecer relative p-6 pt-8">
+            {/* El ojal de la etiqueta de equipaje */}
+            <span
+              aria-hidden="true"
+              className="absolute top-3 left-4 size-3.5 rounded-full border-2 border-[#9a7a4c] bg-[var(--v-cuero)] shadow-[inset_0_1px_2px_rgb(0_0_0/0.6)]"
+            />
+            <form onSubmit={buscar} aria-label="Buscar disponibilidad" className="space-y-4">
+              <h2 className="v-etq text-2xl">Tu estadía</h2>
+              <Desplegable
+                label="Hotel"
+                placeholder={sedes.cargando ? 'Cargando…' : 'Elige un hotel'}
+                value={sedeId}
+                onChange={(v) => setSedeId(String(v))}
+                options={sedes.datos.map((s) => ({ value: String(s.id), label: s.nombre, detalle: s.ciudad }))}
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="Entrada" type="date" min={hoy} value={entrada} onChange={(e) => setEntrada(e.target.value)} />
+                <Input label="Salida" type="date" min={entrada} value={salida} onChange={(e) => setSalida(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-[1fr_2fr] items-end gap-3">
+                <Input
+                  label="Huéspedes"
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={huespedes}
+                  onChange={(e) => setHuespedes(Number(e.target.value))}
+                />
+                <Button type="submit" disabled={sedes.datos.length === 0}>
+                  Ver disponibilidad
+                </Button>
+              </div>
+            </form>
+          </Papel>
+        </div>
+
+        <div id="hoteles" aria-label="Nuestros hoteles">
+          {sedes.error && <Alert>{sedes.error}</Alert>}
+          <div className="grid gap-7 sm:grid-cols-2 sm:gap-8">
+            {sedes.datos.map((s, i) => (
+              <EtiquetaHotel
+                key={s.id}
+                sede={s}
+                indice={i}
+                to={hotelPath(s.id, { entrada, salida, huespedes })}
+                className={i % 2 === 1 ? 'sm:mt-12' : undefined}
+              />
+            ))}
+          </div>
         </div>
       </section>
 
-      <div className="mx-auto -mt-12 max-w-6xl px-4">
-        <Card className="p-4 sm:p-5">
-          <form onSubmit={buscar} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_.7fr_auto] lg:items-end">
-            <Desplegable
-              label="Hotel"
-              placeholder={sedes.cargando ? 'Cargando…' : 'Elige un hotel'}
-              value={sedeId}
-              onChange={(v) => setSedeId(String(v))}
-              options={sedes.datos.map((s) => ({ value: String(s.id), label: s.nombre, detalle: s.ciudad }))}
-            />
-            <Input label="Entrada" type="date" min={hoy} value={entrada} onChange={(e) => setEntrada(e.target.value)} />
-            <Input label="Salida" type="date" min={entrada} value={salida} onChange={(e) => setSalida(e.target.value)} />
-            <Input
-              label="Huéspedes"
-              type="number"
-              min={1}
-              max={10}
-              value={huespedes}
-              onChange={(e) => setHuespedes(Number(e.target.value))}
-            />
-            <Button type="submit" disabled={sedes.datos.length === 0}>
-              Ver disponibilidad
-            </Button>
-          </form>
-        </Card>
+      <div className="mx-auto max-w-6xl px-4">
+        <Pespunte />
       </div>
 
-      {/* --- Hoteles --- */}
-      <section id="hoteles" className="mx-auto max-w-6xl px-4 pt-14">
-        <h2 className="text-2xl font-bold tracking-tight">Nuestros hoteles</h2>
-        <p className="mt-1 text-ink-muted">Cuatro casas, un mismo cuidado por el detalle.</p>
-
-        {sedes.error && <div className="mt-4"><Alert>{sedes.error}</Alert></div>}
-
-        <div className="mt-6 grid gap-5 sm:grid-cols-2">
-          {sedes.datos.map((s) => (
-            <Link
-              key={s.id}
-              to={hotelPath(s.id, { entrada, salida, huespedes })}
-              className="group overflow-hidden rounded-[var(--radius-panel)] border border-line bg-surface shadow-panel transition hover:-translate-y-0.5"
-            >
-              <Visual clave={s.imagen} className="h-44">
-                <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-4">
-                  <span className="text-xs font-semibold tracking-wide uppercase">{s.ciudad}</span>
-                  <span className="flex items-center gap-0.5">
-                    {Array.from({ length: s.estrellas }).map((_, i) => (
-                      <Star key={i} size={13} className="fill-white" />
-                    ))}
-                  </span>
-                </div>
-              </Visual>
-              <div className="space-y-2 p-5">
-                <h3 className="text-lg font-bold group-hover:text-accent-ink">{s.nombre}</h3>
-                <p className="text-sm text-ink-muted">{s.descripcion}</p>
-                <p className="flex flex-wrap gap-1.5 pt-1">
-                  {s.servicios.slice(0, 4).map((x) => (
-                    <span key={x} className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-ink">
-                      {x}
-                    </span>
-                  ))}
-                </p>
-              </div>
+      {/* --- Más allá de la habitación: un índice, no una grilla de tarjetas --- */}
+      {experiencias.datos.length > 0 && (
+        <section className="mx-auto grid max-w-6xl gap-8 px-4 py-14 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]">
+          <div>
+            <h2 className="v-etq text-[clamp(2.2rem,4.5vw,3.4rem)]">Lo que pasa fuera de la habitación</h2>
+            <p className="v-nota mt-4 max-w-sm text-lg text-[var(--color-ink-muted)]">
+              Cada hotel lo cuenta a su manera; la casa es la misma.
+            </p>
+            <Link to={PATHS.experiencias} className="v-etq mt-6 inline-flex items-center gap-2 text-[var(--v-hilo)] hover:underline">
+              Ver las experiencias <ArrowRight size={16} aria-hidden="true" />
             </Link>
-          ))}
-        </div>
-      </section>
+          </div>
+          <ul className="divide-y-2 divide-dashed divide-[var(--v-hilo-suave)] border-y-2 border-dashed border-[var(--v-hilo-suave)]">
+            {experiencias.datos.map(({ id, slug, titulo, resumen }, i) => (
+              <li key={id}>
+                <Link
+                  to={`${PATHS.experiencias}#${slug}`}
+                  className="group flex items-center gap-4 py-4 transition-colors hover:bg-white/[0.03]"
+                >
+                  <span aria-hidden="true" className="v-etq v-num w-7 shrink-0 text-lg text-[var(--v-hilo)]">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <span className="v-etq w-48 shrink-0 text-2xl">{titulo}</span>
+                  <span className="hidden text-[var(--color-ink-muted)] sm:block">{resumen}</span>
+                  <ArrowRight size={16} aria-hidden="true" className="ml-auto shrink-0 text-[var(--v-hilo)] transition-transform group-hover:translate-x-1" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-      {/* --- Ofertas --- */}
+      {/* --- Ofertas: boletos --- */}
       {promos.datos.length > 0 && (
-        <section className="mx-auto max-w-6xl px-4 pt-14">
+        <section className="mx-auto max-w-6xl px-4 pb-14">
           <div className="flex items-end justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">Ofertas vigentes</h2>
-              <p className="mt-1 text-ink-muted">Se aplican solas al reservar si te corresponden.</p>
-            </div>
-            <Link to={PATHS.ofertas} className="text-sm font-semibold text-accent-ink hover:underline">
+            <h2 className="v-etq text-[clamp(2rem,4vw,3rem)]">Ofertas vigentes</h2>
+            <Link to={PATHS.ofertas} className="v-etq text-[var(--v-hilo)] hover:underline">
               Ver todas
             </Link>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {promos.datos.slice(0, 3).map((p) => (
-              <PromoCard key={p.id} promocion={p} sedes={sedes.datos} />
+          <p className="v-nota mt-2 text-[var(--color-ink-muted)]">Se aplican solas al reservar si te corresponden.</p>
+          <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {promos.datos.slice(0, 3).map((p, i) => (
+              <PromoCard key={p.id} promocion={p} sedes={sedes.datos} indice={i} />
             ))}
           </div>
         </section>
       )}
 
-      {/* --- Lujo --- */}
-      <section className="mx-auto max-w-6xl px-4 py-14">
-        <h2 className="text-2xl font-bold tracking-tight">Lo que hace distinta tu estadía</h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {LUJO.map(({ icon: Icono, titulo, texto }) => (
-            <Card key={titulo} className="p-5 sm:p-5">
-              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-accent-soft text-accent-ink">
-                <Icono size={20} />
-              </span>
-              <h3 className="mt-3 font-bold">{titulo}</h3>
-              <p className="mt-1 text-sm text-ink-muted">{texto}</p>
-            </Card>
-          ))}
-        </div>
-
-        {/* --- Programa de huéspedes --- */}
-        <Card className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="text-lg font-bold">Mientras más nos eliges, mejor el precio</h3>
-            <p className="mt-1 max-w-2xl text-sm text-ink-muted">
-              Cada huésped tiene una categoría (Regular, Frecuente, VIP…) que sube sola con sus
-              reservas y trae su propio descuento. Crea tu cuenta para empezar a sumar.
-            </p>
-          </div>
-          {!cliente && (
-            <Link to={PATHS.registro} className={buttonClasses({ className: 'shrink-0' })}>
-              Crear mi cuenta
+      {/* --- Historias: lo último del blog --- */}
+      {historias.datos.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 pb-14">
+          <div className="flex items-end justify-between gap-4">
+            <h2 className="v-etq text-[clamp(2rem,4vw,3rem)]">Historias de la casa</h2>
+            <Link to={PATHS.historias} className="v-etq text-[var(--v-hilo)] hover:underline">
+              Ver todas
             </Link>
-          )}
-        </Card>
-      </section>
+          </div>
+          <ul className="mt-6 grid gap-5 md:grid-cols-3">
+            {historias.datos.map((h) => (
+              <li key={h.id}>
+                <Link to={historiaPath(h.slug)} className="group block h-full">
+                  <Papel className="flex h-full flex-col overflow-hidden transition-transform duration-200 group-hover:-translate-y-1">
+                    {h.portada && (
+                      <div className="aspect-[16/10] overflow-hidden">
+                        <FotoSitio medio={h.portada} />
+                      </div>
+                    )}
+                    <div className="flex flex-1 flex-col gap-2 p-5">
+                      <time className="v-etq text-sm text-[var(--color-ink-soft)]" dateTime={h.publicadaEn?.toISOString()}>
+                        {fechaLarga(h.publicadaEn)}
+                      </time>
+                      <h3 className="v-etq text-2xl leading-[0.95]">{h.titulo}</h3>
+                      {h.resumen && <p className="line-clamp-2 text-sm text-[var(--color-ink-muted)]">{h.resumen}</p>}
+                    </div>
+                  </Papel>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* --- El pasaporte: la categoría sube sola --- */}
+      {membresias.datos.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 pb-8">
+          <div className="border-t-2 border-dashed border-[var(--v-hilo-suave)] pt-12">
+            <h2 className="v-etq text-[clamp(2rem,4vw,3rem)]">Mientras más nos eliges, mejor el precio</h2>
+            <p className="v-nota mt-2 mb-10 max-w-xl text-[var(--color-ink-muted)]">
+              Tu categoría de huésped sube sola con tus reservas y trae su propio descuento.
+            </p>
+            <Pasaporte membresias={membresias.datos} reservas={cliente ? cliente.reservas : null} actual={cliente?.tipoCliente ?? ''} />
+            <div className="mt-10 flex flex-wrap items-center gap-4">
+              {!cliente && (
+                <Link
+                  to={PATHS.registro}
+                  className="v-etq inline-flex h-11 items-center rounded-[3px] bg-[var(--v-hilo)] px-5 text-lg text-[#1a110d] hover:bg-[#dcb47c]"
+                >
+                  Crear mi cuenta
+                </Link>
+              )}
+              <Link to={PATHS.membresias} className="v-etq inline-flex items-center gap-2 text-[var(--v-hilo)] hover:underline">
+                Cómo funciona <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   )
 }
