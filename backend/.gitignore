@@ -20,3 +20,4 @@ coverage.*
 
 # Log del backend en segundo plano (deploy/laragon/backend-ctl.ps1)
 /logs/
+*.exe~
