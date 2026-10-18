@@ -7,6 +7,8 @@ import type { DetalleSede } from '@/domain/entities/Portal'
 import type { OpcionEstadia } from '@/domain/usecases/portal.usecases'
 import { Alert, Badge, Button, Card, Input, buttonClasses } from '@/shared/ui'
 import { useCarga } from '../../hooks/useCarga'
+import { PARAM } from '@/domain/entities/Parametro'
+import type { ParametrosPublicos } from '@/domain/entities/Parametro'
 import { useClienteAuth } from '../../providers/ClienteAuthProvider'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { useMoneda } from '../../providers/MonedaProvider'
@@ -21,6 +23,8 @@ export function HotelPage() {
   const [params, setParams] = useSearchParams()
   const { useCases, hoy: hoyFn } = useDependencies()
   const { moneda, convertir } = useMoneda()
+  // Si no se pueden leer los horarios, la página sigue sin esa línea.
+  const horarios = useCarga<ParametrosPublicos>(() => useCases.listarParametrosPublicos.execute(), [useCases], {})
   const { status } = useClienteAuth()
   const navigate = useNavigate()
 
@@ -119,6 +123,12 @@ export function HotelPage() {
             <div>
               <p className="text-ink-muted">{sede.descripcion}</p>
               <p className="mt-2 text-sm text-ink-muted">{sede.direccion}</p>
+              {horarios.datos[PARAM.checkinHora] && horarios.datos[PARAM.checkoutHora] && (
+                <p className="mt-2 text-sm text-ink-muted">
+                  Check-in desde las {horarios.datos[PARAM.checkinHora]} · Check-out hasta las{' '}
+                  {horarios.datos[PARAM.checkoutHora]}
+                </p>
+              )}
             </div>
             <ul className="flex flex-wrap content-start gap-1.5">
               {sede.servicios.map((s) => (

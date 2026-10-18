@@ -198,3 +198,22 @@ func TestPublicoSoloOfreceLoQueSePuedeCotizar(t *testing.T) {
 		t.Fatal("la base no lleva tipo de cambio")
 	}
 }
+
+type parametrosFalsos map[string]int
+
+func (p parametrosFalsos) Entero(_ context.Context, clave string) int { return p[clave] }
+
+func TestLaAntiguedadAceptadaSaleDeLosParametros(t *testing.T) {
+	s, repo, hoy := nuevoServicio()
+	repo.cambios = []TipoCambio{{Fecha: hoy.Mas(-5), Moneda: "USD", CompraMicro: 3_740_000, VentaMicro: 3_750_000}}
+	ctx := context.Background()
+
+	s.ConParametros(parametrosFalsos{"finanzas.cambio_dias_atras": 3})
+	if _, err := s.Vigente(ctx, "USD"); !errors.Is(err, ErrSinTipoCambio) {
+		t.Fatalf("con tope de 3 días, uno de hace 5 no sirve: err = %v", err)
+	}
+	s.ConParametros(parametrosFalsos{"finanzas.cambio_dias_atras": 10})
+	if _, err := s.Vigente(ctx, "USD"); err != nil {
+		t.Fatalf("con tope de 10 días sí: %v", err)
+	}
+}

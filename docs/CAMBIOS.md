@@ -5,6 +5,68 @@ Cómo usar lo que se describe aquí: [`backend/README.md`](../backend/README.md)
 
 ---
 
+## 2026-10-17 — Configuración → Parámetros
+
+La pantalla `/admin/config/parametros` existía solo en el menú y en el catálogo de permisos
+(`config.parametros`: ver · editar); ahora está construida. Migración `0007_parametro.sql`.
+
+### Cómo funciona
+
+- **Las definiciones viven en código** (`backend/internal/parametro`), igual que el catálogo de permisos:
+  clave, grupo, tipo, límites, valor por defecto y si la web puede mostrarlo. La base guarda **solo lo que
+  se cambió**. Una base vacía funciona con los valores por defecto y un parámetro nuevo no necesita migración.
+- **La pantalla se arma sola** con lo que el servidor lista: un parámetro nuevo aparece sin tocar el frontend.
+- **Los valores son texto** (`"45"`, `"14:00"`) y se validan contra su definición al guardar y al leer.
+  Guardar es **todo o nada**; solo se escribe lo que cambió y queda en Auditoría (antes → después).
+- **Si la base no se puede leer, rigen los valores por defecto**: un fallo al leer un ajuste no impide reservar.
+- Caché de 30 s por instancia, que se limpia al instante al guardar.
+
+### Los cinco parámetros (todos con efecto real)
+
+| Parámetro | Defecto | Qué cambia |
+|---|---|---|
+| Máximo de noches por reserva | 30 (1–365) | Cotizar, reservar y consultar disponibilidad por la web |
+| Cancelación por la web | 1 día antes (0–30) | Hasta cuándo el huésped puede cancelar: 0 = hasta el mismo día |
+| Hora de check-in | 14:00 | Se muestra en la página del hotel |
+| Hora de check-out | 12:00 | Se muestra en la página del hotel |
+| Antigüedad máxima del tipo de cambio | 7 días (0–30) | Hasta cuántos días atrás se acepta un tipo de cambio para cotizar en dólares |
+
+Los datos de contacto (teléfono, correo, sitio web) **no** son parámetros: ya están en Empresa.
+
+### Rutas nuevas
+
+| Método | Ruta | Acceso |
+|---|---|---|
+| GET · PUT | `/api/parametro` | `config.parametros` ver · editar (el PUT recibe `{"valores": {"clave": "texto"}}`) |
+| GET | `/api/portal/parametros` | Público: solo los marcados como públicos (los horarios) |
+
+### Se corrigió de pasada: pruebas de integración que no se estaban corriendo
+
+Al hacer `go test` **sin** `TEST_DATABASE_URL`, las pruebas contra PostgreSQL se **saltan** sin avisar y el
+resultado sale en verde. En la entrega anterior (moneda) las corrí así y reporté verde. Corridas con la base
+real destaparon tres fallos que ya estaban desde antes:
+
+- `permiso/postgres`: esperaba 59 submódulos y el catálogo tiene 71.
+- `usuario/postgres` (2 pruebas): insertaban reservas sin `total_pen_cent`, columna obligatoria desde `0006`.
+
+Eran de las pruebas, no del sistema; ya están corregidas y el backend completo pasa **con** la base real.
+
+### Verificación
+
+- Backend: unitarias de `parametro` (defaults, validación, todo-o-nada, caché, valor corrupto, base caída)
+  y del efecto en `reserva` y `moneda`; 4 de integración (permisos, el máximo de noches se nota en la
+  cotización y la disponibilidad, valores inválidos no cambian nada, la web solo ve los públicos).
+- Frontend: 355 pruebas (21 nuevas): validación, "solo lo que cambió", restablecer, solo lectura sin
+  permiso de editar, horarios en la página del hotel.
+- En vivo por Apache: lista, cambia a 45, rechaza 0, vuelve a 30.
+
+### Pendiente
+
+- Más parámetros según se necesiten (cada uno es una línea en `Definiciones` y un lugar donde se lea).
+- El IGV como parámetro espera la respuesta del contador (ver `DISENO-MONEDA-IGV.md`).
+
+---
+
 ## 2026-10-15 — Dos monedas (PEN y USD) y módulos faltantes del menú
 
 Se completó el menú con los módulos que faltaban para un hotel de lujo (el grupo **Integraciones** y

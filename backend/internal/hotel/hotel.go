@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"hotelerias/backend/internal/parametro"
 	"hotelerias/backend/internal/platform/fecha"
 	"hotelerias/backend/internal/platform/httpx"
 )
@@ -22,8 +23,8 @@ var Zona = time.FixedZone("America/Lima", -5*60*60)
 // Hoy es la fecha de hoy en el hotel.
 func Hoy() fecha.Fecha { return fecha.Hoy(Zona) }
 
-// MaxNoches es el largo máximo de una estadía por la web. Más allá es un trato
-// directo con el hotel, no una reserva de portal.
+// MaxNoches es el largo máximo por defecto de una estadía por la web (se cambia
+// en Configuración → Parámetros). Más allá es un trato directo con el hotel.
 const MaxNoches = 30
 
 // Sede es un hotel de la cadena.
@@ -72,8 +73,8 @@ type Repositorio interface {
 }
 
 // ValidarFechas comprueba que una estadía se pueda pedir: no en el pasado, con
-// al menos una noche y sin pasarse del máximo. `hoy` es la fecha del HOTEL.
-func ValidarFechas(hoy, entrada, salida fecha.Fecha) error {
+// al menos una noche y sin pasarse de `maxNoches`. `hoy` es la fecha del HOTEL.
+func ValidarFechas(hoy, entrada, salida fecha.Fecha, maxNoches int) error {
 	switch {
 	case entrada.IsZero() || salida.IsZero():
 		return httpx.Validacion("Indica la fecha de entrada y la de salida")
@@ -81,16 +82,37 @@ func ValidarFechas(hoy, entrada, salida fecha.Fecha) error {
 		return httpx.Validacion("La fecha de entrada no puede ser anterior a hoy")
 	case !salida.Despues(entrada):
 		return httpx.Validacion("La salida debe ser posterior a la entrada")
-	case fecha.Noches(entrada, salida) > MaxNoches:
-		return httpx.Validacion(fmt.Sprintf("La estadía no puede pasar de %d noches", MaxNoches))
+	case fecha.Noches(entrada, salida) > maxNoches:
+		return httpx.Validacion(fmt.Sprintf("La estadía no puede pasar de %d noches", maxNoches))
 	}
 	return nil
 }
 
+// Parametros son los ajustes que el administrador cambia desde Configuración.
+// Un servicio sin ellos (pruebas) usa los valores por defecto del código.
+type Parametros interface {
+	Entero(ctx context.Context, clave string) int
+}
+
+// MaxNochesDe es el máximo vigente: el parámetro, o el defecto si no hay parámetros.
+func MaxNochesDe(ctx context.Context, p Parametros) int {
+	if p == nil {
+		return MaxNoches
+	}
+	return p.Entero(ctx, parametro.MaxNoches)
+}
+
 // Servicio responde lo que ve el visitante del portal.
 type Servicio struct {
-	repo Repositorio
-	hoy  func() fecha.Fecha
+	repo   Repositorio
+	hoy    func() fecha.Fecha
+	params Parametros
+}
+
+// ConParametros hace que el máximo de noches salga de Configuración.
+func (s *Servicio) ConParametros(p Parametros) *Servicio {
+	s.params = p
+	return s
 }
 
 func NewServicio(repo Repositorio, hoy func() fecha.Fecha) *Servicio {
@@ -112,7 +134,7 @@ func (s *Servicio) Sede(ctx context.Context, id int64) (Sede, []TipoHabitacion, 
 // personas, con cuántos quedan entre las fechas. Los agotados se devuelven con
 // Disponibles = 0 (la web los muestra "agotado" en vez de esconderlos).
 func (s *Servicio) Disponibilidad(ctx context.Context, sedeID int64, entrada, salida fecha.Fecha, huespedes int) ([]Disponible, error) {
-	if err := ValidarFechas(s.hoy(), entrada, salida); err != nil {
+	if err := ValidarFechas(s.hoy(), entrada, salida, MaxNochesDe(ctx, s.params)); err != nil {
 		return nil, err
 	}
 	if huespedes < 1 {

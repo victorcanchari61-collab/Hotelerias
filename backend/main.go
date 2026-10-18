@@ -26,6 +26,8 @@ import (
 	hotelpg "hotelerias/backend/internal/hotel/postgres"
 	"hotelerias/backend/internal/moneda"
 	monedapg "hotelerias/backend/internal/moneda/postgres"
+	"hotelerias/backend/internal/parametro"
+	parametropg "hotelerias/backend/internal/parametro/postgres"
 	"hotelerias/backend/internal/permiso"
 	permisopg "hotelerias/backend/internal/permiso/postgres"
 	"hotelerias/backend/internal/platform/cache"
@@ -139,7 +141,8 @@ func run() error {
 	}
 
 	hoteles := hotelpg.NewStore(dbs.Postgres)
-	hotelSvc := hotel.NewServicio(hoteles, hotel.Hoy)
+	parametroSvc := parametro.NewServicio(parametropg.NewStore(dbs.Postgres), bitacora)
+	hotelSvc := hotel.NewServicio(hoteles, hotel.Hoy).ConParametros(parametroSvc)
 
 	promoSvc := promocion.NewServicio(promocionpg.NewStore(dbs.Postgres), hotel.Hoy)
 
@@ -150,11 +153,11 @@ func run() error {
 	}
 
 	reservaRepo := reservapg.NewStore(dbs.Postgres)
-	monedaSvc := moneda.NewServicio(monedapg.NewStore(dbs.Postgres), hotel.Hoy, bitacora)
-	reservaSvc := reserva.NewServicio(reservaRepo, hoteles, promoSvc, clienteSvc, monedaSvc, hotel.Hoy)
+	monedaSvc := moneda.NewServicio(monedapg.NewStore(dbs.Postgres), hotel.Hoy, bitacora).ConParametros(parametroSvc)
+	reservaSvc := reserva.NewServicio(reservaRepo, hoteles, promoSvc, clienteSvc, monedaSvc, hotel.Hoy).ConParametros(parametroSvc)
 
 	portalHandler := portal.NewHandler(hotelSvc, promoSvc, clienteSvc, reservaSvc, monedaSvc, hotel.Hoy,
-		auth.ClienteOpcional(tokens))
+		auth.ClienteOpcional(tokens)).ConParametros(parametroSvc)
 
 	// Los permisos del panel por recurso: quien los arma decide qué exige cada
 	// uno. Solo se arma el guard de las acciones que ese submódulo admite; las
@@ -202,6 +205,7 @@ func run() error {
 			usuario.NewHandler(gestionUsuarios, guardas("config.usuarios"), auth.UsuarioID),
 			rol.NewHandler(rolSvc, guardas("config.roles"), guardas("config.accesos")),
 			empresa.NewHandler(empresaSvc, guardas("config.empresa")),
+			parametro.NewHandler(parametroSvc, guardas("config.parametros")),
 			hotel.NewAdminHandler(adminSedes, guardas("config.sedes")),
 			auditoria.NewHandler(bitacora, guardas("config.auditoria"), auth.UsuarioID),
 			promocion.NewHandler(promoSvc, guardas("reservas.paquetes")),

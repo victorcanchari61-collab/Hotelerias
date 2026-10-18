@@ -314,8 +314,8 @@ func TestAlcancePorSedeEnReservas(t *testing.T) {
 			VALUES ($1, 'Deluxe', 2, 10000, 5) RETURNING id`, sedes[i]).Scan(&tipos[i])
 		if _, err := e.pool.Exec(ctx, `
 			INSERT INTO reserva (codigo, cliente_id, sede_id, tipo_habitacion_id, check_in, check_out, huespedes, noches,
-			                     precio_noche_cent, subtotal_cent, descuento_cent, total_cent)
-			VALUES ($1, $2, $3, $4, current_date + 10, current_date + 12, 2, 2, 10000, 20000, 0, 20000)`,
+			                     precio_noche_cent, subtotal_cent, descuento_cent, total_cent, total_pen_cent)
+			VALUES ($1, $2, $3, $4, current_date + 10, current_date + 12, 2, 2, 10000, 20000, 0, 20000, 20000)`,
 			fmt.Sprintf("HV-TEST-%04d", i), cliente, sedes[i], tipos[i]); err != nil {
 			t.Fatal(err)
 		}
@@ -413,8 +413,8 @@ func TestEmpresaYSedes(t *testing.T) {
 		VALUES ($1, 'Deluxe', 2, 10000, 5) RETURNING id`, id).Scan(&tipo)
 	_, _ = e.pool.Exec(ctx, `
 		INSERT INTO reserva (codigo, cliente_id, sede_id, tipo_habitacion_id, check_in, check_out, huespedes, noches,
-		                     precio_noche_cent, subtotal_cent, descuento_cent, total_cent)
-		VALUES ('HV-VIGENTE', $1, $2, $3, current_date + 5, current_date + 7, 2, 2, 10000, 20000, 0, 20000)`, cliente, id, tipo)
+		                     precio_noche_cent, subtotal_cent, descuento_cent, total_cent, total_pen_cent)
+		VALUES ('HV-VIGENTE', $1, $2, $3, current_date + 5, current_date + 7, 2, 2, 10000, 20000, 0, 20000, 20000)`, cliente, id, tipo)
 
 	cuerpo := `{"nombre":"Velothr Cusco","ciudad":"Cusco","estrellas":5,"imagen":"andino","activo":false}`
 	if c := e.codigo("PUT", fmt.Sprintf("/api/sede/%d", id), cuerpo, e.admin); c != 409 {

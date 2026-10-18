@@ -196,6 +196,7 @@ La respuesta 403 incluye qué faltaba, para que el frontend abra el modal de ped
 | GET | `/api/portal/sedes` · `/sedes/:id` | Público | Hoteles y sus habitaciones |
 | GET | `/api/portal/sedes/:id/disponibilidad?entrada=&salida=&huespedes=` | Público | Habitaciones con cuántas quedan para esas fechas |
 | GET | `/api/portal/promociones` | Público (opcional: sesión) | Ofertas sin código; con sesión, también las de su tipo |
+| GET | `/api/portal/parametros` | Público | Solo los parámetros marcados como públicos (horarios de check-in y check-out) |
 | GET | `/api/portal/monedas` | Público | Monedas y la **venta** de hoy; solo las que se pueden cotizar (sin tipo de cambio reciente no aparece USD) |
 | POST | `/api/portal/cotizar` | Público (opcional: sesión) | Precio con el mejor descuento; con sesión, el de su tipo de cliente. `"moneda": "USD"` convierte con la venta de hoy |
 | POST | `/api/portal/registro` · `/login` | Público | `{token, cliente}` |
@@ -224,6 +225,7 @@ La respuesta 403 incluye qué faltaba, para que el frontend abra el modal de ped
 | GET · POST · PUT · DELETE | `/api/rol` · `/:id` | `config.roles` |
 | PUT | `/api/rol/:id/permisos` | `config.accesos:editar` (la matriz completa; **reemplaza**) |
 | GET · PUT | `/api/empresa` | `config.empresa` |
+| GET · PUT | `/api/parametro` | `config.parametros` ver · editar (valores como texto; guardar es todo o nada) |
 | GET · POST · PUT | `/api/sede` · `/:id` | `config.sedes` (se desactivan, no se borran) |
 | GET | `/api/permiso/usuario/:id` | `config.accesos:ver` (excepciones de una persona) |
 | POST · PATCH | `/api/permiso/conceder` · `/excepcion/:id/revocar` | `config.accesos:editar` |

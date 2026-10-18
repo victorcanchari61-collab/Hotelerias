@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"hotelerias/backend/internal/auditoria"
+	"hotelerias/backend/internal/parametro"
 	"hotelerias/backend/internal/platform/fecha"
 	"hotelerias/backend/internal/platform/httpx"
 )
@@ -26,10 +27,16 @@ const Base = "PEN"
 // Micro es la escala del tipo de cambio: 3.752 se guarda como 3_752_000.
 const Micro int64 = 1_000_000
 
-// DiasAtras es cuánto se retrocede para encontrar un tipo de cambio cuando hoy
-// no hay uno (fines de semana y feriados no se publica): pasada una semana sin
-// ninguno es mejor negarse a cotizar en dólares que usar un dato viejo.
+// DiasAtras es cuánto se retrocede por defecto para encontrar un tipo de cambio
+// cuando hoy no hay uno (fines de semana y feriados no se publica): pasada una
+// semana sin ninguno es mejor negarse a cotizar en dólares que usar un dato
+// viejo. Se cambia en Configuración → Parámetros.
 const DiasAtras = 7
+
+// Parametros son los ajustes de Configuración; sin ellos se usan los del código.
+type Parametros interface {
+	Entero(ctx context.Context, clave string) int
+}
 
 var (
 	ErrSinTipoCambio = errors.New("moneda: no hay un tipo de cambio vigente")
@@ -119,6 +126,20 @@ type Servicio struct {
 	repo      Repositorio
 	hoy       func() fecha.Fecha
 	auditoria auditoria.Registrador
+	params    Parametros
+}
+
+// ConParametros hace que la antigüedad aceptada del tipo de cambio salga de Configuración.
+func (s *Servicio) ConParametros(p Parametros) *Servicio {
+	s.params = p
+	return s
+}
+
+func (s *Servicio) diasAtras(ctx context.Context) int {
+	if s.params == nil {
+		return DiasAtras
+	}
+	return s.params.Entero(ctx, parametro.CambioDiasAtras)
 }
 
 func NewServicio(repo Repositorio, hoy func() fecha.Fecha, aud auditoria.Registrador) *Servicio {
@@ -147,7 +168,7 @@ func (s *Servicio) Vigente(ctx context.Context, moneda string) (TipoCambio, erro
 	}
 
 	hoy := s.hoy()
-	return s.repo.UltimoHasta(ctx, moneda, hoy.Mas(-DiasAtras), hoy)
+	return s.repo.UltimoHasta(ctx, moneda, hoy.Mas(-s.diasAtras(ctx)), hoy)
 }
 
 // Publico es lo que ve la web: las monedas activas y, de las que no son base,

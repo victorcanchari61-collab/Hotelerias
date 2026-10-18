@@ -404,7 +404,7 @@ func TestPuntaAPunta(t *testing.T) {
 	t.Run("catálogo", func(t *testing.T) {
 		code, body := llamar(t, srv, tok(f.recepcionista), "GET", "/api/permiso/catalogo")
 		var cat []permiso.Submodulo
-		if err := json.Unmarshal(body, &cat); err != nil || code != 200 || len(cat) != 59 {
+		if err := json.Unmarshal(body, &cat); err != nil || code != 200 || len(cat) != 71 {
 			t.Fatalf("code=%d n=%d err=%v", code, len(cat), err)
 		}
 		if cat[0].Clave != "dashboard.ocupacion" || cat[0].Modulo != "dashboard" {

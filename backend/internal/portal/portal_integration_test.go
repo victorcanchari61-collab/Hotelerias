@@ -33,6 +33,8 @@ import (
 	hotelpg "hotelerias/backend/internal/hotel/postgres"
 	"hotelerias/backend/internal/moneda"
 	monedapg "hotelerias/backend/internal/moneda/postgres"
+	"hotelerias/backend/internal/parametro"
+	parametropg "hotelerias/backend/internal/parametro/postgres"
 	"hotelerias/backend/internal/platform/httpx"
 	"hotelerias/backend/internal/platform/migrate"
 	"hotelerias/backend/internal/portal"
@@ -115,10 +117,11 @@ func armar(t *testing.T) *entorno {
 	if err != nil {
 		t.Fatal(err)
 	}
-	monedaSvc := moneda.NewServicio(monedapg.NewStore(pool), hotel.Hoy, auditoria.Nop{})
-	reservaSvc := reserva.NewServicio(reservapg.NewStore(pool), hoteles, promoSvc, clienteSvc, monedaSvc, hotel.Hoy)
-	h := portal.NewHandler(hotel.NewServicio(hoteles, hotel.Hoy), promoSvc, clienteSvc, reservaSvc, monedaSvc, hotel.Hoy,
-		auth.ClienteOpcional(tokens))
+	parametroSvc := parametro.NewServicio(parametropg.NewStore(pool), auditoria.Nop{})
+	monedaSvc := moneda.NewServicio(monedapg.NewStore(pool), hotel.Hoy, auditoria.Nop{}).ConParametros(parametroSvc)
+	reservaSvc := reserva.NewServicio(reservapg.NewStore(pool), hoteles, promoSvc, clienteSvc, monedaSvc, hotel.Hoy).ConParametros(parametroSvc)
+	h := portal.NewHandler(hotel.NewServicio(hoteles, hotel.Hoy).ConParametros(parametroSvc), promoSvc, clienteSvc, reservaSvc, monedaSvc, hotel.Hoy,
+		auth.ClienteOpcional(tokens)).ConParametros(parametroSvc)
 
 	router := httpx.NewRouter(nil)
 	routes.Register(router, routes.Deps{
@@ -128,6 +131,7 @@ func armar(t *testing.T) *entorno {
 			// Sin guard de permiso: aquí solo importa que exija sesión de PERSONAL.
 			promocion.NewHandler(promoSvc, httpx.Guardas{}),
 			moneda.NewHandler(monedaSvc, httpx.Guardas{}),
+			parametro.NewHandler(parametroSvc, httpx.Guardas{}),
 			reserva.NewAdminHandler(reservaSvc, httpx.Guardas{}, reserva.SinRestriccion{}, auditoria.Nop{}),
 		},
 		Cliente:        auth.AuthenticateCliente(tokens),
@@ -709,5 +713,139 @@ func TestTipoCambioDelPanelExigeSesionDePersonalYValida(t *testing.T) {
 	body["venta"] = 3.752 // un número JSON, no texto: no se acepta
 	if code, _ := e.do(t, "POST", "/api/tipo-cambio", body, staff); code != http.StatusBadRequest {
 		t.Fatalf("número en vez de texto: %d", code)
+	}
+}
+
+// --- parámetros ---
+
+// personal crea una cuenta de personal y devuelve su token.
+func (e *entorno) personal(t *testing.T) string {
+	t.Helper()
+	var uid int64
+	if err := e.pool.QueryRow(context.Background(),
+		`INSERT INTO usuario (nombre) VALUES ('Admin') RETURNING id`).Scan(&uid); err != nil {
+		t.Fatal(err)
+	}
+	tok, _ := e.tokens.Emitir(uid)
+	return tok
+}
+
+func TestParametrosExigenSesionDePersonalYArrancanConDefectos(t *testing.T) {
+	e := armar(t)
+
+	if code, _ := e.do(t, "GET", "/api/parametro", nil, ""); code != http.StatusUnauthorized {
+		t.Fatalf("sin sesión: %d", code)
+	}
+	huesped, _ := e.registrar(t, "curioso@correo.pe")
+	if code, _ := e.do(t, "GET", "/api/parametro", nil, huesped); code != http.StatusUnauthorized {
+		t.Fatalf("un huésped no ve los parámetros: %d", code)
+	}
+	if code, _ := e.do(t, "PUT", "/api/parametro", map[string]any{"valores": map[string]string{"reservas.max_noches": "99"}}, huesped); code != http.StatusUnauthorized {
+		t.Fatalf("un huésped no los cambia: %d", code)
+	}
+
+	code, body := e.do(t, "GET", "/api/parametro", nil, e.personal(t))
+	if code != 200 {
+		t.Fatalf("%d %s", code, body)
+	}
+	lista := decode[[]parametro.Parametro](t, body)
+	if len(lista) != len(parametro.Definiciones) {
+		t.Fatalf("%d parámetros", len(lista))
+	}
+	for _, p := range lista {
+		if p.Valor != p.Defecto || p.Modificado {
+			t.Errorf("%s debería estar en su valor por defecto: %+v", p.Clave, p)
+		}
+	}
+}
+
+func TestCambiarElMaximoDeNochesSeNotaEnLaCotizacion(t *testing.T) {
+	e := armar(t)
+	_, tipos := e.tipos(t)
+	deluxe := tipos["Habitación Deluxe"]
+	staff := e.personal(t)
+
+	in, out := fechas(40, 4)
+	if code, body := e.do(t, "POST", "/api/portal/cotizar", solicitud(deluxe.ID, in, out), ""); code != 200 {
+		t.Fatalf("4 noches con el tope de siempre: %d %s", code, body)
+	}
+
+	code, body := e.do(t, "PUT", "/api/parametro", map[string]any{"valores": map[string]string{"reservas.max_noches": "3"}}, staff)
+	if code != 200 {
+		t.Fatalf("guardar: %d %s", code, body)
+	}
+	if code, _ := e.do(t, "POST", "/api/portal/cotizar", solicitud(deluxe.ID, in, out), ""); code != http.StatusBadRequest {
+		t.Fatalf("4 noches con tope 3: %d, esperaba 400", code)
+	}
+	in3, out3 := fechas(40, 3)
+	if code, body := e.do(t, "POST", "/api/portal/cotizar", solicitud(deluxe.ID, in3, out3), ""); code != 200 {
+		t.Fatalf("3 noches con tope 3: %d %s", code, body)
+	}
+	// La disponibilidad aplica el mismo tope.
+	code, _ = e.do(t, "GET", fmt.Sprintf("/api/portal/sedes/%d/disponibilidad?entrada=%s&salida=%s&huespedes=2", deluxe.SedeID, in, out), nil, "")
+	if code != http.StatusBadRequest {
+		t.Fatalf("disponibilidad con tope 3: %d", code)
+	}
+
+	lista := decode[[]parametro.Parametro](t, body)
+	for _, p := range lista {
+		if p.Clave == parametro.MaxNoches && (p.Valor != "3" || !p.Modificado) {
+			t.Fatalf("%+v", p)
+		}
+	}
+}
+
+func TestParametrosInvalidosNoCambianNada(t *testing.T) {
+	e := armar(t)
+	staff := e.personal(t)
+	cambiar := func(valores any) int {
+		code, _ := e.do(t, "PUT", "/api/parametro", map[string]any{"valores": valores}, staff)
+		return code
+	}
+
+	if code := cambiar(map[string]string{"reservas.max_noches": "9999"}); code != http.StatusBadRequest {
+		t.Errorf("fuera de rango: %d", code)
+	}
+	// Uno bueno junto a uno malo: ninguno se guarda.
+	if code := cambiar(map[string]string{"reservas.max_noches": "10", "hotel.checkin_hora": "25:00"}); code != http.StatusBadRequest {
+		t.Errorf("uno malo: %d", code)
+	}
+	if code := cambiar(map[string]string{"no.existe": "1"}); code != http.StatusBadRequest {
+		t.Errorf("clave desconocida: %d", code)
+	}
+	// Los valores van como texto: un número JSON no es un valor.
+	if code := cambiar(map[string]any{"reservas.max_noches": 10}); code != http.StatusBadRequest {
+		t.Errorf("número en vez de texto: %d", code)
+	}
+	if code := cambiar(map[string]string{}); code != http.StatusBadRequest {
+		t.Errorf("vacío: %d", code)
+	}
+
+	_, body := e.do(t, "GET", "/api/parametro", nil, staff)
+	for _, p := range decode[[]parametro.Parametro](t, body) {
+		if p.Modificado {
+			t.Errorf("%s cambió pese a los errores: %+v", p.Clave, p)
+		}
+	}
+}
+
+func TestLaWebSoloVeLosParametrosPublicos(t *testing.T) {
+	e := armar(t)
+
+	code, body := e.do(t, "GET", "/api/portal/parametros", nil, "")
+	if code != 200 {
+		t.Fatalf("%d %s", code, body)
+	}
+	pub := decode[map[string]string](t, body)
+	if pub["hotel.checkin_hora"] != "14:00" || pub["hotel.checkout_hora"] != "12:00" || len(pub) != 2 {
+		t.Fatalf("%+v", pub)
+	}
+
+	if code, _ := e.do(t, "PUT", "/api/parametro", map[string]any{"valores": map[string]string{"hotel.checkin_hora": "15:30"}}, e.personal(t)); code != 200 {
+		t.Fatal(code)
+	}
+	_, body = e.do(t, "GET", "/api/portal/parametros", nil, "")
+	if pub = decode[map[string]string](t, body); pub["hotel.checkin_hora"] != "15:30" {
+		t.Fatalf("%+v", pub)
 	}
 }

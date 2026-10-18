@@ -21,6 +21,7 @@ export interface PortalRemoteDataSource {
   sede(id: number): Promise<DetalleSedeDto>
   disponibilidad(sedeId: number, busqueda: BusquedaEstadia): Promise<HabitacionDisponibleDto[] | null>
   monedas(): Promise<MonedasPublicasDto>
+  parametros(): Promise<Record<string, string> | null>
   promociones(): Promise<PromocionDto[] | null>
   cotizar(body: unknown): Promise<CotizacionDto>
   reservar(body: unknown): Promise<ReservaDto>
@@ -51,6 +52,10 @@ export class PortalRemoteDataSourceImpl implements PortalRemoteDataSource {
 
   monedas() {
     return this.http.get<MonedasPublicasDto>(ApiPaths.portal.monedas)
+  }
+
+  parametros() {
+    return this.http.get<Record<string, string> | null>(ApiPaths.portal.parametros)
   }
 
   promociones() {

@@ -4,6 +4,7 @@ import { left, right } from '@/core/utils/either'
 import type { Either } from '@/core/utils/either'
 import { esFechaISO, noches } from '../fechas'
 import type { MonedasPublicas } from '../entities/Moneda'
+import type { ParametrosPublicos } from '../entities/Parametro'
 import type {
   BusquedaEstadia,
   Cotizacion,
@@ -147,6 +148,15 @@ export class ListarMonedasUseCase implements UseCase<void, MonedasPublicas> {
 
   execute(): Promise<Either<Failure, MonedasPublicas>> {
     return this.portal.monedas()
+  }
+}
+
+/** Los horarios y demás ajustes públicos. Si no se pueden leer, la web sigue sin ellos. */
+export class ListarParametrosPublicosUseCase implements UseCase<void, ParametrosPublicos> {
+  constructor(private readonly portal: PortalRepository) {}
+
+  execute(): Promise<Either<Failure, ParametrosPublicos>> {
+    return this.portal.parametros()
   }
 }
 

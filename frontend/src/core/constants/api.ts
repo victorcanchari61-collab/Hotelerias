@@ -34,6 +34,7 @@ export const ApiPaths = {
   },
   empresa: { base: '/empresa' },
   tipoCambio: { base: '/tipo-cambio' },
+  parametro: { base: '/parametro' },
   sede: {
     base: '/sede',
     porId: (id: number) => `/sede/${id}`,
@@ -49,6 +50,7 @@ export const ApiPaths = {
   portal: {
     sedes: '/portal/sedes',
     monedas: '/portal/monedas',
+    parametros: '/portal/parametros',
     sede: (id: number) => `/portal/sedes/${id}`,
     disponibilidad: (id: number) => `/portal/sedes/${id}/disponibilidad`,
     promociones: '/portal/promociones',

@@ -248,6 +248,13 @@ export class FakePortalRepository implements PortalRepository {
     )
   }
 
+  /** Lo que la web puede mostrar de los parámetros. */
+  parametrosPublicos: Record<string, string> = { 'hotel.checkin_hora': '14:00', 'hotel.checkout_hora': '12:00' }
+
+  async parametros() {
+    return right<Record<string, string>, Failure>({ ...this.parametrosPublicos })
+  }
+
   async monedas() {
     const publico: MonedasPublicas = {
       monedas: [

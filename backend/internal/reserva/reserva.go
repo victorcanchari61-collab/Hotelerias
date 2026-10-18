@@ -17,6 +17,7 @@ import (
 	"hotelerias/backend/internal/cliente"
 	"hotelerias/backend/internal/hotel"
 	"hotelerias/backend/internal/moneda"
+	"hotelerias/backend/internal/parametro"
 	"hotelerias/backend/internal/platform/fecha"
 	"hotelerias/backend/internal/platform/httpx"
 	"hotelerias/backend/internal/promocion"
@@ -205,6 +206,7 @@ type Servicio struct {
 	ofertas   Ofertas
 	huespedes Huespedes
 	cambios   Cambios
+	params    hotel.Parametros
 	hoy       func() fecha.Fecha
 	// codigo genera el código de reserva (reemplazable en pruebas).
 	codigo func() string
@@ -212,6 +214,20 @@ type Servicio struct {
 
 func NewServicio(repo Repositorio, cat Catalogo, ofertas Ofertas, h Huespedes, cambios Cambios, hoy func() fecha.Fecha) *Servicio {
 	return &Servicio{repo: repo, catalogo: cat, ofertas: ofertas, huespedes: h, cambios: cambios, hoy: hoy, codigo: NuevoCodigo}
+}
+
+// ConParametros hace que el máximo de noches y el plazo de cancelación salgan de Configuración.
+func (s *Servicio) ConParametros(p hotel.Parametros) *Servicio {
+	s.params = p
+	return s
+}
+
+// cancelacionDias: con cuántos días de anticipación se puede cancelar por la web.
+func (s *Servicio) cancelacionDias(ctx context.Context) int {
+	if s.params == nil {
+		return 1
+	}
+	return s.params.Entero(ctx, parametro.CancelacionDias)
 }
 
 // importes son los números de una estadía en una moneda.
@@ -280,7 +296,7 @@ func normalizarMoneda(cod string) (string, error) {
 
 // cargar valida la solicitud y trae lo que hace falta para cotizarla.
 func (s *Servicio) cargar(ctx context.Context, sol Solicitud) (hotel.TipoHabitacion, hotel.Sede, error) {
-	if err := hotel.ValidarFechas(s.hoy(), sol.CheckIn, sol.CheckOut); err != nil {
+	if err := hotel.ValidarFechas(s.hoy(), sol.CheckIn, sol.CheckOut, hotel.MaxNochesDe(ctx, s.params)); err != nil {
 		return hotel.TipoHabitacion{}, hotel.Sede{}, err
 	}
 	if sol.Huespedes < 1 {
@@ -465,7 +481,9 @@ func (s *Servicio) Cancelar(ctx context.Context, clienteID int64, codigo string)
 	if r.Estado != Confirmada {
 		return Reserva{}, ErrNoCancelable
 	}
-	if !r.CheckIn.Despues(s.hoy()) {
+	// Con N días de anticipación: la entrada debe ser de hoy + N en adelante.
+	// N = 1 es "hasta el día anterior"; N = 0, "hasta el mismo día".
+	if r.CheckIn.Antes(s.hoy().Mas(s.cancelacionDias(ctx))) {
 		return Reserva{}, ErrNoCancelable
 	}
 	return s.anular(ctx, r)

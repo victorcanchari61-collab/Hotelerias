@@ -45,6 +45,11 @@ type Monedas interface {
 	Publico(ctx context.Context) (moneda.Publico, error)
 }
 
+// Publicos son los parámetros que la web puede mostrar (horarios).
+type Publicos interface {
+	Publicos(ctx context.Context) map[string]string
+}
+
 type Reservas interface {
 	Cotizar(ctx context.Context, clienteID int64, sol reserva.Solicitud) (reserva.Cotizacion, error)
 	Reservar(ctx context.Context, clienteID int64, sol reserva.Solicitud) (reserva.Reserva, error)
@@ -59,6 +64,7 @@ type Handler struct {
 	cuentas  Cuentas
 	reservas Reservas
 	monedas  Monedas
+	params   Publicos
 	hoy      func() fecha.Fecha
 
 	// opcional anota al huésped si trae sesión, sin exigirla.
@@ -75,6 +81,12 @@ func NewHandler(h Hoteles, o Ofertas, c Cuentas, r Reservas, m Monedas, hoy func
 	}
 }
 
+// ConParametros expone los parámetros públicos en /portal/parametros.
+func (h *Handler) ConParametros(p Publicos) *Handler {
+	h.params = p
+	return h
+}
+
 type modulo func(r gin.IRouter)
 
 func (m modulo) Register(r gin.IRouter) { m(r) }
@@ -84,6 +96,7 @@ func (h *Handler) Publico() interface{ Register(gin.IRouter) } {
 	return modulo(func(r gin.IRouter) {
 		r.GET("/portal/sedes", h.sedes)
 		r.GET("/portal/monedas", h.listarMonedas)
+		r.GET("/portal/parametros", h.parametros)
 		r.GET("/portal/sedes/:id", h.sede)
 		r.GET("/portal/sedes/:id/disponibilidad", h.disponibilidad)
 		r.POST("/portal/registro", h.registro)
@@ -113,6 +126,15 @@ func (h *Handler) sedes(c *gin.Context) {
 	if err != nil {
 		fail(c, err)
 		return
+	}
+	c.JSON(http.StatusOK, out)
+}
+
+// parametros: solo los que la web puede mostrar. Sin parámetros configurados, vacío.
+func (h *Handler) parametros(c *gin.Context) {
+	out := map[string]string{}
+	if h.params != nil {
+		out = h.params.Publicos(c.Request.Context())
 	}
 	c.JSON(http.StatusOK, out)
 }

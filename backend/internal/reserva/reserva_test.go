@@ -484,3 +484,54 @@ func TestReservarEnSolesNoGuardaTipoDeCambio(t *testing.T) {
 		t.Fatalf("%+v", n)
 	}
 }
+
+// --- parámetros de Configuración ---
+
+type parametrosFalsos map[string]int
+
+func (p parametrosFalsos) Entero(_ context.Context, clave string) int { return p[clave] }
+
+func TestPlazoDeCancelacionSaleDeLosParametros(t *testing.T) {
+	ctx := context.Background()
+	// Hoy es 2026-11-01.
+	casos := []struct {
+		dias    int
+		entrada string
+		quiero  bool
+	}{
+		{1, "2026-11-02", true}, // el valor de siempre: hasta el día anterior
+		{1, "2026-11-01", false},
+		{0, "2026-11-01", true}, // hasta el mismo día
+		{0, "2026-10-31", false},
+		{3, "2026-11-03", false},
+		{3, "2026-11-04", true},
+	}
+	for _, c := range casos {
+		s, repo, _ := armar(t)
+		s.ConParametros(parametrosFalsos{"reservas.cancelacion_dias": c.dias})
+		repo.porCodigo["HV-AAAA-BBBB"] = Reserva{ID: 5, Codigo: "HV-AAAA-BBBB", ClienteID: 7, Estado: Confirmada, CheckIn: f(c.entrada)}
+
+		_, err := s.Cancelar(ctx, 7, "HV-AAAA-BBBB")
+		if c.quiero && err != nil || !c.quiero && !errors.Is(err, ErrNoCancelable) {
+			t.Errorf("plazo %d, entrada %s: err = %v; ¿cancelable? quiero %v", c.dias, c.entrada, err, c.quiero)
+		}
+	}
+}
+
+func TestMaximoDeNochesSaleDeLosParametros(t *testing.T) {
+	s, _, _ := armar(t)
+	s.ConParametros(parametrosFalsos{"reservas.max_noches": 5})
+
+	sol := solicitud() // 3 noches
+	sol.CheckOut = f("2026-11-15")
+	_, err := s.Cotizar(context.Background(), 0, sol) // 5 noches
+	if err != nil {
+		t.Fatalf("5 noches con tope 5: %v", err)
+	}
+	sol.CheckOut = f("2026-11-16") // 6 noches
+	_, err = s.Cotizar(context.Background(), 0, sol)
+	var v httpx.Validacion
+	if !errors.As(err, &v) {
+		t.Fatalf("6 noches con tope 5: err = %v", err)
+	}
+}
