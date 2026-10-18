@@ -7,6 +7,7 @@ import { habitacionesRoutes } from '../features/habitaciones/routes'
 import { homeRoutes } from '../features/home/routes'
 import { portalRoutes } from '../features/portal/routes'
 import { promocionesRoutes } from '../features/promociones/routes'
+import { recepcionRoutes } from '../features/recepcion/routes'
 import { reservasRoutes } from '../features/reservas/routes'
 import { usuariosRoutes } from '../features/usuarios/routes'
 import { EnConstruccion } from '../pages/EnConstruccion'
@@ -27,6 +28,7 @@ export const ROUTE_MODULES: readonly RouteModule[] = [
   fidelizacionRoutes,
   finanzasRoutes,
   habitacionesRoutes,
+  recepcionRoutes,
   reservasRoutes,
   portalRoutes,
 ]

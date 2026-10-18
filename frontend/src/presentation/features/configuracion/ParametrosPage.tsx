@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { RotateCcw, Sliders } from 'lucide-react'
 import { describeFailure } from '@/core/errors/failures'
 import { ACCION } from '@/domain/entities/Permiso'
@@ -30,14 +30,18 @@ export function ParametrosPage() {
   const puedeEditar = puede(SUBMODULO, ACCION.editar)
 
   const carga = useCarga<Parametro[]>(() => useCases.listarParametros.execute(), [useCases], [])
-  const [valores, setValores] = useState<Record<string, string>>({})
+  // SOLO lo que la persona escribió: el valor mostrado sale de aquí o, si no tocó nada, del servidor.
+  // (Antes se copiaba todo a un estado al llegar los datos, y esa copia podía pisar lo que
+  // se estaba escribiendo si los datos llegaban justo después.)
+  const [ediciones, setEdiciones] = useState<Record<string, string>>({})
+  const valores = useMemo(
+    () => Object.fromEntries(carga.datos.map((p) => [p.clave, ediciones[p.clave] ?? p.valor])),
+    [carga.datos, ediciones],
+  )
+  const setValores = (fn: (v: Record<string, string>) => Record<string, string>) =>
+    setEdiciones((e) => ({ ...e, ...fn({ ...valores, ...e }) }))
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Al llegar (o recargar) los datos, el formulario parte de lo vigente.
-  useEffect(() => {
-    setValores(Object.fromEntries(carga.datos.map((p) => [p.clave, p.valor])))
-  }, [carga.datos])
 
   const errores = useMemo(() => {
     const out: Record<string, string> = {}
@@ -61,6 +65,7 @@ export function ParametrosPage() {
       return
     }
     toast.exito('Parámetros guardados.')
+    setEdiciones({})
     await carga.recargar()
   }
 

@@ -5,6 +5,93 @@ Cómo usar lo que se describe aquí: [`backend/README.md`](../backend/README.md)
 
 ---
 
+## 2026-10-17 — Recepción: check-in y check-out con la ficha de registro
+
+La reserva deja de ser solo «un tipo de habitación entre dos fechas»: al llegar el huésped se le asigna una
+**habitación física** (la 101) y se registra su **ficha**; al irse, se hace el check-out.
+Migración `0009_estancia.sql`; pantalla `/admin/recepcion/estancias` (`recepcion.estancias`).
+
+### Flujo
+
+```
+reserva confirmada ──check-in──► estancia «en casa»   (habitación → ocupada)
+                    ◄─check-out─ estancia «finalizada» (habitación → SUCIA, reserva → completada)
+```
+
+El check-out deja la habitación **sucia**, no limpia: limpieza (housekeeping) la libera. Hasta entonces no se
+puede asignar a nadie.
+
+### Reglas (todas hechas cumplir en la base, no solo en pantalla)
+
+- **Solo en fechas:** se recibe desde el día de entrada hasta antes de la salida (una llegada tardía de una
+  reserva que ya empezó, sí). Antes de la fecha o con la estadía terminada se rechaza.
+- **La habitación debe ser apta:** del mismo hotel y del **mismo tipo** reservado, activa, y **limpia**. Sucia, en
+  mantenimiento u ocupada se rechazan con el motivo («la 101 está sucia (debe limpiarse primero)»).
+- **Una reserva, una estancia; una habitación, una estancia abierta.** Lo garantizan un índice único parcial y un
+  `UNIQUE`: dos recepcionistas asignando la misma habitación a la vez dan exactamente un check-in (hay una prueba
+  de concurrencia con 6 simultáneos).
+- **Todo en una transacción**, con la reserva y la habitación bloqueadas en orden fijo (reserva → habitación; en
+  el check-out estancia → reserva → habitación) para que no haya bloqueos mutuos.
+- **Ficha de registro**: tipo y número de documento (DNI 8 dígitos, carné de extranjería, pasaporte, otro, cada uno
+  con su formato), nombre, nacionalidad, teléfono y **domiciliado sí/no**. Un **no domiciliado debe traer su
+  fecha de ingreso al país** (no futura): la base lo exige con un `CHECK`. **Solo se guarda el dato**; cómo se
+  usa para el IGV sigue pendiente del contador (ver `DISENO-MONEDA-IGV.md`).
+- **Privacidad:** la ficha es un dato personal. Se lee con su **propio permiso** (`recepcion.fichas`), y la
+  bitácora guarda el documento **enmascarado** (`dni *****678`), nunca completo.
+- **Alcance por hotel:** `recepcion.estancias` se suma a los submódulos que se acotan en Accesos. Una reserva o
+  estancia de otro hotel responde como inexistente.
+- **Permiso:** ver el panel = `ver`; hacer check-in y check-out = `confirmar` (para eso `httpx.Guardas` ganó `Confirmar`).
+
+### Corrección a lo anterior (habitaciones)
+
+El disparador que mantiene `tipo_habitacion.cantidad` se disparaba en **cualquier** `UPDATE` de una habitación.
+El check-in solo cambia el estado de la habitación, pero ese disparador habría bloqueado además la fila del tipo,
+y la edición de habitaciones bloquea tipo → habitación: dos candados en orden contrario = riesgo de **deadlock**.
+Ahora se dispara solo al cambiar `tipo_habitacion_id` o `activa` (en la `0009`, sin editar la `0008`).
+
+### Rutas nuevas
+
+| Método | Ruta | Permiso |
+|---|---|---|
+| GET | `/api/estancia` | `recepcion.estancias:ver` — llegadas por atender + huéspedes en casa (acotado por hotel) |
+| GET | `/api/estancia/habitaciones?reservaId=` | `…:ver` — habitaciones limpias del tipo reservado |
+| POST | `/api/estancia` | `…:confirmar` — check-in `{reservaId, habitacionId, ficha}` |
+| POST | `/api/estancia/:id/check-out` | `…:confirmar` |
+| GET | `/api/ficha-registro/:id` | `recepcion.fichas:ver` |
+
+### Pantalla
+
+Listado de llegadas (por atender) y huéspedes en casa con indicadores (llegadas, en casa, salen hoy). Check-in:
+elige la habitación (ya viene la primera libre), documento, nombre, nacionalidad, y «domiciliado» (si no, pide la fecha
+de ingreso al país). Check-out: pide confirmar, avisa que la habitación queda sucia y si es una **salida anticipada**.
+Si no hay habitaciones limpias del tipo, lo explica y no deja continuar.
+
+### También: un fallo de pantalla encontrado y corregido
+
+Una prueba de **Parámetros** falló una vez en una de varias corridas. La causa era real: la pantalla copiaba los datos
+del servidor a su estado con un efecto, y esa copia podía **pisar lo que la persona estaba escribiendo** si los datos
+llegaban justo después. Ahora la pantalla guarda solo las ediciones y el resto sale del servidor. (`EmpresaPage` tiene el
+mismo patrón de copia al cargar; no se tocó.)
+
+### Verificación
+
+- Backend, **con la base real**: unitarias (ficha, enmascarado, traducción de reglas, alcance, auditoría) + 8 de
+  integración (flujo completo, habitación apta, reserva vigente y fechas, ficha de extranjero, **concurrencia**,
+  alcance por hotel, sesión).
+- Frontend: 412 pruebas (24 nuevas), tres corridas completas verdes.
+- En vivo por Apache: panel, errores 400/404/401 y alcances. **No se hizo un check-in real** sobre tus datos para
+  no dejarte una estancia de prueba; el flujo completo está cubierto por las pruebas de integración.
+
+### Pendiente
+
+- **Panel de habitaciones** (vista de plano con el ocupante), **Cargos a la habitación** y la pantalla de **Fichas**
+  (hoy solo se ve la ficha de cada huésped en casa).
+- **Housekeeping**: hoy se marca limpia desde Habitaciones; falta la pantalla de limpieza con responsables y turnos.
+- Cambiar de habitación durante la estancia; upgrade a otro tipo; acompañantes (hoy solo el titular).
+- Cobro al hacer el check-out: depende de Cargos y Facturación.
+
+---
+
 ## 2026-10-17 — Habitaciones: el inventario de habitaciones físicas
 
 Hasta ahora el hotel solo sabía «hay 12 Deluxe». Ahora existen la 101, la 102… cada una con su tipo, piso

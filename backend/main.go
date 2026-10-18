@@ -22,6 +22,8 @@ import (
 	"hotelerias/backend/internal/demo"
 	"hotelerias/backend/internal/empresa"
 	empresapg "hotelerias/backend/internal/empresa/postgres"
+	"hotelerias/backend/internal/estancia"
+	estanciapg "hotelerias/backend/internal/estancia/postgres"
 	"hotelerias/backend/internal/habitacion"
 	habitacionpg "hotelerias/backend/internal/habitacion/postgres"
 	"hotelerias/backend/internal/hotel"
@@ -179,7 +181,7 @@ func run() error {
 		}
 		return httpx.Guardas{
 			Ver: para(permiso.Ver), Crear: para(permiso.Crear), Editar: para(permiso.Editar),
-			Eliminar: para(permiso.Eliminar), Anular: para(permiso.Anular),
+			Eliminar: para(permiso.Eliminar), Anular: para(permiso.Anular), Confirmar: para(permiso.Confirmar),
 		}
 	}
 
@@ -193,6 +195,8 @@ func run() error {
 	alcanceReservas := alcanceSedes{g: gestionPermisos, submodulo: "reservas.reservas"}
 	alcanceHabitaciones := alcanceSedes{g: gestionPermisos, submodulo: "habitaciones.habitaciones"}
 	habitacionSvc := habitacion.NewServicio(habitacionpg.NewStore(dbs.Postgres), hotel.Hoy, bitacora)
+	alcanceRecepcion := alcanceSedes{g: gestionPermisos, submodulo: "recepcion.estancias"}
+	estanciaSvc := estancia.NewServicio(estanciapg.NewStore(dbs.Postgres), hotel.Hoy, bitacora)
 
 	// --- HTTP ---
 	router := httpx.NewRouter(cfg.AllowedOrigins)
@@ -215,6 +219,7 @@ func run() error {
 			promocion.NewHandler(promoSvc, guardas("reservas.paquetes")),
 			cliente.NewAdminHandler(clienteSvc, guardas("crm.huespedes"), guardas("crm.fidelizacion")),
 			moneda.NewHandler(monedaSvc, guardas("finanzas.tipocambio")),
+			estancia.NewHandler(estanciaSvc, guardas("recepcion.estancias"), guardas("recepcion.fichas"), alcanceRecepcion),
 			habitacion.NewHandler(habitacionSvc, guardas("habitaciones.habitaciones"), alcanceHabitaciones),
 			reserva.NewAdminHandler(reservaSvc, guardas("reservas.reservas"), alcanceReservas, bitacora),
 		},

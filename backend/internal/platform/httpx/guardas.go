@@ -7,7 +7,7 @@ import "github.com/gin-gonic/gin"
 // protege el listado" o "el que protege la edición". Quien los arma (main)
 // decide qué permiso exige cada uno. Un nil se trata como "sin filtro extra".
 type Guardas struct {
-	Ver, Crear, Editar, Eliminar, Anular gin.HandlerFunc
+	Ver, Crear, Editar, Eliminar, Anular, Confirmar gin.HandlerFunc
 }
 
 // Cadena devuelve los handlers con el guard (si hay) delante.
