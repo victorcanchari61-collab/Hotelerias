@@ -16,6 +16,8 @@ import { permisoModule } from './modules/permiso.module'
 import type { PermisoUseCases } from './modules/permiso.module'
 import { configuracionModule } from './modules/configuracion.module'
 import type { ConfiguracionUseCases } from './modules/configuracion.module'
+import { limpiezaModule } from './modules/limpieza.module'
+import type { LimpiezaUseCases } from './modules/limpieza.module'
 import { estanciaModule } from './modules/estancia.module'
 import type { EstanciaUseCases } from './modules/estancia.module'
 import { habitacionModule } from './modules/habitacion.module'
@@ -40,6 +42,7 @@ export type UseCases = AuthUseCases &
   ParametroUseCases &
   HabitacionUseCases &
   EstanciaUseCases &
+  LimpiezaUseCases &
   ConfiguracionUseCases
 
 /** Avisos que el cliente HTTP emite y que la UI escucha. */
@@ -142,6 +145,7 @@ export function createContainer(options: ContainerOptions = {}): Container {
       ...parametroModule(context),
       ...habitacionModule(context),
       ...estanciaModule(context),
+      ...limpiezaModule(context),
       ...configuracionModule(context),
     },
   }

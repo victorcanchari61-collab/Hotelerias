@@ -35,6 +35,14 @@ export const ApiPaths = {
   empresa: { base: '/empresa' },
   tipoCambio: { base: '/tipo-cambio' },
   parametro: { base: '/parametro' },
+  limpieza: {
+    base: '/limpieza',
+    historial: '/limpieza/historial',
+    personal: '/limpieza/personal',
+    asignacion: (habitacionId: number) => `/limpieza/${habitacionId}/asignacion`,
+    iniciar: (habitacionId: number) => `/limpieza/${habitacionId}/iniciar`,
+    terminar: (habitacionId: number) => `/limpieza/${habitacionId}/terminar`,
+  },
   estancia: {
     base: '/estancia',
     habitaciones: '/estancia/habitaciones',

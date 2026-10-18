@@ -5,6 +5,67 @@ Cómo usar lo que se describe aquí: [`backend/README.md`](../backend/README.md)
 
 ---
 
+## 2026-10-17 — Limpieza (housekeeping): quién limpió cada habitación y cuándo
+
+Cierra el ciclo de la habitación:
+
+```
+check-out → SUCIA → (asignar → empezar →) terminar → LIMPIA → se puede asignar a un huésped
+```
+
+Migración `0010_limpieza.sql`; pantalla `/admin/habitaciones/housekeeping` (`habitaciones.housekeeping`).
+
+### Reglas
+
+- **Una habitación sucia ES una limpieza pendiente**: se deriva de su estado, no hay una fila por cada check-out. La
+  tabla `limpieza` guarda solo la limpieza **abierta** (asignada o en curso, a lo más una por habitación: índice
+  único parcial) y el **historial** de las terminadas (quién, cuándo, cuánto tardó, observaciones).
+- **Urgentes primero**: una habitación sucia es urgente si hay más llegadas por atender hoy de su tipo que
+  habitaciones limpias de ese tipo. Entre iguales, la que lleva más tiempo sucia.
+- **Un solo camino para limpiar**: «sucia → limpia» ya **no** se hace desde Habitaciones (se rechaza con un 409 y el
+  botón sale apagado con la explicación): así el historial no se queda sin registrar a quién la limpió. De
+  mantenimiento a limpia, y de limpia a sucia, siguen como antes.
+- **Permisos**: asignar = `crear`, empezar = `editar`, terminar (deja la habitación limpia) = `confirmar`, ver el tablero
+  y el historial = `ver`. Se acota por hotel (`habitaciones.housekeeping` se suma a los submódulos con alcance).
+- **Todo en una transacción, con la habitación bloqueada** y comprobando que **siga sucia**: dos personas
+  terminando la misma habitación dan exactamente una limpieza registrada (prueba con 6 simultáneas).
+- **El disparador de la base** descarta la limpieza abierta cuando la habitación deja de estar sucia por cualquier otro
+  camino (pasa a mantenimiento, por ejemplo): la asignación vieja no reaparece la próxima vez que se ensucie.
+- Quien empieza una limpieza sin que nadie se la haya asignado queda como responsable; limpiar sin haber asignado ni
+  empezado también queda en el historial. Una en curso se puede reasignar pero no dejar sin responsable.
+- La bitácora registra asignar, empezar y terminar.
+
+### Rutas nuevas
+
+| Método | Ruta | Permiso |
+|---|---|---|
+| GET | `/api/limpieza` · `/limpieza/historial` · `/limpieza/personal` | `habitaciones.housekeeping:ver` |
+| PUT | `/api/limpieza/:habitacionId/asignacion` (`{"usuarioId": 4}` o `null`) | `…:crear` |
+| POST | `/api/limpieza/:habitacionId/iniciar` | `…:editar` |
+| POST | `/api/limpieza/:habitacionId/terminar` (`{"observaciones": "…"}`, opcional) | `…:confirmar` |
+
+### Pantalla
+
+Dos pestañas: **Por limpiar** (habitación, hotel y tipo, hace cuánto está sucia, estado y responsable; las urgentes
+marcadas y primero) e **Historial** (quién la limpió, cuándo, duración y observaciones). Indicadores: por limpiar,
+urgentes, en curso y limpiadas hoy. Por fila: asignar, empezar, terminar.
+
+### Verificación
+
+- Backend, **con la base real**: unitarias + 9 de integración (el ciclo completo check-in → check-out → sucia →
+  asignar → empezar → terminar → limpia → se vuelve a asignar a un huésped; urgencia; disparador; carrera; personal
+  activo; alcance; sesión; y la regla de Habitaciones).
+- Frontend: 423 pruebas (11 nuevas), tres corridas completas verdes.
+- En vivo por Apache: tablero, historial, personal, rechazo de terminar una limpia (409) y 401.
+
+### Pendiente
+
+- La asignación es una lista de **usuarios del sistema** (todo el personal activo); más adelante conviene limitarla a un
+  rol «camarera» y agregar turnos o rutas por piso.
+- Objetos olvidados y lencería (siguen «en construcción»); reporte de tiempos de limpieza por persona.
+
+---
+
 ## 2026-10-17 — Recepción: check-in y check-out con la ficha de registro
 
 La reserva deja de ser solo «un tipo de habitación entre dos fechas»: al llegar el huésped se le asigna una

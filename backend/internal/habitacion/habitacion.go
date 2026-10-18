@@ -377,6 +377,8 @@ func (s *Servicio) CambiarEstado(ctx context.Context, id int64, estado Estado, a
 		return Habitacion{}, httpx.Conflicto("La habitación está desactivada. Actívala primero")
 	case actual.Estado == estado:
 		return actual, nil
+	case actual.Estado == Sucia && estado == Limpia:
+		return Habitacion{}, httpx.Conflicto("Una habitación sucia se libera desde Limpieza: así queda registrado quién la limpió y cuándo")
 	}
 
 	ok, err := s.repo.CambiarEstado(ctx, id, actual.Estado, estado)

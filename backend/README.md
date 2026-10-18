@@ -225,6 +225,7 @@ La respuesta 403 incluye qué faltaba, para que el frontend abra el modal de ped
 | GET · POST · PUT · DELETE | `/api/rol` · `/:id` | `config.roles` |
 | PUT | `/api/rol/:id/permisos` | `config.accesos:editar` (la matriz completa; **reemplaza**) |
 | GET · PUT | `/api/empresa` | `config.empresa` |
+| GET · PUT · POST | `/api/limpieza` · `/historial` · `/personal` · `/:id/asignacion` · `/:id/iniciar` · `/:id/terminar` | `habitaciones.housekeeping` ver · crear (asignar) · editar (empezar) · confirmar (terminar: deja la habitación limpia) |
 | GET · POST | `/api/estancia` · `/estancia/habitaciones?reservaId=` | `recepcion.estancias` ver · confirmar (panel de llegadas y huéspedes en casa; check-in con la ficha) |
 | POST | `/api/estancia/:id/check-out` | `recepcion.estancias:confirmar` (la habitación queda sucia, la reserva completada) |
 | GET | `/api/ficha-registro/:id` | `recepcion.fichas:ver` (dato personal; la bitácora lo guarda enmascarado) |

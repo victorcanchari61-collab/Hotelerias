@@ -321,6 +321,24 @@ func TestCambiarEstado(t *testing.T) {
 		}
 	})
 
+	t.Run("una sucia se libera desde Limpieza, no a mano", func(t *testing.T) {
+		s, repo, _ := armar()
+		id := sembrar(repo, Sucia)
+		if _, err := s.CambiarEstado(ctx, id, Limpia, 1, nil); !conflicto(err) {
+			t.Fatalf("sucia → limpia: %v", err)
+		}
+		if len(repo.estados) != 0 {
+			t.Fatal("no debió escribir")
+		}
+		// De mantenimiento a limpia (arreglada) sí, y de sucia a mantenimiento también.
+		if _, err := s.CambiarEstado(ctx, id, Mantenimiento, 1, nil); err != nil {
+			t.Fatalf("sucia → mantenimiento: %v", err)
+		}
+		if _, err := s.CambiarEstado(ctx, id, Limpia, 1, nil); err != nil {
+			t.Fatalf("mantenimiento → limpia: %v", err)
+		}
+	})
+
 	t.Run("«ocupada» no se asigna a mano", func(t *testing.T) {
 		s, repo, _ := armar()
 		id := sembrar(repo, Limpia)

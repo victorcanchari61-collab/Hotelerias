@@ -28,6 +28,8 @@ import (
 	habitacionpg "hotelerias/backend/internal/habitacion/postgres"
 	"hotelerias/backend/internal/hotel"
 	hotelpg "hotelerias/backend/internal/hotel/postgres"
+	"hotelerias/backend/internal/limpieza"
+	limpiezapg "hotelerias/backend/internal/limpieza/postgres"
 	"hotelerias/backend/internal/moneda"
 	monedapg "hotelerias/backend/internal/moneda/postgres"
 	"hotelerias/backend/internal/parametro"
@@ -197,6 +199,8 @@ func run() error {
 	habitacionSvc := habitacion.NewServicio(habitacionpg.NewStore(dbs.Postgres), hotel.Hoy, bitacora)
 	alcanceRecepcion := alcanceSedes{g: gestionPermisos, submodulo: "recepcion.estancias"}
 	estanciaSvc := estancia.NewServicio(estanciapg.NewStore(dbs.Postgres), hotel.Hoy, bitacora)
+	alcanceLimpieza := alcanceSedes{g: gestionPermisos, submodulo: "habitaciones.housekeeping"}
+	limpiezaSvc := limpieza.NewServicio(limpiezapg.NewStore(dbs.Postgres), hotel.Hoy, bitacora)
 
 	// --- HTTP ---
 	router := httpx.NewRouter(cfg.AllowedOrigins)
@@ -220,6 +224,7 @@ func run() error {
 			cliente.NewAdminHandler(clienteSvc, guardas("crm.huespedes"), guardas("crm.fidelizacion")),
 			moneda.NewHandler(monedaSvc, guardas("finanzas.tipocambio")),
 			estancia.NewHandler(estanciaSvc, guardas("recepcion.estancias"), guardas("recepcion.fichas"), alcanceRecepcion),
+			limpieza.NewHandler(limpiezaSvc, guardas("habitaciones.housekeeping"), alcanceLimpieza),
 			habitacion.NewHandler(habitacionSvc, guardas("habitaciones.habitaciones"), alcanceHabitaciones),
 			reserva.NewAdminHandler(reservaSvc, guardas("reservas.reservas"), alcanceReservas, bitacora),
 		},

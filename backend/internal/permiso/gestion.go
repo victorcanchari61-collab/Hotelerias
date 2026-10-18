@@ -31,7 +31,7 @@ func AlcanceValido(a Alcance) bool { return a == TodasLasSedes || a == MisSedes 
 // SubmodulosConAlcance son las pantallas cuyos datos se pueden acotar por sede.
 // Solo las que de verdad aplican el filtro: ofrecer en la configuración una
 // restricción que el backend nunca aplica sería mentirle al administrador.
-var SubmodulosConAlcance = []string{"reservas.reservas", "habitaciones.habitaciones", "recepcion.estancias"}
+var SubmodulosConAlcance = []string{"reservas.reservas", "habitaciones.habitaciones", "habitaciones.housekeeping", "recepcion.estancias"}
 
 // ResolverAlcance decide el alcance efectivo. Es pura:
 //

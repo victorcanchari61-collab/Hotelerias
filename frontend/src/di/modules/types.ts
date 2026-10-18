@@ -12,6 +12,7 @@ import type {
   PromocionRepository,
   ReservaAdminRepository,
 } from '@/domain/repositories/GestionRepository'
+import type { LimpiezaRepository } from '@/domain/repositories/LimpiezaRepository'
 import type { EstanciaRepository } from '@/domain/repositories/EstanciaRepository'
 import type { HabitacionRepository } from '@/domain/repositories/HabitacionRepository'
 import type { ParametroRepository } from '@/domain/repositories/ParametroRepository'
@@ -42,6 +43,8 @@ export interface RepositoryOverrides {
   promocion?: PromocionRepository
   fidelizacion?: FidelizacionRepository
   reservaAdmin?: ReservaAdminRepository
+  // Limpieza (housekeeping).
+  limpieza?: LimpiezaRepository
   // Recepción: check-in y check-out.
   estancia?: EstanciaRepository
   // Habitaciones físicas.

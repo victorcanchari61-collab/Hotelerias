@@ -269,12 +269,15 @@ export function HabitacionesPage() {
               // Una ocupada se libera con el check-out; una desactivada no tiene estado que cambiar.
               const bloqueada = h.estado === 'ocupada' || !h.activa
               const boton = (e: EstadoHabitacion) => ({
-                disabled: bloqueada || h.estado === e,
+                // Una sucia se libera desde Limpieza: así queda quién la limpió y cuándo.
+                disabled: bloqueada || h.estado === e || (e === 'limpia' && h.estado === 'sucia'),
                 loading: ocupada === h.id,
               })
+              const tituloLimpia =
+                h.estado === 'sucia' ? `La ${h.numero} está sucia: se libera desde Limpieza` : `Marcar limpia la ${h.numero}`
               return (
                 <FilaAcciones>
-                  <BotonFila color="success" titulo={`Marcar limpia la ${h.numero}`} onClick={() => void cambiarEstado(h, 'limpia')} {...boton('limpia')}>
+                  <BotonFila color="success" titulo={tituloLimpia} onClick={() => void cambiarEstado(h, 'limpia')} {...boton('limpia')}>
                     <FaCircleCheck />
                   </BotonFila>
                   <BotonFila color="warning" titulo={`Marcar sucia la ${h.numero}`} onClick={() => void cambiarEstado(h, 'sucia')} {...boton('sucia')}>

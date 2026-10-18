@@ -105,6 +105,8 @@ describe('Habitaciones', () => {
       expect(boton(nombre).disabled, nombre).toBe(true)
     }
     expect(boton('Marcar limpia la 101').disabled).toBe(true) // ya está limpia
+    // Una sucia se libera desde Limpieza (queda quién la limpió y cuándo): el botón está apagado y lo explica.
+    expect(boton('La 102 está sucia: se libera desde Limpieza').disabled).toBe(true)
     expect(boton('Marcar sucia la 101').disabled).toBe(false)
   })
 
