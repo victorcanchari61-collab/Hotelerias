@@ -22,6 +22,8 @@ import (
 	"hotelerias/backend/internal/demo"
 	"hotelerias/backend/internal/empresa"
 	empresapg "hotelerias/backend/internal/empresa/postgres"
+	"hotelerias/backend/internal/habitacion"
+	habitacionpg "hotelerias/backend/internal/habitacion/postgres"
 	"hotelerias/backend/internal/hotel"
 	hotelpg "hotelerias/backend/internal/hotel/postgres"
 	"hotelerias/backend/internal/moneda"
@@ -189,6 +191,8 @@ func run() error {
 
 	// --- Reservas del panel, acotadas por las sedes de quien mira ---
 	alcanceReservas := alcanceSedes{g: gestionPermisos, submodulo: "reservas.reservas"}
+	alcanceHabitaciones := alcanceSedes{g: gestionPermisos, submodulo: "habitaciones.habitaciones"}
+	habitacionSvc := habitacion.NewServicio(habitacionpg.NewStore(dbs.Postgres), hotel.Hoy, bitacora)
 
 	// --- HTTP ---
 	router := httpx.NewRouter(cfg.AllowedOrigins)
@@ -211,6 +215,7 @@ func run() error {
 			promocion.NewHandler(promoSvc, guardas("reservas.paquetes")),
 			cliente.NewAdminHandler(clienteSvc, guardas("crm.huespedes"), guardas("crm.fidelizacion")),
 			moneda.NewHandler(monedaSvc, guardas("finanzas.tipocambio")),
+			habitacion.NewHandler(habitacionSvc, guardas("habitaciones.habitaciones"), alcanceHabitaciones),
 			reserva.NewAdminHandler(reservaSvc, guardas("reservas.reservas"), alcanceReservas, bitacora),
 		},
 		Cliente: auth.AuthenticateCliente(tokens),

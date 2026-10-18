@@ -101,17 +101,28 @@ func Sembrar(ctx context.Context, pool *pgxpool.Pool, hoy fecha.Fecha) (bool, er
 		}
 		sedeIDs[s.ciudad] = id
 
-		for _, h := range habitaciones {
+		for piso, h := range habitaciones {
 			// Redondeado a S/ 10 para que los precios se vean como de hotel.
 			precio := int64(h.base) * int64(s.factor) / 100
 			precio = (precio + 500) / 1000 * 1000
-			_, err := tx.Exec(ctx, `
+			var tipoID int64
+			err := tx.QueryRow(ctx, `
 				INSERT INTO tipo_habitacion (sede_id, nombre, descripcion, capacidad, camas, area_m2,
 				                             precio_noche_cent, cantidad, amenidades, imagen)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-				id, h.nombre, h.descripcion, h.capacidad, h.camas, h.area, precio, h.cantidad, h.amenidades, h.imagen)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+				id, h.nombre, h.descripcion, h.capacidad, h.camas, h.area, precio, h.cantidad, h.amenidades, h.imagen).Scan(&tipoID)
 			if err != nil {
 				return false, fmt.Errorf("demo: habitación %s: %w", h.nombre, err)
+			}
+			// Las habitaciones físicas: un piso por tipo (101, 102… / 201, 202…). La
+			// cantidad del tipo la recalcula la base al insertarlas.
+			for n := 1; n <= h.cantidad; n++ {
+				_, err := tx.Exec(ctx, `
+					INSERT INTO habitacion (sede_id, tipo_habitacion_id, numero, piso)
+					VALUES ($1,$2,$3,$4)`, id, tipoID, fmt.Sprintf("%d%02d", piso+1, n), piso+1)
+				if err != nil {
+					return false, fmt.Errorf("demo: habitación %s n.º %d: %w", h.nombre, n, err)
+				}
 			}
 		}
 	}
