@@ -4,18 +4,28 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BedDouble, Maximize2, Star, Users } from 'lucide-react'
 import { sumarDias } from '@/domain/fechas'
 import type { DetalleSede } from '@/domain/entities/Portal'
+import type { MedioRef } from '@/domain/entities/Sitio'
 import type { OpcionEstadia } from '@/domain/usecases/portal.usecases'
-import { Alert, Badge, Button, Card, Input, buttonClasses } from '@/shared/ui'
+import { Alert, Button, Input, buttonClasses, cn } from '@/shared/ui'
 import { useCarga } from '../../hooks/useCarga'
 import { PARAM } from '@/domain/entities/Parametro'
 import type { ParametrosPublicos } from '@/domain/entities/Parametro'
 import { useClienteAuth } from '../../providers/ClienteAuthProvider'
 import { useDependencies } from '../../providers/DependencyProvider'
 import { useMoneda } from '../../providers/MonedaProvider'
-import { PATHS } from '../../routes/paths'
+import { PATHS, habitacionPath } from '../../routes/paths'
+import { Emblema } from './components/Emblema'
+import { FotoHabitacion } from './components/FotoHabitacion'
+import { GaleriaFotos } from './components/GaleriaFotos'
 import { ResumenPrecio } from './components/ResumenPrecio'
-import { Visual } from './components/Visual'
+import { Papel, claseTinta, nombreCorto } from './components/mundo'
 import { formatMonto, pluralNoches } from './format'
+
+/** Hasta cuándo se puede cancelar por la web (el parámetro del panel); no promete reembolsos. */
+function textoCancelacion(dias: number): string {
+  if (dias <= 0) return 'Cancelas por la web hasta el mismo día de la entrada'
+  return `Cancelas por la web hasta ${dias} ${dias === 1 ? 'día' : 'días'} antes de la entrada`
+}
 
 export function HotelPage() {
   const { id } = useParams()
@@ -45,6 +55,8 @@ export function HotelPage() {
     [useCases, sedeId],
     null,
   )
+  // Las fotos del hotel las arma el personal; si no hay, la etiqueta ocupa su lugar.
+  const fotos = useCarga<MedioRef[]>(() => useCases.galeriaPublica.execute({ entidad: 'sede', id: sedeId }), [useCases, sedeId], [])
 
   // Se vuelve a pedir si entra o sale de la sesión: el precio cambia con su categoría.
   const opciones = useCarga<OpcionEstadia[]>(
@@ -87,6 +99,8 @@ export function HotelPage() {
   }
 
   const sede = detalle.datos?.sede
+  const busqueda = { entrada, salida, huespedes, codigo: codigo || undefined }
+  const dias = horarios.datos[PARAM.cancelacionDias]
 
   function reservar(habitacionId: number) {
     const q = new URLSearchParams({
@@ -100,144 +114,154 @@ export function HotelPage() {
   }
 
   return (
-    <div>
-      <Visual clave={sede?.imagen ?? ''} className="h-48 sm:h-60">
-        <div className="mx-auto flex h-full max-w-6xl items-end px-4 pb-6">
-          <div>
-            <p className="flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-              {sede?.ciudad}
-              <span className="ml-2 flex">
-                {Array.from({ length: sede?.estrellas ?? 0 }).map((_, i) => (
-                  <Star key={i} size={12} className="fill-white" />
-                ))}
-              </span>
-            </p>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-4xl">{sede?.nombre ?? '…'}</h1>
-          </div>
-        </div>
-      </Visual>
-
-      <div className="mx-auto max-w-6xl space-y-8 px-4 py-8">
-        {sede && (
-          <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-            <div>
-              <p className="text-ink-muted">{sede.descripcion}</p>
-              <p className="mt-2 text-sm text-ink-muted">{sede.direccion}</p>
-              {horarios.datos[PARAM.checkinHora] && horarios.datos[PARAM.checkoutHora] && (
-                <p className="mt-2 text-sm text-ink-muted">
-                  Check-in desde las {horarios.datos[PARAM.checkinHora]} · Check-out hasta las{' '}
-                  {horarios.datos[PARAM.checkoutHora]}
-                </p>
+    <div className="mx-auto max-w-6xl space-y-10 px-4 py-8">
+      {/* --- Encabezado: la etiqueta del hotel, con su tinta, y sus fotos --- */}
+      <section className={cn('grid gap-6', fotos.datos.length > 0 && 'lg:grid-cols-[minmax(0,4fr)_minmax(0,7fr)] lg:items-start')}>
+        <div className={cn('v-etiqueta', sede ? claseTinta(sede.imagen) : 'v-etiqueta--lima')}>
+          <div className="flex flex-col gap-4 p-7">
+            <div className="flex items-start justify-between gap-3">
+              <span className="v-etq text-sm">{sede?.ciudad}</span>
+              {sede && (
+                <span className="flex items-center gap-0.5" role="img" aria-label={`${sede.estrellas} estrellas`}>
+                  {Array.from({ length: sede.estrellas }).map((_, i) => (
+                    <Star key={i} size={14} className="fill-current" aria-hidden="true" />
+                  ))}
+                </span>
               )}
             </div>
-            <ul className="flex flex-wrap content-start gap-1.5">
-              {sede.servicios.map((s) => (
-                <li key={s} className="rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent-ink">
-                  {s}
-                </li>
-              ))}
-            </ul>
-          </section>
+            {sede && <Emblema clave={sede.imagen} className="mx-auto my-1 size-24" />}
+            <h1 className="v-etq text-[clamp(2.4rem,5vw,3.4rem)] leading-[0.9]">
+              <span aria-hidden="true">{sede ? nombreCorto(sede.nombre) : '…'}</span>
+              <span className="sr-only">{sede?.nombre}</span>
+            </h1>
+            {sede && <p className="text-sm leading-snug opacity-90">{sede.descripcion}</p>}
+            {sede && <p className="v-etq text-sm">{sede.direccion}</p>}
+          </div>
+        </div>
+        <GaleriaFotos fotos={fotos.datos} />
+      </section>
+
+      {sede && (sede.servicios.length > 0 || horarios.datos[PARAM.checkinHora]) && (
+        <section className="grid gap-6 border-y-2 border-dashed border-[var(--v-hilo-suave)] py-6 lg:grid-cols-[1.2fr_1fr]">
+          {horarios.datos[PARAM.checkinHora] && horarios.datos[PARAM.checkoutHora] && (
+            <p className="v-nota text-lg text-[var(--color-ink-muted)]">
+              Check-in desde las {horarios.datos[PARAM.checkinHora]} · Check-out hasta las {horarios.datos[PARAM.checkoutHora]}
+              {dias !== undefined && <> · {textoCancelacion(Number(dias))}</>}
+            </p>
+          )}
+          <ul className="flex flex-wrap content-start gap-2">
+            {sede.servicios.map((s) => (
+              <li key={s} className="v-etq rounded-[3px] border border-[var(--v-hilo-suave)] px-2.5 py-1 text-sm text-[var(--v-hilo)]">
+                {s}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* --- Búsqueda --- */}
+      <Papel className="p-5 sm:p-6">
+        <form onSubmit={buscar} aria-label="Cambiar las fechas" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_.6fr_1fr_auto] lg:items-end">
+          <Input label="Entrada" type="date" min={hoy} value={fEntrada} onChange={(e) => setFEntrada(e.target.value)} />
+          <Input label="Salida" type="date" min={fEntrada} value={fSalida} onChange={(e) => setFSalida(e.target.value)} />
+          <Input
+            label="Huéspedes"
+            type="number"
+            min={1}
+            max={10}
+            value={fHuespedes}
+            onChange={(e) => setFHuespedes(Number(e.target.value))}
+          />
+          <Input
+            label="Código promocional"
+            optional
+            value={fCodigo}
+            onChange={(e) => setFCodigo(e.target.value)}
+            placeholder="Ej. BIENVENIDO10"
+          />
+          <Button type="submit">Buscar</Button>
+        </form>
+      </Papel>
+
+      {/* --- Resultados --- */}
+      <section className="space-y-5">
+        <h2 className="v-etq text-[clamp(1.8rem,3.5vw,2.6rem)]">Habitaciones · {pluralNoches(Math.max(noches, 0))}</h2>
+
+        {opciones.error && <Alert>{opciones.error}</Alert>}
+
+        {opciones.cargando && <p className="text-sm text-[var(--color-ink-muted)]">Buscando disponibilidad…</p>}
+
+        {!opciones.cargando && !opciones.error && opciones.datos.length === 0 && (
+          <p className="v-nota text-lg text-[var(--color-ink-muted)]">
+            Ninguna habitación admite {huespedes} huéspedes en este hotel. Prueba con menos.
+          </p>
         )}
 
-        {/* --- Búsqueda --- */}
-        <Card className="p-4 sm:p-5">
-          <form onSubmit={buscar} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_.6fr_1fr_auto] lg:items-end">
-            <Input label="Entrada" type="date" min={hoy} value={fEntrada} onChange={(e) => setFEntrada(e.target.value)} />
-            <Input label="Salida" type="date" min={fEntrada} value={fSalida} onChange={(e) => setFSalida(e.target.value)} />
-            <Input
-              label="Huéspedes"
-              type="number"
-              min={1}
-              max={10}
-              value={fHuespedes}
-              onChange={(e) => setFHuespedes(Number(e.target.value))}
-            />
-            <Input
-              label="Código promocional"
-              optional
-              value={fCodigo}
-              onChange={(e) => setFCodigo(e.target.value)}
-              placeholder="Ej. BIENVENIDO10"
-            />
-            <Button type="submit">Buscar</Button>
-          </form>
-        </Card>
+        {status !== 'authenticated' && opciones.datos.length > 0 && (
+          <Alert tone="info">
+            Puedes ver los precios sin cuenta. Para confirmar una reserva tendrás que{' '}
+            <Link to={PATHS.ingresar} className="font-semibold underline">
+              iniciar sesión
+            </Link>{' '}
+            o{' '}
+            <Link to={PATHS.registro} className="font-semibold underline">
+              crear tu cuenta
+            </Link>
+            ; con ella verás el precio de tu categoría.
+          </Alert>
+        )}
 
-        {/* --- Resultados --- */}
-        <section className="space-y-4">
-          <h2 className="text-xl font-bold tracking-tight">
-            Habitaciones · {pluralNoches(Math.max(noches, 0))}
-          </h2>
+        <ul className="space-y-5">
+          {opciones.datos.map(({ habitacion: h, cotizacion: c }) => {
+            const agotada = h.disponibles < 1
+            return (
+              <li key={h.id}>
+                {/* Una habitación agotada es una etiqueta fantasma: se ve, pero no se pega. */}
+                <Papel className={cn('overflow-hidden', agotada && 'v-fantasma !bg-transparent !shadow-none')}>
+                  <div className="grid sm:grid-cols-[240px_1fr_260px]">
+                    <FotoHabitacion tipoId={h.id} className="h-44 sm:h-auto" />
 
-          {opciones.error && <Alert>{opciones.error}</Alert>}
-
-          {opciones.cargando && <p className="text-sm text-ink-muted">Buscando disponibilidad…</p>}
-
-          {!opciones.cargando && !opciones.error && opciones.datos.length === 0 && (
-            <Card className="text-center text-ink-muted">
-              Ninguna habitación admite {huespedes} huéspedes en este hotel. Prueba con menos.
-            </Card>
-          )}
-
-          {status !== 'authenticated' && opciones.datos.length > 0 && (
-            <Alert tone="info">
-              Puedes ver los precios sin cuenta. Para confirmar una reserva tendrás que{' '}
-              <Link to={PATHS.ingresar} className="font-semibold underline">
-                iniciar sesión
-              </Link>{' '}
-              o{' '}
-              <Link to={PATHS.registro} className="font-semibold underline">
-                crear tu cuenta
-              </Link>
-              ; con ella verás el precio de tu categoría.
-            </Alert>
-          )}
-
-          <div className="space-y-4">
-            {opciones.datos.map(({ habitacion: h, cotizacion: c }) => {
-              const agotada = h.disponibles < 1
-              return (
-                <Card key={h.id} className="overflow-hidden p-0 sm:p-0">
-                  <div className="grid sm:grid-cols-[220px_1fr_260px]">
-                    <Visual clave={h.imagen} className="h-40 sm:h-auto" />
-
-                    <div className="space-y-3 p-5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-bold">{h.nombre}</h3>
+                    <div className={cn('space-y-3 p-5', agotada && 'opacity-80')}>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h3 className="v-etq text-3xl leading-[0.95]">
+                          <Link to={habitacionPath(sedeId, h.id, busqueda)} className="hover:underline">
+                            {h.nombre}
+                          </Link>
+                        </h3>
                         {agotada ? (
-                          <Badge tone="danger">Agotada</Badge>
+                          <span className="v-etq rounded-[3px] border-2 border-dashed border-current px-2 py-0.5 text-sm">Agotada</span>
                         ) : h.disponibles <= 2 ? (
-                          <Badge tone="warning">Quedan {h.disponibles}</Badge>
+                          <span className="v-etq rounded-[3px] bg-[var(--v-sello)] px-2 py-0.5 text-sm text-[#f6ecd6]">Quedan {h.disponibles}</span>
                         ) : null}
                       </div>
-                      <p className="text-sm text-ink-muted">{h.descripcion}</p>
-                      <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
-                        <span className="flex items-center gap-1"><Users size={13} /> Hasta {h.capacidad}</span>
-                        <span className="flex items-center gap-1"><BedDouble size={13} /> {h.camas}</span>
-                        <span className="flex items-center gap-1"><Maximize2 size={13} /> {h.areaM2} m²</span>
+                      <p className="text-sm text-[var(--color-ink-muted)]">{h.descripcion}</p>
+                      <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-ink-muted)]">
+                        <span className="flex items-center gap-1"><Users size={13} aria-hidden="true" /> Hasta {h.capacidad}</span>
+                        <span className="flex items-center gap-1"><BedDouble size={13} aria-hidden="true" /> {h.camas}</span>
+                        <span className="flex items-center gap-1"><Maximize2 size={13} aria-hidden="true" /> {h.areaM2} m²</span>
                       </p>
                       <p className="flex flex-wrap gap-1.5">
                         {h.amenidades.slice(0, 4).map((a) => (
-                          <span key={a} className="rounded-full bg-surface-alt px-2.5 py-0.5 text-xs text-ink-muted">
+                          <span key={a} className="rounded-[3px] border border-[var(--color-line)] px-2 py-0.5 text-xs text-[var(--color-ink-muted)]">
                             {a}
                           </span>
                         ))}
                       </p>
+                      <Link to={habitacionPath(sedeId, h.id, busqueda)} className="v-etq inline-block text-sm text-[var(--accent-ink)] hover:underline">
+                        Ver la habitación →
+                      </Link>
                     </div>
 
-                    <div className="flex flex-col justify-between gap-4 border-t border-line bg-surface-alt/60 p-5 sm:border-t-0 sm:border-l">
+                    <div className="flex flex-col justify-between gap-4 border-t-2 border-dashed border-[var(--color-line)] p-5 sm:border-t-0 sm:border-l-2">
                       {c ? (
                         <div className="space-y-3">
                           <ResumenPrecio cotizacion={c} />
                           {c.codigo && !c.codigoValido && (
-                            <p className="text-xs text-amber-700">
-                              El código «{c.codigo}» no aplica a esta estadía.
-                            </p>
+                            <p className="text-xs text-[var(--color-danger)]">El código «{c.codigo}» no aplica a esta estadía.</p>
                           )}
                         </div>
                       ) : (
-                        <p className="text-sm text-ink-muted">
+                        <p className="text-sm text-[var(--color-ink-muted)]">
                           {agotada
                             ? 'No quedan habitaciones para estas fechas.'
                             : `Desde ${formatMonto(convertir(h.precioNocheCent), moneda)} por noche`}
@@ -248,12 +272,12 @@ export function HotelPage() {
                       </Button>
                     </div>
                   </div>
-                </Card>
-              )
-            })}
-          </div>
-        </section>
-      </div>
+                </Papel>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
     </div>
   )
 }

@@ -14,6 +14,7 @@ const HistoriaPage = lazy(() => import('./HistoriaPage').then((m) => ({ default:
 const NosotrosPage = lazy(() => import('./NosotrosPage').then((m) => ({ default: m.NosotrosPage })))
 const ContactoPage = lazy(() => import('./ContactoPage').then((m) => ({ default: m.ContactoPage })))
 const MembresiasPage = lazy(() => import('./MembresiasPage').then((m) => ({ default: m.MembresiasPage })))
+const HabitacionPage = lazy(() => import('./HabitacionPage').then((m) => ({ default: m.HabitacionPage })))
 const HotelPage = lazy(() => import('./HotelPage').then((m) => ({ default: m.HotelPage })))
 const IngresarPage = lazy(() => import('./IngresarPage').then((m) => ({ default: m.IngresarPage })))
 const RegistroPage = lazy(() => import('./RegistroPage').then((m) => ({ default: m.RegistroPage })))
@@ -33,6 +34,7 @@ export const portalRoutes: RouteModule = {
     standaloneRoute({ id: 'portal.inicio', path: PATHS.portal, access: acceso.publico(), component: PortalHomePage, layout: 'portal' }),
     standaloneRoute({ id: 'portal.ofertas', path: PATHS.ofertas, access: acceso.publico(), component: OfertasPage, layout: 'portal' }),
     standaloneRoute({ id: 'portal.hotel', path: PATHS.hotel, access: acceso.publico(), component: HotelPage, layout: 'portal' }),
+    standaloneRoute({ id: 'portal.habitacion', path: PATHS.habitacion, access: acceso.publico(), component: HabitacionPage, layout: 'portal' }),
     standaloneRoute({ id: 'portal.experiencias', path: PATHS.experiencias, access: acceso.publico(), component: ExperienciasPage, layout: 'portal' }),
     standaloneRoute({ id: 'portal.historias', path: PATHS.historias, access: acceso.publico(), component: HistoriasPage, layout: 'portal' }),
     standaloneRoute({ id: 'portal.historia', path: PATHS.historia, access: acceso.publico(), component: HistoriaPage, layout: 'portal' }),
